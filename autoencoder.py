@@ -19,7 +19,7 @@ from keras.datasets import mnist
 
 batch_size = 500
 original_dim = 784
-latent_dim = 3 # 2 are left after normalization
+latent_dim = 3 # one less left after normalization
 intermediate_dim = 256
 nb_epoch = 50
 
@@ -43,7 +43,7 @@ def vae_loss(x, x_decoded):
     # DANIEL Why not mean_squared_error?
     xent_loss = original_dim * objectives.binary_crossentropy(x, x_decoded)
     # Instead of a KL normality test, let's try some energy function
-    # that pushes the minibatch element away from each other, pairwise.
+    # that pushes the minibatch elements away from each other, pairwise.
     pairwise = K.sum(K.square(K.dot(z, K.transpose(z))))
     return xent_loss + pairwise / 1000 # Maybe some broadcasting happens here?
 
@@ -96,7 +96,8 @@ for i, yi in enumerate(grid_x):
         if zisqr < 0.0:
             continue
         zi = math.sqrt(zisqr)
-        z_sample = np.array([[xi, yi, zi]])
+        # Padded with zeros at the rest of the coordinates:
+        z_sample = np.array([[xi, yi, zi] + [0]*(latent_dim-3)])
         x_decoded = generator.predict(z_sample)
         digit = x_decoded[0].reshape(digit_size, digit_size)
         figure[i * digit_size: (i + 1) * digit_size,

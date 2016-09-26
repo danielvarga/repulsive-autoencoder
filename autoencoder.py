@@ -25,8 +25,10 @@ x = Input(batch_shape=(batch_size, original_dim))
 h = Dense(intermediate_dim, activation='relu')(x)
 
 # Completely got rid of the variational aspect
-z = Dense(latent_dim)(h)
+z_unnormalized = Dense(latent_dim)(h)
 
+# normalize all latent vars:
+z = Lambda(lambda z_unnormed: K.l2_normalize(z_unnormed, axis=-1))([z_unnormalized])
 
 # we instantiate these layers separately so as to reuse them later
 decoder_h = Dense(intermediate_dim, activation='relu')
@@ -38,12 +40,11 @@ x_decoded = decoder(h_decoded)
 def vae_loss(x, x_decoded):
     # DANIEL Why not mean_squared_error?
     xent_loss = original_dim * objectives.binary_crossentropy(x, x_decoded)
-    # DANIEL I've destroyed the variance vars.
-    # http://mlg.postech.ac.kr/~seungjin/courses/ml/handouts/note02.pdf
-    # Maybe some better normality test would be nicer here? This is just L2 reg on the latent vars, that's lame.
-    # Kolmogorov-Smirnov requires projection and sorting, that's probably an overkill. What else?
-    kl_loss = - 0.5 * K.sum(K.square(z), axis=-1)
-    return xent_loss + kl_loss / 3000 # Don't know the right choice for this constant.
+    # Instead of a KL normality test, let's try some energy function
+    # that pushes the minibatch element away from each other, pairwise.
+    pairwise = K.sum(K.square(K.dot(z, K.transpose(z))))
+    return xent_loss + pairwise / 1000 # Maybe some broadcasting happens here?
+
 
 vae = Model(x, x_decoded)
 vae.compile(optimizer='rmsprop', loss=vae_loss)

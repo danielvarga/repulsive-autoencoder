@@ -2,6 +2,8 @@
 
 Reference: "Auto-Encoding Variational Bayes" https://arxiv.org/abs/1312.6114
 '''
+
+import math
 import numpy as np
 
 np.random.seed(1337)
@@ -17,7 +19,7 @@ from keras.datasets import mnist
 
 batch_size = 500
 original_dim = 784
-latent_dim = 2
+latent_dim = 3 # 2 are left after normalization
 intermediate_dim = 256
 nb_epoch = 50
 
@@ -69,7 +71,9 @@ encoder = Model(x, z)
 # display a 2D plot of the digit classes in the latent space
 x_test_encoded = encoder.predict(x_test, batch_size=batch_size)
 plt.figure(figsize=(6, 6))
-plt.scatter(x_test_encoded[:, 0], x_test_encoded[:, 1], c=y_test)
+points = x_test_encoded.copy()
+points[:, 0] += 2.2 * (points[:, 2]>=0)
+plt.scatter(points[:, 0], points[:, 1], c=y_test)
 plt.colorbar()
 plt.savefig("fig1.png")
 
@@ -80,16 +84,19 @@ _x_decoded = decoder(_h_decoded)
 generator = Model(decoder_input, _x_decoded)
 
 # display a 2D manifold of the digits
-n = 15  # figure with 15x15 digits
+n = 30  # figure with 15x15 digits
 digit_size = 28
 figure = np.zeros((digit_size * n, digit_size * n))
-# we will sample n points within [-15, 15] standard deviations
-grid_x = np.linspace(-15, 15, n)
-grid_y = np.linspace(-15, 15, n)
+grid_x = np.linspace(-1, +1, n)
+grid_y = np.linspace(-1, +1, n)
 
 for i, yi in enumerate(grid_x):
     for j, xi in enumerate(grid_y):
-        z_sample = np.array([[xi, yi]])
+        zisqr = 1.000001-xi*xi-yi*yi
+        if zisqr < 0.0:
+            continue
+        zi = math.sqrt(zisqr)
+        z_sample = np.array([[xi, yi, zi]])
         x_decoded = generator.predict(z_sample)
         digit = x_decoded[0].reshape(digit_size, digit_size)
         figure[i * digit_size: (i + 1) * digit_size,

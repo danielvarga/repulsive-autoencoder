@@ -1,7 +1,11 @@
-'''
-Taken from https://github.com/fchollet/keras/blob/257ace72/examples/variational_autoencoder.py
+'''This script demonstrates how to build a variational autoencoder with Keras.
+
+Reference: "Auto-Encoding Variational Bayes" https://arxiv.org/abs/1312.6114
 '''
 import numpy as np
+
+np.random.seed(1337)
+
 import matplotlib.pyplot as plt
 
 from keras.layers import Input, Dense, Lambda
@@ -10,39 +14,38 @@ from keras import backend as K
 from keras import objectives
 from keras.datasets import mnist
 
-batch_size = 100
+
+batch_size = 500
 original_dim = 784
 latent_dim = 2
 intermediate_dim = 256
-nb_epoch = 10
+nb_epoch = 50
 
 x = Input(batch_shape=(batch_size, original_dim))
 h = Dense(intermediate_dim, activation='relu')(x)
-z_mean = Dense(latent_dim)(h)
-z_log_var = Dense(latent_dim)(h)
 
+# Completely got rid of the variational aspect
+z = Dense(latent_dim)(h)
 
-def sampling(args):
-    z_mean, z_log_var = args
-    epsilon = K.random_normal(shape=(batch_size, latent_dim), mean=0.)
-    return z_mean + K.exp(z_log_var / 2) * epsilon
-
-# note that "output_shape" isn't necessary with the TensorFlow backend
-z = Lambda(sampling, output_shape=(latent_dim,))([z_mean, z_log_var])
 
 # we instantiate these layers separately so as to reuse them later
 decoder_h = Dense(intermediate_dim, activation='relu')
-decoder_mean = Dense(original_dim, activation='sigmoid')
+decoder = Dense(original_dim, activation='sigmoid')
 h_decoded = decoder_h(z)
-x_decoded_mean = decoder_mean(h_decoded)
+x_decoded = decoder(h_decoded)
 
 
-def vae_loss(x, x_decoded_mean):
-    xent_loss = original_dim * objectives.binary_crossentropy(x, x_decoded_mean)
-    kl_loss = - 0.5 * K.sum(1 + z_log_var - K.square(z_mean) - K.exp(z_log_var), axis=-1)
-    return xent_loss + kl_loss
+def vae_loss(x, x_decoded):
+    # DANIEL Why not mean_squared_error?
+    xent_loss = original_dim * objectives.binary_crossentropy(x, x_decoded)
+    # DANIEL I've destroyed the variance vars.
+    # http://mlg.postech.ac.kr/~seungjin/courses/ml/handouts/note02.pdf
+    # Maybe some better normality test would be nicer here? This is just L2 reg on the latent vars, that's lame.
+    # Kolmogorov-Smirnov requires projection and sorting, that's probably an overkill. What else?
+    kl_loss = - 0.5 * K.sum(K.square(z), axis=-1)
+    return xent_loss + kl_loss / 3000 # Don't know the right choice for this constant.
 
-vae = Model(x, x_decoded_mean)
+vae = Model(x, x_decoded)
 vae.compile(optimizer='rmsprop', loss=vae_loss)
 
 # train the VAE on MNIST digits
@@ -60,7 +63,7 @@ vae.fit(x_train, x_train,
         validation_data=(x_test, x_test))
 
 # build a model to project inputs on the latent space
-encoder = Model(x, z_mean)
+encoder = Model(x, z)
 
 # display a 2D plot of the digit classes in the latent space
 x_test_encoded = encoder.predict(x_test, batch_size=batch_size)
@@ -72,8 +75,8 @@ plt.savefig("fig1.png")
 # build a digit generator that can sample from the learned distribution
 decoder_input = Input(shape=(latent_dim,))
 _h_decoded = decoder_h(decoder_input)
-_x_decoded_mean = decoder_mean(_h_decoded)
-generator = Model(decoder_input, _x_decoded_mean)
+_x_decoded = decoder(_h_decoded)
+generator = Model(decoder_input, _x_decoded)
 
 # display a 2D manifold of the digits
 n = 15  # figure with 15x15 digits

@@ -1,6 +1,11 @@
-'''This script demonstrates how to build a variational autoencoder with Keras.
+'''This AE differs from a standard VAE (https://github.com/fchollet/keras/blob/master/examples/variational_autoencoder.py)
+in the following ways:
 
-Reference: "Auto-Encoding Variational Bayes" https://arxiv.org/abs/1312.6114
+- The latent variances are not learned, they are simply set to 0.
+- A normalization step takes the latent variables to a sphere surface.
+- The regularization loss is changed to an energy term that
+  corresponds to a pairwise repulsive force between the encoded
+  elements of the minibatch.
 '''
 
 import math
@@ -17,7 +22,7 @@ from keras import objectives
 from keras.datasets import mnist
 
 
-batch_size = 500
+batch_size = 100
 original_dim = 784
 latent_dim = 3 # one less left after normalization
 intermediate_dim = 256
@@ -40,12 +45,11 @@ x_decoded = decoder(h_decoded)
 
 
 def vae_loss(x, x_decoded):
-    # DANIEL Why not mean_squared_error?
     xent_loss = original_dim * objectives.binary_crossentropy(x, x_decoded)
-    # Instead of a KL normality test, let's try some energy function
+    # Instead of a KL normality test, here's some energy function
     # that pushes the minibatch elements away from each other, pairwise.
     pairwise = K.sum(K.square(K.dot(z, K.transpose(z))))
-    return xent_loss + pairwise / 1000 # Maybe some broadcasting happens here?
+    return xent_loss + pairwise / 1000
 
 
 vae = Model(x, x_decoded)
@@ -106,3 +110,22 @@ for i, yi in enumerate(grid_x):
 plt.figure(figsize=(10, 10))
 plt.imshow(figure)
 plt.savefig("fig2.png")
+
+# display randomly generated digits
+n = 15  # figure with 15x15 digits
+digit_size = 28
+figure = np.zeros((digit_size * n, digit_size * n))
+
+for i in range(n):
+    for j in range(n):
+        z_sample = np.random.normal(size=(1, latent_dim))
+        z_sample /= np.linalg.norm(z_sample)
+        x_decoded = generator.predict(z_sample)
+        digit = x_decoded[0].reshape(digit_size, digit_size)
+        figure[i * digit_size: (i + 1) * digit_size,
+               j * digit_size: (j + 1) * digit_size] = digit
+
+
+plt.figure(figsize=(10, 10))
+plt.imshow(figure)
+plt.savefig("fig3.png")

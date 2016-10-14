@@ -10,9 +10,9 @@ import matplotlib.pyplot as plt
 np.random.seed(1337)
 
 
-n = 12 # particle count
+n = 100 # particle count
 m = 3 # dimension of space
-epochs = 100 # iteration count
+epochs = 1000 # iteration count
 
 
 def squaredDistanceTest():
@@ -44,7 +44,7 @@ def main():
     x_norm = tf.nn.l2_normalize(x, dim=1) # rows normalized
 
     epsilon = 0.0001
-    distances = tf.sqrt(2.0 + epsilon - 2.0 * tf.matmul(x_norm, tf.transpose(x_norm)))
+    distances = (2.0 + epsilon - 2.0 * tf.matmul(x_norm, tf.transpose(x_norm))) ** 0.5
 
     energy = -tf.reduce_sum(distances)
 

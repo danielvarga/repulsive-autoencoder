@@ -6,7 +6,6 @@ has uniform density on the unit sphere. Something like the Coulomb force and the
 but I wanted something numerically more stable. I came up with the following:
 
 The energy term for the interaction of two particles is their squared scalar product.
-(Equivalently, their negative squared L2 distance, but let's stick to squared scalar product.)
 The total energy of the system is the sum over all pairs of particles.
 
 Numerically solving the optimization problem, I've observed that with n points in m dimensions,
@@ -16,8 +15,9 @@ Adrian Csiszarik has managed to prove this with a simple but very attractive spe
 
 Even without Adrian's characterization, it is easy to see in retrospect that my
 proposed energy function is absolutely awful for its intended purpose of enforcing
-a uniform arrangement. In contrast, if we use non-squared, standard distance
-instead of squared distance, that energy function does have this smoothing property.
+a uniform arrangement. In contrast, if we use negative (non-squared) distance -D,
+or electrostatic potential energy 1/D instead of squared scalar product,
+then we do get this smoothing property. -D^2 is again in the non-uniform camp.
 '''
 
 import math

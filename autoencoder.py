@@ -8,6 +8,7 @@ in the following ways:
   elements of the minibatch.
 '''
 
+import sys
 import math
 import numpy as np
 
@@ -21,6 +22,8 @@ from keras import backend as K
 from keras import objectives
 from keras.datasets import mnist
 
+
+fileprefix, = sys.argv[1:]
 
 batch_size = 100
 original_dim = 784
@@ -48,8 +51,12 @@ def vae_loss(x, x_decoded):
     xent_loss = original_dim * objectives.binary_crossentropy(x, x_decoded)
     # Instead of a KL normality test, here's some energy function
     # that pushes the minibatch elements away from each other, pairwise.
-    pairwise = K.sum(K.square(K.dot(z, K.transpose(z))))
-    return xent_loss + pairwise / 1000
+    epsilon = 0.0001
+    distances = (2.0 + epsilon - 2.0 * K.dot(z, K.transpose(z))) ** 0.5
+    # regularization = -K.mean(distances) * 1000 # Keleti
+    # regularization = K.mean(1.0 / distances) * 10 # Coulomb
+    # regularization = 0.0 # Straight AE.
+    return xent_loss + regularization
 
 
 vae = Model(x, x_decoded)
@@ -74,12 +81,12 @@ encoder = Model(x, z)
 
 # display a 2D plot of the digit classes in the latent space
 x_test_encoded = encoder.predict(x_test, batch_size=batch_size)
-plt.figure(figsize=(6, 6))
+plt.figure(figsize=(20, 15))
 points = x_test_encoded.copy()
 points[:, 0] += 2.2 * (points[:, 2]>=0)
-plt.scatter(points[:, 0], points[:, 1], c=y_test)
+plt.scatter(points[:, 0], points[:, 1], c=y_test, s=2, lw=0)
 plt.colorbar()
-plt.savefig("fig1.png")
+plt.savefig(fileprefix+"-fig1.png")
 
 # build a digit generator that can sample from the learned distribution
 decoder_input = Input(shape=(latent_dim,))
@@ -109,7 +116,7 @@ for i, yi in enumerate(grid_x):
 
 plt.figure(figsize=(10, 10))
 plt.imshow(figure)
-plt.savefig("fig2.png")
+plt.savefig(fileprefix+"-fig2.png")
 
 # display randomly generated digits
 n = 15  # figure with 15x15 digits
@@ -128,4 +135,4 @@ for i in range(n):
 
 plt.figure(figsize=(10, 10))
 plt.imshow(figure)
-plt.savefig("fig3.png")
+plt.savefig(fileprefix+"-fig3.png")

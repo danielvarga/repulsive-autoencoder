@@ -93,60 +93,8 @@ _x_decoded = decoder(_h_decoded)
 generator = Model(decoder_input, _x_decoded)
 
 # display a 2D manifold of the digits
-n = 30  # figure with 15x15 digits
-figure = np.zeros((height * n, width * n))
-grid_x = np.linspace(-1, +1, n)
-grid_y = np.linspace(-1, +1, n)
-
-images=[]
-for i, yi in enumerate(grid_x):
-    for j, xi in enumerate(grid_y):
-        zisqr = 1.000001-xi*xi-yi*yi
-        if zisqr < 0.0:
-            images.append(np.zeros([height,width]))
-            continue
-        zi = math.sqrt(zisqr)
-        # Padded with zeros at the rest of the coordinates:
-        z_sample = np.array([[yi, xi, zi] + [0]*(args.latent_dim-3)])
-        x_decoded = generator.predict(z_sample)
-        digit = x_decoded[0].reshape(height, width)
-        images.append(digit)
-for i, yi in enumerate(grid_x):
-    for j, xi in enumerate(grid_y):
-        zisqr = 1.000001-xi*xi-yi*yi
-        if zisqr < 0.0:
-            images.append(np.zeros([height,width]))
-            continue
-        zi = -1*math.sqrt(zisqr)
-        # Padded with zeros at the rest of the coordinates:
-        z_sample = np.array([[yi, xi, zi] + [0]*(args.latent_dim-3)])
-        x_decoded = generator.predict(z_sample)
-        digit = x_decoded[0].reshape(height, width)
-        images.append(digit)
-#        figure[j * height: (j + 1) * height,
-#               i * width: (i + 1) * width] = digit
-
-#plt.figure(figsize=(10, 10))
-#plt.imshow(figure)
-#plt.savefig("fig2.png")
-vis.plotImages(np.array(images), n, 2*n, "fig2")
+for y in range(1,args.latent_dim-1):
+    vis.displayImageManifold(30, args.latent_dim, generator, height, width,0,y,y+1,"manifold{}".format(y))
 
 # display randomly generated digits
-n = 15  # figure with 15x15 digits
-figure = np.zeros((height * n, width * n))
-
-images = []
-for i in range(n):
-    for j in range(n):
-        z_sample = np.random.normal(size=(1, args.latent_dim))
-        z_sample /= np.linalg.norm(z_sample)
-        x_decoded = generator.predict(z_sample)
-        digit = x_decoded[0].reshape(height, width)
-        images.append(digit)
-#        figure[j * height: (j + 1) * height,
-#               i * width: (i + 1) * width] = digit
-
-vis.plotImages(np.array(images), n, n, "fig3")
-#plt.figure(figsize=(10, 10))
-#plt.imshow(figure)
-#plt.savefig("fig3.png")
+vis.displayRandom(15, args.latent_dim, generator, height, width, "random")

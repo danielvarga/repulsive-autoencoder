@@ -25,8 +25,8 @@ def load_mnist():
 def load_celeba():
     directory = "/home/daniel/autoencoding_beyond_pixels/datasets/celeba/img_align_celeba-scale4"
     cacheFile = "/home/zombori/tmp/celeba.npy"
-    trainSize = 10000
-    testSize = 1000
+    trainSize = 100000
+    testSize = 10000
     if os.path.isfile(cacheFile):
         input = np.load(cacheFile)
         height, width = input.shape[1:]

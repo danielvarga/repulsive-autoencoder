@@ -22,6 +22,7 @@ from keras import backend as K
 from keras import objectives
 import data
 import vis
+import model_rae
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataset', dest="dataset", default="mnist", help="Dataset to use: mnist/celeba")
@@ -36,46 +37,13 @@ batch_size = 100
 original_dim = x_test.shape[1]
 intermediate_dim = 256
 
-x = Input(batch_shape=(batch_size, original_dim))
-h = Dense(intermediate_dim, activation='relu')(x)
-
-# Completely got rid of the variational aspect
-z_unnormalized = Dense(args.latent_dim)(h)
-
-# normalize all latent vars:
-z = Lambda(lambda z_unnormed: K.l2_normalize(z_unnormed, axis=-1))([z_unnormalized])
-
-# we instantiate these layers separately so as to reuse them later
-decoder_h = Dense(intermediate_dim, activation='relu')
-decoder = Dense(original_dim, activation='sigmoid')
-h_decoded = decoder_h(z)
-x_decoded = decoder(h_decoded)
-
-
-def vae_loss(x, x_decoded):
-    xent_loss = original_dim * objectives.binary_crossentropy(x, x_decoded)
-    # Instead of a KL normality test, here's some energy function
-    # that pushes the minibatch elements away from each other, pairwise.
-#    pairwise = K.sum(K.square(K.dot(z, K.transpose(z))))
-
-    epsilon = 0.0001
-    distances = (2.0 + epsilon - 2.0 * K.dot(z, K.transpose(z))) ** 0.5
-    regularization = -K.mean(distances) * 1000 # Keleti
-    return xent_loss + regularization
-
-
-vae = Model(x, x_decoded)
-vae.compile(optimizer='rmsprop', loss=vae_loss)
-
+vae, encoder, generator = model_rae.build_rae(batch_size, original_dim, intermediate_dim, args.latent_dim)
 
 vae.fit(x_train, x_train,
         shuffle=True,
         nb_epoch=args.nb_epoch,
         batch_size=batch_size,
         validation_data=(x_test, x_test))
-
-# build a model to project inputs on the latent space
-encoder = Model(x, z)
 
 # # display a 2D plot of the digit classes in the latent space
 x_test_encoded = encoder.predict(x_test, batch_size=batch_size)
@@ -85,12 +53,6 @@ points[:, 0] += 2.2 * (points[:, 2]>=0)
 plt.scatter(points[:, 0], points[:, 1])
 # plt.colorbar()
 plt.savefig("fig1.png")
-
-# build a digit generator that can sample from the learned distribution
-decoder_input = Input(shape=(args.latent_dim,))
-_h_decoded = decoder_h(decoder_input)
-_x_decoded = decoder(_h_decoded)
-generator = Model(decoder_input, _x_decoded)
 
 # display a 2D manifold of the digits
 for y in range(1,args.latent_dim-1):

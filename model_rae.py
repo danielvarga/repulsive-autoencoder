@@ -41,7 +41,7 @@ def build_model(batch_size, original_dim, intermediate_dim, latent_dim):
 
         epsilon = 0.0001
         distances = (2.0 + epsilon - 2.0 * K.dot(z, K.transpose(z))) ** 0.5
-        regularization = -K.mean(distances) * 1000 # Keleti
+        regularization = -K.mean(distances) * 100 # Keleti
         return xent_loss + regularization
 
     rae = Model(x, x_decoded)

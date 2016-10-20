@@ -68,8 +68,10 @@ vae.fit(x_train, x_train,
 vis.latentScatter(encoder, x_test, batch_size, args.prefix+"-fig1")
 
 # display 2D manifolds of images
-for y in range(1, args.latent_dim-1):
-    vis.displayImageManifold(30, args.latent_dim, generator, height, width, 0, y, y+1, "%s-manifold%d" % (args.prefix, y))
+show_manifolds = True
+if show_manifolds:
+    for y in range(1, args.latent_dim-1):
+        vis.displayImageManifold(30, args.latent_dim, generator, height, width, 0, y, y+1, "%s-manifold%d" % (args.prefix, y))
 
 # display randomly generated images
 vis.displayRandom(15, args.latent_dim, model_module.sample, generator, height, width, "%s-random" % args.prefix)

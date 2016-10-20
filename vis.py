@@ -1,6 +1,22 @@
 from PIL import Image
+import matplotlib.pyplot as plt
+
 import numpy as np
 import math
+
+
+# TODO Add optional arg y_test for labeling.
+def latentScatter(encoder, x_test, batch_size, name):
+    # # display a 2D plot of the digit classes in the latent space
+    x_test_encoded = encoder.predict(x_test, batch_size=batch_size)
+    plt.figure(figsize=(6, 6))
+    points = x_test_encoded.copy()
+    points[:, 0] += 2.2 * (points[:, 2]>=0) # TODO This badly fails for normal latent vars.
+    plt.scatter(points[:, 0], points[:, 1])
+    fileName = name + ".png"
+    print "Creating file " + fileName
+    plt.savefig(fileName)
+
 
 def plotImages(data, n_x, n_y, name):
     height, width = data.shape[-2:]
@@ -25,7 +41,9 @@ def plotImages(data, n_x, n_y, name):
     img.save(fileName)
 
 # display a 2D manifold of the images
-# !!! only works if xdim < ydim < zdim TODO
+# TODO Only works for spherical distributions.
+#      More precisely, it works for normals, but is very misleading.
+# TODO only works if xdim < ydim < zdim
 def displayImageManifold(n, latent_dim, generator, height, width, xdim, ydim, zdim, name):
     grid_x = np.linspace(-1, +1, n)
     grid_y = np.linspace(-1, +1, n)
@@ -40,13 +58,12 @@ def displayImageManifold(n, latent_dim, generator, height, width, xdim, ydim, zd
                 images_down.append(np.zeros([height,width]))
                 continue
             zi = math.sqrt(zisqr)
-            # Padded with zeroes at the rest of the coordinates:
-            z_sample = np.array([0] * xdim + [xi] + [0] * (ydim-xdim-1) + [yi] + [0] * (zdim-ydim-xdim-2) + [zi] + [0] * (latent_dim - zdim-ydim-xdim-3))
+            z_sample = np.array([0] * xdim + [xi] + [0] * (ydim-xdim-1) + [yi] + [0] * (zdim-ydim-1) + [zi] + [0] * (latent_dim - zdim-1))
             z_sample = z_sample.reshape([1,latent_dim])
             x_decoded = generator.predict(z_sample)
             image = x_decoded[0].reshape(height, width)
             images_up.append(image)
-            z_sample_down = np.array([0] * xdim + [xi] + [0] * (ydim-xdim-1) + [yi] + [0] * (zdim-ydim-xdim-2) + [-zi] + [0] * (latent_dim - zdim-ydim-xdim-3))
+            z_sample_down = np.array([0] * xdim + [xi] + [0] * (ydim-xdim-1) + [yi] + [0] * (zdim-ydim-1) + [-zi] + [0] * (latent_dim - zdim-1))
             z_sample_down = z_sample_down.reshape([1,latent_dim])
             x_decoded_down = generator.predict(z_sample_down)
             image_down = x_decoded_down[0].reshape(height, width)
@@ -56,12 +73,11 @@ def displayImageManifold(n, latent_dim, generator, height, width, xdim, ydim, zd
     plotImages(images, n, 2*n, name)
 
 
-def displayRandom(n, latent_dim, generator, height, width, name):
+def displayRandom(n, latent_dim, sampler, generator, height, width, name):
     images = []
     for i in range(n):
         for j in range(n):
-            z_sample = np.random.normal(size=(1, latent_dim))
-            z_sample /= np.linalg.norm(z_sample)
+            z_sample = sampler(1, latent_dim)
             x_decoded = generator.predict(z_sample)
             image = x_decoded[0].reshape(height, width)
             images.append(image)

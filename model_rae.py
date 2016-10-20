@@ -1,3 +1,13 @@
+'''
+Repulsive autoencoder. This is an autoencoder that differs from a standard VAE in the following ways:
+
+- The latent variances are not learned, they are simply set to 0.
+- A normalization step takes the latent variables to a sphere surface.
+- The regularization loss is changed to an energy term that
+  corresponds to a pairwise repulsive force between the encoded
+  elements of the minibatch.
+'''
+
 import numpy as np
 
 from keras.layers import Input, Dense, Lambda
@@ -6,8 +16,7 @@ from keras import backend as K
 from keras import objectives
 
 
-
-def build_rae(batch_size, original_dim, intermediate_dim, latent_dim):
+def build_model(batch_size, original_dim, intermediate_dim, latent_dim):
     x = Input(batch_shape=(batch_size, original_dim))
     h = Dense(intermediate_dim, activation='relu')(x)
 
@@ -48,3 +57,10 @@ def build_rae(batch_size, original_dim, intermediate_dim, latent_dim):
     generator = Model(decoder_input, _x_decoded)
 
     return rae, encoder, generator
+
+
+# Taken uniformly from sphere in R^latentdim
+def sample(batch_size, latent_dim):
+    z_sample = np.random.normal(size=(batch_size, latent_dim))
+    z_sample /= np.linalg.norm(z_sample)
+    return z_sample

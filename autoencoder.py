@@ -14,8 +14,6 @@ import argparse
 
 np.random.seed(1337)
 
-import matplotlib.pyplot as plt
-
 from keras.layers import Input, Dense, Lambda
 from keras.models import Model
 from keras import backend as K
@@ -23,12 +21,21 @@ from keras import objectives
 import data
 import vis
 import model_rae
+import model_vae
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataset', dest="dataset", default="mnist", help="Dataset to use: mnist/celeba")
-parser.add_argument('--nb_epoch', dest="nb_epoch", type=int, default=10, help="Number of epoch")
+parser.add_argument('--nb_epoch', dest="nb_epoch", type=int, default=10, help="Number of epochs")
 parser.add_argument('--latent_dim', dest="latent_dim", type=int, default=3, help="Latent dimension")
+parser.add_argument('--model', dest="model", default="rae", help="Model to use: rae/vae/nvae/vae_conv")
+parser.add_argument('--output', dest="prefix", help="File prefix for the output visualizations and models.")
+
 args = parser.parse_args()
+
+assert args.prefix is not None, "Please specify an output file prefix with the --output arg."
+
+assert args.model in ("rae", "vae", "nvae", "vae_conv"), "Unknown model type."
+print "Training model of type %s" % args.model
 
 (x_train, x_test), (height, width) = data.load(args.dataset)
 
@@ -37,7 +44,15 @@ batch_size = 100
 original_dim = x_test.shape[1]
 intermediate_dim = 256
 
-vae, encoder, generator = model_rae.build_rae(batch_size, original_dim, intermediate_dim, args.latent_dim)
+# Using modules where normal people would use classes.
+if args.model == "rae":
+    model_module = model_rae
+elif args.model == "vae":
+    model_module = model_vae
+else:
+    assert False, "model type %s not yet implemented, be patient please." % args.model
+
+vae, encoder, generator = model_module.build_model(batch_size, original_dim, intermediate_dim, args.latent_dim)
 
 vae.fit(x_train, x_train,
         shuffle=True,
@@ -45,18 +60,13 @@ vae.fit(x_train, x_train,
         batch_size=batch_size,
         validation_data=(x_test, x_test))
 
-# # display a 2D plot of the digit classes in the latent space
-x_test_encoded = encoder.predict(x_test, batch_size=batch_size)
-plt.figure(figsize=(6, 6))
-points = x_test_encoded.copy()
-points[:, 0] += 2.2 * (points[:, 2]>=0)
-plt.scatter(points[:, 0], points[:, 1])
-# plt.colorbar()
-plt.savefig("fig1.png")
 
-# display a 2D manifold of the digits
-for y in range(1,args.latent_dim-1):
-    vis.displayImageManifold(30, args.latent_dim, generator, height, width,0,y,y+1,"manifold{}".format(y))
+# # display a 2D plot of the validation set in the latent space
+vis.latentScatter(encoder, x_test, batch_size, args.prefix+"-fig1")
 
-# display randomly generated digits
-vis.displayRandom(15, args.latent_dim, generator, height, width, "random")
+# display 2D manifolds of images
+for y in range(1, args.latent_dim-1):
+    vis.displayImageManifold(30, args.latent_dim, generator, height, width, 0, y, y+1, "%s-manifold%d" % (args.prefix, y))
+
+# display randomly generated images
+vis.displayRandom(15, args.latent_dim, model_module.sample, generator, height, width, "%s-random" % args.prefix)

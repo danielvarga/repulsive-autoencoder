@@ -9,19 +9,23 @@ from keras import backend as K
 from keras import objectives
 from keras.datasets import mnist
 
-def build_model(batch_size, original_dim, intermediate_dim, latent_dim):
+def build_model(batch_size, original_dim, intermediate_dim, latent_dim, nonvariational=False):
     x = Input(batch_shape=(batch_size, original_dim))
     h = Dense(intermediate_dim, activation='relu')(x)
     z_mean = Dense(latent_dim)(h)
-    z_log_var = Dense(latent_dim)(h)
+    if not nonvariational:
+        z_log_var = Dense(latent_dim)(h)
 
     def sampling(args):
         z_mean, z_log_var = args
         epsilon = K.random_normal(shape=(batch_size, latent_dim), mean=0.)
         return z_mean + K.exp(z_log_var / 2) * epsilon
 
-    # note that "output_shape" isn't necessary with the TensorFlow backend
-    z = Lambda(sampling, output_shape=(latent_dim,))([z_mean, z_log_var])
+    if nonvariational:
+        z = z_mean
+    else:
+        # note that "output_shape" isn't necessary with the TensorFlow backend
+        z = Lambda(sampling, output_shape=(latent_dim,))([z_mean, z_log_var])
 
     # we instantiate these layers separately so as to reuse them later
     decoder_h = Dense(intermediate_dim, activation='relu')
@@ -31,7 +35,10 @@ def build_model(batch_size, original_dim, intermediate_dim, latent_dim):
 
     def vae_loss(x, x_decoded_mean):
         xent_loss = original_dim * objectives.binary_crossentropy(x, x_decoded_mean)
-        kl_loss = - 0.5 * K.sum(1 + z_log_var - K.square(z_mean) - K.exp(z_log_var), axis=-1)
+        if nonvariational:
+            kl_loss = 0.5 * K.sum(K.square(z), axis=-1)
+        else:
+            kl_loss = - 0.5 * K.sum(1 + z_log_var - K.square(z_mean) - K.exp(z_log_var), axis=-1)
         return xent_loss + kl_loss
 
     vae = Model(x, x_decoded_mean)

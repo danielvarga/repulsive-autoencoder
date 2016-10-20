@@ -47,12 +47,15 @@ intermediate_dim = 256
 # Using modules where normal people would use classes.
 if args.model == "rae":
     model_module = model_rae
+    vae, encoder, generator = model_module.build_model(batch_size, original_dim, intermediate_dim, args.latent_dim)
 elif args.model == "vae":
     model_module = model_vae
+    vae, encoder, generator = model_module.build_model(batch_size, original_dim, intermediate_dim, args.latent_dim, nonvariational=False)
+elif args.model == "nvae":
+    model_module = model_vae
+    vae, encoder, generator = model_module.build_model(batch_size, original_dim, intermediate_dim, args.latent_dim, nonvariational=True)
 else:
-    assert False, "model type %s not yet implemented, be patient please." % args.model
-
-vae, encoder, generator = model_module.build_model(batch_size, original_dim, intermediate_dim, args.latent_dim)
+    assert False, "model type %s not yet implemented, please be patient." % args.model
 
 vae.fit(x_train, x_train,
         shuffle=True,

@@ -40,7 +40,7 @@ print "Training model of type %s" % args.model
 (x_train, x_test), (height, width) = data.load(args.dataset)
 
 
-batch_size = 100
+batch_size = 1000
 original_dim = x_test.shape[1]
 intermediate_dim = 256
 
@@ -68,7 +68,7 @@ vae.fit(x_train, x_train,
 vis.latentScatter(encoder, x_test, batch_size, args.prefix+"-fig1")
 
 # display 2D manifolds of images
-show_manifolds = True
+show_manifolds = False
 if show_manifolds:
     for y in range(1, args.latent_dim-1):
         vis.displayImageManifold(30, args.latent_dim, generator, height, width, 0, y, y+1, "%s-manifold%d" % (args.prefix, y))

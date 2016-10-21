@@ -75,3 +75,6 @@ if show_manifolds:
 
 # display randomly generated images
 vis.displayRandom(15, args.latent_dim, model_module.sample, generator, height, width, "%s-random" % args.prefix)
+
+vis.displaySet(x_test[:100],vae, height, width, "%s-test" % args.prefix)
+vis.displaySet(x_train[:100], vae, height, width, "%s-train" % args.prefix)

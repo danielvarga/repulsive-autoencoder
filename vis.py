@@ -83,3 +83,8 @@ def displayRandom(n, latent_dim, sampler, generator, height, width, name):
             images.append(image)
     plotImages(np.array(images), n, n, name)
 
+def displaySet(images, generator, height, width, name):
+    n = int(np.ceil(np.sqrt(images.shape[0])))
+    recons = generator.predict(images)
+    recons = recons.reshape([images.shape[0],height,width])
+    plotImages(recons,n, n, name)

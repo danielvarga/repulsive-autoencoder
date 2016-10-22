@@ -84,7 +84,13 @@ def displayRandom(n, latent_dim, sampler, generator, height, width, name):
     plotImages(np.array(images), n, n, name)
 
 def displaySet(images, generator, height, width, name):
-    n = int(np.ceil(np.sqrt(images.shape[0])))
+    setSize = images.shape[0]
+    n = int(np.ceil(np.sqrt(setSize)))
     recons = generator.predict(images)
-    recons = recons.reshape([images.shape[0],height,width])
-    plotImages(recons,n, n, name)
+
+    mergedSet = np.zeros(shape=[setSize*2] + list(images.shape[1:]))
+    for i in range(setSize):
+        mergedSet[2*i] = images[i]
+        mergedSet[2*i+1] = recons[i]
+    result = mergedSet.reshape([2*setSize,height,width])
+    plotImages(result, 2*n, n, name)

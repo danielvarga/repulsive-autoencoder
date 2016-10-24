@@ -28,8 +28,8 @@ def build_model(batch_size, original_dim, intermediate_dim, latent_dim, nonvaria
         z = Lambda(sampling, output_shape=(latent_dim,))([z_mean, z_log_var])
 
     # we instantiate these layers separately so as to reuse them later
-    decoder_h = Dense(intermediate_dim, activation='relu')
-    decoder_mean = Dense(original_dim, activation='sigmoid')
+    decoder_h = Dense(intermediate_dim, activation='relu', name="decoder_h")
+    decoder_mean = Dense(original_dim, activation='sigmoid', name="decoder_mean")
     h_decoded = decoder_h(z)
     x_decoded_mean = decoder_mean(h_decoded)
 

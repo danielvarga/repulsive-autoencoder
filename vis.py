@@ -86,7 +86,7 @@ def displayRandom(n, latent_dim, sampler, generator, height, width, name):
 def displaySet(images, generator, height, width, name):
     setSize = images.shape[0]
     n = int(np.ceil(np.sqrt(setSize)))
-    recons = generator.predict(images)
+    recons = generator.predict(images, batch_size=setSize)
 
     mergedSet = np.zeros(shape=[setSize*2] + list(images.shape[1:]))
     for i in range(setSize):

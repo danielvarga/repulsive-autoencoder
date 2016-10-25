@@ -16,9 +16,11 @@ from keras import backend as K
 from keras import objectives
 
 
-def build_model(batch_size, original_dim, intermediate_dim, latent_dim):
+def build_model(batch_size, original_dim, intermediate_dims, latent_dim):
     x = Input(batch_shape=(batch_size, original_dim))
-    h = Dense(intermediate_dim, activation='relu')(x)
+    h = x
+    for intermediate_dim in intermediate_dims:
+        h = Dense(intermediate_dim, activation='relu')(h)
 
     # Completely got rid of the variational aspect
     z_unnormalized = Dense(latent_dim)(h)
@@ -26,12 +28,18 @@ def build_model(batch_size, original_dim, intermediate_dim, latent_dim):
     # normalize all latent vars:
     z = Lambda(lambda z_unnormed: K.l2_normalize(z_unnormed, axis=-1))([z_unnormalized])
 
-    # we instantiate these layers separately so as to reuse them later
-    decoder_h = Dense(intermediate_dim, activation='relu')
-    decoder = Dense(original_dim, activation='sigmoid')
-    h_decoded = decoder_h(z)
-    x_decoded = decoder(h_decoded)
+    # we instantiate these layers separately so as to reuse them both for reconstruction and generation
+    decoder_input = Input(shape=(latent_dim,))
+    h_decoded = z
+    _h_decoded = decoder_input
+    for intermediate_dim in reversed(intermediate_dims):
+        decoder_h = Dense(intermediate_dim, activation='relu')
+        h_decoded = decoder_h(h_decoded)    
+        _h_decoded = decoder_h(_h_decoded)
 
+    decoder = Dense(original_dim, activation='sigmoid')
+    x_decoded = decoder(h_decoded)
+    _x_decoded = decoder(_h_decoded)
 
     def vae_loss(x, x_decoded):
         xent_loss = original_dim * objectives.binary_crossentropy(x, x_decoded)
@@ -52,9 +60,6 @@ def build_model(batch_size, original_dim, intermediate_dim, latent_dim):
     encoder = Model(x, z)
 
     # build a digit generator that can sample from the learned distribution
-    decoder_input = Input(shape=(latent_dim,))
-    _h_decoded = decoder_h(decoder_input)
-    _x_decoded = decoder(_h_decoded)
     generator = Model(decoder_input, _x_decoded)
 
     return rae, encoder, generator

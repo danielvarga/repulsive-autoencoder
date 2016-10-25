@@ -8,10 +8,14 @@ from keras.models import Model
 from keras import backend as K
 from keras import objectives
 from keras.datasets import mnist
+from keras.optimizers import *
 
-def build_model(batch_size, original_dim, intermediate_dim, latent_dim, nonvariational=False):
+
+def build_model(batch_size, original_dim, intermediate_dims, latent_dim, nonvariational=False):
     x = Input(batch_shape=(batch_size, original_dim))
-    h = Dense(intermediate_dim, activation='relu')(x)
+    h = x
+    for intermediate_dim in intermediate_dims:
+        h = Dense(intermediate_dim, activation='relu')(h)
     z_mean = Dense(latent_dim)(h)
     if not nonvariational:
         z_log_var = Dense(latent_dim)(h)
@@ -27,11 +31,18 @@ def build_model(batch_size, original_dim, intermediate_dim, latent_dim, nonvaria
         # note that "output_shape" isn't necessary with the TensorFlow backend
         z = Lambda(sampling, output_shape=(latent_dim,))([z_mean, z_log_var])
 
-    # we instantiate these layers separately so as to reuse them later
-    decoder_h = Dense(intermediate_dim, activation='relu', name="decoder_h")
-    decoder_mean = Dense(original_dim, activation='sigmoid', name="decoder_mean")
-    h_decoded = decoder_h(z)
+    # we instantiate these layers separately so as to reuse them both for reconstruction and generation
+    decoder_input = Input(shape=(latent_dim,))
+    h_decoded = z
+    _h_decoded = decoder_input
+    for intermediate_dim in reversed(intermediate_dims):
+        decoder_h = Dense(intermediate_dim, activation='relu')
+        h_decoded = decoder_h(h_decoded)    
+        _h_decoded = decoder_h(_h_decoded)
+
+    decoder_mean = Dense(original_dim, activation='sigmoid', name="decoder_mean")    
     x_decoded_mean = decoder_mean(h_decoded)
+    _x_decoded_mean = decoder_mean(_h_decoded)
 
     def vae_loss(x, x_decoded_mean):
         xent_loss = original_dim * objectives.binary_crossentropy(x, x_decoded_mean)
@@ -42,15 +53,13 @@ def build_model(batch_size, original_dim, intermediate_dim, latent_dim, nonvaria
         return xent_loss + kl_loss
 
     vae = Model(x, x_decoded_mean)
-    vae.compile(optimizer='rmsprop', loss=vae_loss)
+    optimizer = RMSprop(lr=0.001)
+    vae.compile(optimizer=optimizer, loss=vae_loss)
 
     # build a model to project inputs on the latent space
     encoder = Model(x, z_mean)
 
     # build a digit generator that can sample from the learned distribution
-    decoder_input = Input(shape=(latent_dim,))
-    _h_decoded = decoder_h(decoder_input)
-    _x_decoded_mean = decoder_mean(_h_decoded)
     generator = Model(decoder_input, _x_decoded_mean)
 
     return vae, encoder, generator

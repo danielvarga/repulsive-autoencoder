@@ -27,6 +27,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--dataset', dest="dataset", default="mnist", help="Dataset to use: mnist/celeba")
 parser.add_argument('--nb_epoch', dest="nb_epoch", type=int, default=10, help="Number of epochs")
 parser.add_argument('--latent_dim', dest="latent_dim", type=int, default=3, help="Latent dimension")
+parser.add_argument('--intermediate_dims', dest="intermediate_dims_string", default="256", help="Intermediate dimensions")
 parser.add_argument('--model', dest="model", default="rae", help="Model to use: rae/vae/nvae/vae_conv")
 parser.add_argument('--output', dest="prefix", help="File prefix for the output visualizations and models.")
 
@@ -42,21 +43,22 @@ print "Training model of type %s" % args.model
 
 batch_size = 1000
 original_dim = x_test.shape[1]
-intermediate_dim = 256
+intermediate_dims = map(int, args.intermediate_dims_string.split(","))
 
 # Using modules where normal people would use classes.
 if args.model == "rae":
     model_module = model_rae
-    vae, encoder, generator = model_module.build_model(batch_size, original_dim, intermediate_dim, args.latent_dim)
+    vae, encoder, generator = model_module.build_model(batch_size, original_dim, intermediate_dims, args.latent_dim)
 elif args.model == "vae":
     model_module = model_vae
-    vae, encoder, generator = model_module.build_model(batch_size, original_dim, intermediate_dim, args.latent_dim, nonvariational=False)
+    vae, encoder, generator = model_module.build_model(batch_size, original_dim, intermediate_dims, args.latent_dim, nonvariational=False)
 elif args.model == "nvae":
     model_module = model_vae
-    vae, encoder, generator = model_module.build_model(batch_size, original_dim, intermediate_dim, args.latent_dim, nonvariational=True)
+    vae, encoder, generator = model_module.build_model(batch_size, original_dim, intermediate_dims, args.latent_dim, nonvariational=True)
 else:
     assert False, "model type %s not yet implemented, please be patient." % args.model
 
+vae.summary()
 vae.fit(x_train, x_train,
         shuffle=True,
         nb_epoch=args.nb_epoch,

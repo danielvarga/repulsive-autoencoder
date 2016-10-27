@@ -4,6 +4,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import math
 
+import grid_layout
+
+
 
 # TODO Add optional arg y_test for labeling.
 def latentScatter(encoder, x_test, batch_size, name):
@@ -94,3 +97,18 @@ def displaySet(imageBatch, n, generator, height, width, name):
         mergedSet[2*i+1] = recons[i]
     result = mergedSet.reshape([2*n,height,width])
     plotImages(result, 2*nsqrt, nsqrt, name)
+
+def displayInterp(x_train, x_test, batch_size, dim, height, width, encoder, generator, gridSize, name):
+    train_latent = encoder.predict(x_train[:batch_size], batch_size=batch_size)
+    test_latent = encoder.predict(x_test[:batch_size], batch_size=batch_size)
+    parallelogram_point = test_latent[0] + train_latent[1] - train_latent[0]
+    anchors = np.array([train_latent[0], train_latent[1], test_latent[0], parallelogram_point])
+    interpGrid = grid_layout.create_mine_grid(gridSize, gridSize, dim, gridSize-1, anchors, True, False) # TODO different interpolations for different autoencoders!!!
+    predictedGrid = generator.predict(interpGrid, batch_size=interpGrid.shape[0])
+
+    prologGrid = np.zeros([gridSize,height*width])
+    prologGrid[0:3] = [x_train[0],x_train[1], x_test[0]]
+
+    grid = np.concatenate([prologGrid, predictedGrid])
+    reshapedGrid = grid.reshape([grid.shape[0], height, width])
+    plotImages(reshapedGrid, gridSize, gridSize, name)

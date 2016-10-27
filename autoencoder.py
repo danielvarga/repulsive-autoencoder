@@ -67,7 +67,7 @@ vae.fit(x_train, x_train,
 
 
 # # display a 2D plot of the validation set in the latent space
-vis.latentScatter(encoder, x_test, batch_size, args.prefix+"-fig1")
+# vis.latentScatter(encoder, x_test, batch_size, args.prefix+"-fig1")
 
 # display 2D manifolds of images
 show_manifolds = False
@@ -80,3 +80,6 @@ vis.displayRandom(15, args.latent_dim, model_module.sample, generator, height, w
 
 vis.displaySet(x_test[:batch_size], 100, vae, height, width, "%s-test" % args.prefix)
 vis.displaySet(x_train[:batch_size], 100, vae, height, width, "%s-train" % args.prefix)
+
+####
+vis.displayInterp(x_train, x_test, batch_size, args.latent_dim, height, width, encoder, generator, 10, "%s-interp" % args.prefix)

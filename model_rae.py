@@ -42,16 +42,18 @@ def build_model(batch_size, original_dim, intermediate_dims, latent_dim):
     _x_decoded = decoder(_h_decoded)
 
     def vae_loss(x, x_decoded):
+#        mse_loss = original_dim * objectives.mean_squared_error(x, x_decoded)
         xent_loss = original_dim * objectives.binary_crossentropy(x, x_decoded)
         # Instead of a KL normality test, here's some energy function
         # that pushes the minibatch elements away from each other, pairwise.
         # pairwise = K.sum(K.square(K.dot(z, K.transpose(z))))
 
-        epsilon = 0.0001
-        distances = (2.0 + epsilon - 2.0 * K.dot(z, K.transpose(z))) ** 0.5
-        regularization = -K.mean(distances) * 100 # Keleti
+#        epsilon = 0.0001
+#        distances = (2.0 + epsilon - 2.0 * K.dot(z, K.transpose(z))) ** 0.5
+#        regularization = -K.mean(distances) * 100 # Keleti
         # regularization = K.mean(1.0 / distances) * 100 # Coulomb
-        return xent_loss + regularization
+#        return xent_loss + regularization
+        return xent_loss
 
     rae = Model(x, x_decoded)
     rae.compile(optimizer='rmsprop', loss=vae_loss)

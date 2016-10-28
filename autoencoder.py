@@ -52,14 +52,6 @@ if args.model == "rae":
     model_module = model_rae
     vae, encoder, generator = model_module.build_model(batch_size, original_dim, intermediate_dims, args.latent_dim)
     sampler = model_universal.spherical_sampler
-elif args.model == "vae":
-    model_module = model_vae
-    vae, encoder, generator = model_module.build_model(batch_size, original_dim, intermediate_dims, args.latent_dim, nonvariational=False)
-    sampler = model_universal.gaussian_sampler
-elif args.model == "nvae":
-    model_module = model_vae
-    vae, encoder, generator = model_module.build_model(batch_size, original_dim, intermediate_dims, args.latent_dim, nonvariational=True)
-    sampler = model_universal.gaussian_sampler
 elif args.model in ("vae", "nvae"):
     sampler = model_universal.gaussian_sampler
     dense_encoder = model_universal.DenseEncoder(intermediate_dims)

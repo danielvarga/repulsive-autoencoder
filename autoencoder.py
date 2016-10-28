@@ -38,7 +38,7 @@ args = parser.parse_args()
 
 assert args.prefix is not None, "Please specify an output file prefix with the --output arg."
 
-assert args.model in ("rae", "vae", "nvae", "vae_conv", "universal"), "Unknown model type."
+assert args.model in ("rae", "vae", "nvae", "vae_conv", "nvae_conv", "universal"), "Unknown model type."
 print "Training model of type %s" % args.model
 
 (x_train, x_test), (height, width) = data.load(args.dataset)
@@ -70,8 +70,8 @@ elif args.model in ("vae", "nvae"):
                                     nonvariational=nonvariational)
 elif args.model in ("vae_conv", "nvae_conv"):
     sampler = model.gaussian_sampler
-    conv_encoder = model_conv.ConvEncoder(intermediate_dims)
-    conv_decoder = model_conv.ConvDecoder(args.latent_dim, intermediate_dims, original_dim)
+    conv_encoder = model_conv.ConvEncoder(intermediate_dims[0], [55, 45, 1])
+    conv_decoder = model_conv.ConvDecoder(args.latent_dim, intermediate_dims[0], original_dim, [55, 45, 1])
     nonvariational = args.model=="nvae_conv"
     vae, encoder, generator = model.build_model(
                                     batch_size, original_dim,
@@ -98,6 +98,7 @@ vae.fit(x_train, x_train,
         callbacks = cbs,
         validation_data=(x_test, x_test))
 
+vae.save("model_%s.h5" % args.prefix)
 
 # # display a 2D plot of the validation set in the latent space
 # vis.latentScatter(encoder, x_test, batch_size, args.prefix+"-fig1")
@@ -106,14 +107,14 @@ vae.fit(x_train, x_train,
 show_manifolds = False
 if show_manifolds:
     for y in range(1, args.latent_dim-1):
-        vis.displayImageManifold(30, args.latent_dim, generator, height, width, 0, y, y+1, "%s-manifold%d" % (args.prefix, y))
+        vis.displayImageManifold(30, args.latent_dim, generator, height, width, 0, y, y+1, "%s-manifold%d" % (args.prefix, y), batch_size=batch_size)
 
 # display randomly generated images
-vis.displayRandom(15, args.latent_dim, sampler, generator, height, width, "%s-random" % args.prefix)
+vis.displayRandom(15, args.latent_dim, sampler, generator, height, width, "%s-random" % args.prefix, batch_size=batch_size)
 
-vis.displaySet(x_test[:batch_size], 100, vae, height, width, "%s-test" % args.prefix)
-vis.displaySet(x_train[:batch_size], 100, vae, height, width, "%s-train" % args.prefix)
+vis.displaySet(x_test[:batch_size], 100, vae, height, width, "%s-test" % args.prefix, batch_size=batch_size)
+vis.displaySet(x_train[:batch_size], 100, vae, height, width, "%s-train" % args.prefix, batch_size=batch_size)
 
 # display image interpolation
-vis.displayInterp(x_train, x_test, batch_size, args.latent_dim, height, width, encoder, generator, 10, "%s-interp" % args.prefix)
+vis.displayInterp(x_train, x_test, batch_size, args.latent_dim, height, width, encoder, generator, 10, "%s-interp" % args.prefix, batch_size=batch_size)
 

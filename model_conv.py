@@ -3,26 +3,29 @@ Standard VAE taken from https://github.com/fchollet/keras/blob/master/examples/v
 '''
 import numpy as np
 
-from keras.layers import Input, Dense, Lambda, Convolution2D, Reshape, Flatten
+from keras.layers import Input, Dense, Lambda, Convolution2D, Deconvolution2D, Reshape, Flatten, ZeroPadding2D, merge
 from keras.models import Model
 from keras import backend as K
 from keras import objectives
 from keras.datasets import mnist
 from keras.optimizers import *
-
+from keras.regularizers import l1, l2
 
 class Encoder(object):
     pass
 
 class ConvEncoder(Encoder):
-    def __init__(self, intermediate_dim):
+    def __init__(self, intermediate_dim, img_size):
         self.intermediate_dim = intermediate_dim
+        self.img_size = img_size
 
     def __call__(self, x):
+        wd = 0.003
         nb_conv=3
         nb_filters = 64
-
-        xr = Reshape(original_img_size)(x)
+	batch_size = 1000
+        image_chns = 1
+        xr = Reshape(self.img_size)(x)
         conv_1 = Convolution2D(nb_filters, nb_conv, nb_conv, border_mode='same', activation='relu', W_regularizer=l2(wd))(xr)
         conv_2 = Convolution2D(nb_filters, nb_conv, nb_conv,
                                border_mode='same', activation='relu',
@@ -43,25 +46,35 @@ class Decoder(object):
     pass # TODO interface
 
 class ConvDecoder(Decoder):
-    def __init__(self, latent_dim, intermediate_dim, original_dim):
+    def __init__(self, latent_dim, intermediate_dim, original_dim, img_size):
         self.latent_dim = latent_dim
         self.intermediate_dim = intermediate_dim
         self.original_dim = original_dim
+        self.img_size = img_size
 
     def __call__(self, z):
+
+        wd = 0.003
+        nb_conv=3
+        nb_filters = 64
+        batch_size = 1000
+
+	img_chns = 1
+        h = self.img_size[0]
+        w = self.img_size[1]
         # we instantiate these layers separately so as to reuse them both for reconstruction and generation
         decoder_input = Input(shape=(self.latent_dim,))
 
         h_decoded = z
         _h_decoded = decoder_input
 
-        decoder_hid = Dense(intermediate_dim)
-        decoder_upsample = Dense(intermediate_dim * 4, W_regularizer=l2(wd))
-        decoder_upsample2 = Dense(nb_filters * (h//2) * (w//2), W_regularizer=l2(wd))
+        decoder_hid = Dense(self.intermediate_dim)
+        decoder_upsample = Dense(self.intermediate_dim * 4, W_regularizer=l2(wd))
+        decoder_upsample2 = Dense(4 * (h//2) * (w//2), W_regularizer=l2(wd))
         if K.image_dim_ordering() == 'th':
-            output_shape = (batch_size, nb_filters, h//2, w//2)
+            output_shape = (batch_size, 4, h//2, w//2)
         else:
-            output_shape = (batch_size, h//2, w//2, nb_filters)
+            output_shape = (batch_size, h//2, w//2, 4)
 
         decoder_reshape = Reshape(output_shape[1:])
 
@@ -149,4 +162,3 @@ class ConvDecoder(Decoder):
         _x_decoded_mean = Flatten()(_x_decoded_mean)
 
         return decoder_input, x_decoded_mean, _x_decoded_mean
-

@@ -81,29 +81,46 @@ def loss_factory_nvae(original_dim, z):
         return xent_loss + kl_loss
     return nvae_loss
 
+def loss_factory_sae(original_dim, z):
+    def sae_loss(x, x_decoded):
+        xent_loss = original_dim * objectives.binary_crossentropy(x, x_decoded)
+        return xent_loss
+    return sae_loss
 
-def build_model(batch_size, original_dim, dense_encoder, latent_dim, dense_decoder, nonvariational=False):
+
+def build_model(batch_size, original_dim, dense_encoder, latent_dim, dense_decoder, nonvariational=False, spherical=False):
     x = Input(batch_shape=(batch_size, original_dim))
     h = dense_encoder(x)
     if nonvariational:
-        z_mean = add_nonvariational(h, latent_dim)
-        z = z_mean
+        z = add_nonvariational(h, latent_dim)
     else:
         z_mean, z_log_var = add_variational(h, latent_dim)
         z = add_sampling(z_mean, z_log_var, batch_size, latent_dim)
+
+    if spherical:
+        assert nonvariational, "Don't know how to normalize ellipsoids."
+        z = Lambda(lambda z_unnormed: K.l2_normalize(z_unnormed, axis=-1))([z])
+
     decoder_input, x_decoded, _x_decoded = dense_decoder(z)
 
     vae = Model(x, x_decoded)
     if nonvariational:
-        loss = loss_factory_nvae(original_dim, z_mean)
+        if spherical:
+            loss = loss_factory_sae(original_dim, z)
+        else:
+            loss = loss_factory_nvae(original_dim, z)
     else:
+        assert not spherical
         loss = loss_factory_vae(original_dim, z_mean, z_log_var)
 
     optimizer = RMSprop(lr=0.001)
     vae.compile(optimizer=optimizer, loss=loss)
 
     # build a model to project inputs on the latent space
-    encoder = Model(x, z_mean)
+    if nonvariational:
+        encoder = Model(x, z)
+    else:
+        encoder = Model(x, z_mean)
 
     # build a digit generator that can sample from the learned distribution
     generator = Model(decoder_input, _x_decoded)

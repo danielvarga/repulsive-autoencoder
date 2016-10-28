@@ -21,9 +21,8 @@ from keras import objectives
 import data
 import vis
 import callbacks
-import model_rae
-import model_vae
-import model_universal
+import model
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataset', dest="dataset", default="mnist", help="Dataset to use: mnist/celeba")
@@ -49,15 +48,21 @@ intermediate_dims = map(int, args.intermediate_dims_string.split(","))
 
 # Using modules where normal people would use classes.
 if args.model == "rae":
-    model_module = model_rae
-    vae, encoder, generator = model_module.build_model(batch_size, original_dim, intermediate_dims, args.latent_dim)
-    sampler = model_universal.spherical_sampler
+    sampler = model.spherical_sampler
+    dense_encoder = model.DenseEncoder(intermediate_dims)
+    dense_decoder = model.DenseDecoder(args.latent_dim, intermediate_dims, original_dim)
+    nonvariational = True
+    vae, encoder, generator = model.build_model(
+                                    batch_size, original_dim,
+                                    dense_encoder, args.latent_dim, dense_decoder,
+                                    nonvariational=nonvariational,
+                                    spherical=True)
 elif args.model in ("vae", "nvae"):
-    sampler = model_universal.gaussian_sampler
-    dense_encoder = model_universal.DenseEncoder(intermediate_dims)
-    dense_decoder = model_universal.DenseDecoder(args.latent_dim, intermediate_dims, original_dim)
+    sampler = model.gaussian_sampler
+    dense_encoder = model.DenseEncoder(intermediate_dims)
+    dense_decoder = model.DenseDecoder(args.latent_dim, intermediate_dims, original_dim)
     nonvariational = args.model=="nvae"
-    vae, encoder, generator = model_universal.build_model(
+    vae, encoder, generator = model.build_model(
                                     batch_size, original_dim,
                                     dense_encoder, args.latent_dim, dense_decoder,
                                     nonvariational=nonvariational)

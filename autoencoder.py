@@ -22,6 +22,7 @@ import data
 import vis
 import model_rae
 import model_vae
+import callbacks
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataset', dest="dataset", default="mnist", help="Dataset to use: mnist/celeba")
@@ -59,10 +60,20 @@ else:
     assert False, "model type %s not yet implemented, please be patient." % args.model
 
 vae.summary()
+
+cbs = []
+cbs.append(callbacks.get_lr_scheduler(args.nb_epoch))
+cbs.append(callbacks.imageDisplayCallback(
+    x_train, x_test,
+    args.latent_dim, batch_size, height, width,
+    encoder, generator, model_module.sample,
+    args.prefix, 10))
+
 vae.fit(x_train, x_train,
         shuffle=True,
         nb_epoch=args.nb_epoch,
         batch_size=batch_size,
+        callbacks = cbs,
         validation_data=(x_test, x_test))
 
 
@@ -81,5 +92,6 @@ vis.displayRandom(15, args.latent_dim, model_module.sample, generator, height, w
 vis.displaySet(x_test[:batch_size], 100, vae, height, width, "%s-test" % args.prefix)
 vis.displaySet(x_train[:batch_size], 100, vae, height, width, "%s-train" % args.prefix)
 
-####
+# display image interpolation
 vis.displayInterp(x_train, x_test, batch_size, args.latent_dim, height, width, encoder, generator, 10, "%s-interp" % args.prefix)
+

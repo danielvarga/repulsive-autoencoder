@@ -1,3 +1,5 @@
+""" Code taken directly from https://github.com/dribnet/plat/blob/master/plat/interpolate.py """
+
 import numpy as np
 from scipy.stats import norm
 

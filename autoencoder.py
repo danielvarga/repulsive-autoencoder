@@ -21,8 +21,9 @@ from keras import objectives
 import data
 import vis
 import callbacks
-import model
 
+import model
+import model_conv
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataset', dest="dataset", default="mnist", help="Dataset to use: mnist/celeba")
@@ -67,6 +68,16 @@ elif args.model in ("vae", "nvae"):
                                     batch_size, original_dim,
                                     dense_encoder, args.latent_dim, dense_decoder,
                                     nonvariational=nonvariational)
+elif args.model in ("vae_conv", "nvae_conv"):
+    sampler = model.gaussian_sampler
+    conv_encoder = model_conv.ConvEncoder(intermediate_dims)
+    conv_decoder = model_conv.ConvDecoder(args.latent_dim, intermediate_dims, original_dim)
+    nonvariational = args.model=="nvae_conv"
+    vae, encoder, generator = model.build_model(
+                                    batch_size, original_dim,
+                                    conv_encoder, args.latent_dim, conv_decoder,
+                                    nonvariational=nonvariational)
+   
 else:
     assert False, "model type %s not yet implemented, please be patient." % args.model
 

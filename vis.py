@@ -47,7 +47,7 @@ def plotImages(data, n_x, n_y, name):
 # TODO Only works for spherical distributions.
 #      More precisely, it works for normals, but is very misleading.
 # TODO only works if xdim < ydim < zdim
-def displayImageManifold(n, latent_dim, generator, height, width, xdim, ydim, zdim, name):
+def displayImageManifold(n, latent_dim, generator, height, width, xdim, ydim, zdim, name, batch_size=32):
     grid_x = np.linspace(-1, +1, n)
     grid_y = np.linspace(-1, +1, n)
 
@@ -62,13 +62,13 @@ def displayImageManifold(n, latent_dim, generator, height, width, xdim, ydim, zd
                 continue
             zi = math.sqrt(zisqr)
             z_sample = np.array([0] * xdim + [xi] + [0] * (ydim-xdim-1) + [yi] + [0] * (zdim-ydim-1) + [zi] + [0] * (latent_dim - zdim-1))
-            z_sample = z_sample.reshape([1,latent_dim])
-            x_decoded = generator.predict(z_sample)
+            z_sample = z_sample.reshape([batch_size, latent_dim])
+            x_decoded = generator.predict(z_sample, batch_size=batch_size)
             image = x_decoded[0].reshape(height, width)
             images_up.append(image)
             z_sample_down = np.array([0] * xdim + [xi] + [0] * (ydim-xdim-1) + [yi] + [0] * (zdim-ydim-1) + [-zi] + [0] * (latent_dim - zdim-1))
-            z_sample_down = z_sample_down.reshape([1,latent_dim])
-            x_decoded_down = generator.predict(z_sample_down)
+            z_sample_down = z_sample_down.reshape([batch_size, latent_dim])
+            x_decoded_down = generator.predict(z_sample_down, batch_size=batch_size)
             image_down = x_decoded_down[0].reshape(height, width)
             images_down.append(image_down)
 
@@ -76,12 +76,12 @@ def displayImageManifold(n, latent_dim, generator, height, width, xdim, ydim, zd
     plotImages(images, n, 2*n, name)
 
 
-def displayRandom(n, latent_dim, sampler, generator, height, width, name):
+def displayRandom(n, latent_dim, sampler, generator, height, width, name, batch_size=32):
     images = []
     for i in range(n):
         for j in range(n):
-            z_sample = sampler(1, latent_dim)
-            x_decoded = generator.predict(z_sample)
+            z_sample = sampler(batch_size, latent_dim)
+            x_decoded = generator.predict(z_sample, batch_size=batch_size)
             image = x_decoded[0].reshape(height, width)
             images.append(image)
     plotImages(np.array(images), n, n, name)
@@ -104,7 +104,11 @@ def displayInterp(x_train, x_test, batch_size, dim, height, width, encoder, gene
     parallelogram_point = test_latent[0] + train_latent[1] - train_latent[0]
     anchors = np.array([train_latent[0], train_latent[1], test_latent[0], parallelogram_point])
     interpGrid = grid_layout.create_mine_grid(gridSize, gridSize, dim, gridSize-1, anchors, True, False) # TODO different interpolations for different autoencoders!!!
-    predictedGrid = generator.predict(interpGrid, batch_size=interpGrid.shape[0])
+    n = interpGrid.shape[0]
+    interpGrid = np.repeat(interpGrid, (batch_size//n) + 1, axis=0)[0:batch_size]
+    print(interpGrid.shape)
+    predictedGrid = generator.predict(interpGrid, batch_size=batch_size)
+    predictedGrid = predictedGrid[0:n]
 
     prologGrid = np.zeros([gridSize,height*width])
     prologGrid[0:3] = [x_train[0],x_train[1], x_test[0]]

@@ -22,6 +22,7 @@ import data
 import vis
 import model_rae
 import model_vae
+import model_universal
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataset', dest="dataset", default="mnist", help="Dataset to use: mnist/celeba")
@@ -35,7 +36,7 @@ args = parser.parse_args()
 
 assert args.prefix is not None, "Please specify an output file prefix with the --output arg."
 
-assert args.model in ("rae", "vae", "nvae", "vae_conv"), "Unknown model type."
+assert args.model in ("rae", "vae", "nvae", "vae_conv", "universal"), "Unknown model type."
 print "Training model of type %s" % args.model
 
 (x_train, x_test), (height, width) = data.load(args.dataset)
@@ -55,6 +56,9 @@ elif args.model == "vae":
 elif args.model == "nvae":
     model_module = model_vae
     vae, encoder, generator = model_module.build_model(batch_size, original_dim, intermediate_dims, args.latent_dim, nonvariational=True)
+elif args.model == "universal":
+    model_module = model_universal
+    vae, encoder, generator = model_module.build_model(batch_size, original_dim, intermediate_dims, args.latent_dim, nonvariational=False)
 else:
     assert False, "model type %s not yet implemented, please be patient." % args.model
 

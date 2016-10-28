@@ -35,7 +35,7 @@ class imageDisplayCallback(Callback):
         super(imageDisplayCallback, self).__init__(**kwargs)
 
     def on_epoch_end(self, epoch, logs):
-        if epoch % self.frequency != 0:
+        if (epoch+1) % self.frequency != 0:
             return
 
         vis.displayRandom(15, self.latent_dim, self.sampler, self.generator, self.height, self.width, "%s-random-%i" % (self.name, epoch))

@@ -29,6 +29,7 @@ parser.add_argument('--dataset', dest="dataset", default="mnist", help="Dataset 
 parser.add_argument('--nb_epoch', dest="nb_epoch", type=int, default=10, help="Number of epochs")
 parser.add_argument('--latent_dim', dest="latent_dim", type=int, default=3, help="Latent dimension")
 parser.add_argument('--intermediate_dims', dest="intermediate_dims_string", default="256", help="Intermediate dimensions")
+parser.add_argument('--frequency', dest="frequency", type=int, default=10, help="image saving frequency")
 parser.add_argument('--model', dest="model", default="rae", help="Model to use: rae/vae/nvae/vae_conv")
 parser.add_argument('--output', dest="prefix", help="File prefix for the output visualizations and models.")
 
@@ -77,7 +78,7 @@ cbs.append(callbacks.imageDisplayCallback(
     x_train, x_test,
     args.latent_dim, batch_size, height, width,
     encoder, generator, sampler,
-    args.prefix, 10))
+    args.prefix, args.frequency))
 
 vae.fit(x_train, x_train,
         shuffle=True,

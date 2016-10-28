@@ -82,16 +82,16 @@ def loss_factory_nvae(original_dim, z):
     return nvae_loss
 
 
-def build_model(batch_size, original_dim, intermediate_dims, latent_dim, nonvariational=False):
+def build_model(batch_size, original_dim, dense_encoder, latent_dim, dense_decoder, nonvariational=False):
     x = Input(batch_shape=(batch_size, original_dim))
-    h = DenseEncoder(intermediate_dims)(x)
+    h = dense_encoder(x)
     if nonvariational:
         z_mean = add_nonvariational(h, latent_dim)
         z = z_mean
     else:
         z_mean, z_log_var = add_variational(h, latent_dim)
         z = add_sampling(z_mean, z_log_var, batch_size, latent_dim)
-    decoder_input, x_decoded, _x_decoded = DenseDecoder(latent_dim, intermediate_dims, original_dim)(z)
+    decoder_input, x_decoded, _x_decoded = dense_decoder(z)
 
     vae = Model(x, x_decoded)
     if nonvariational:
@@ -111,5 +111,10 @@ def build_model(batch_size, original_dim, intermediate_dims, latent_dim, nonvari
     return vae, encoder, generator
 
 
-def sample(batch_size, latent_dim):
+def gaussian_sampler(batch_size, latent_dim):
     return np.random.normal(size=(batch_size, latent_dim))
+
+def spherical_sampler(batch_size, latent_dim):
+    z_sample = np.random.normal(size=(batch_size, latent_dim))
+    z_sample /= np.linalg.norm(z_sample)
+    return z_sample

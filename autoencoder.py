@@ -51,15 +51,24 @@ intermediate_dims = map(int, args.intermediate_dims_string.split(","))
 if args.model == "rae":
     model_module = model_rae
     vae, encoder, generator = model_module.build_model(batch_size, original_dim, intermediate_dims, args.latent_dim)
+    sampler = model_universal.spherical_sampler
 elif args.model == "vae":
     model_module = model_vae
     vae, encoder, generator = model_module.build_model(batch_size, original_dim, intermediate_dims, args.latent_dim, nonvariational=False)
+    sampler = model_universal.gaussian_sampler
 elif args.model == "nvae":
     model_module = model_vae
     vae, encoder, generator = model_module.build_model(batch_size, original_dim, intermediate_dims, args.latent_dim, nonvariational=True)
-elif args.model == "universal":
-    model_module = model_universal
-    vae, encoder, generator = model_module.build_model(batch_size, original_dim, intermediate_dims, args.latent_dim, nonvariational=False)
+    sampler = model_universal.gaussian_sampler
+elif args.model in ("vae", "nvae"):
+    sampler = model_universal.gaussian_sampler
+    dense_encoder = model_universal.DenseEncoder(intermediate_dims)
+    dense_decoder = model_universal.DenseDecoder(args.latent_dim, intermediate_dims, original_dim)
+    nonvariational = args.model=="nvae"
+    vae, encoder, generator = model_universal.build_model(
+                                    batch_size, original_dim,
+                                    dense_encoder, args.latent_dim, dense_decoder,
+                                    nonvariational=nonvariational)
 else:
     assert False, "model type %s not yet implemented, please be patient." % args.model
 
@@ -70,7 +79,7 @@ cbs.append(callbacks.get_lr_scheduler(args.nb_epoch))
 cbs.append(callbacks.imageDisplayCallback(
     x_train, x_test,
     args.latent_dim, batch_size, height, width,
-    encoder, generator, model_module.sample,
+    encoder, generator, sampler,
     args.prefix, 10))
 
 vae.fit(x_train, x_train,
@@ -91,7 +100,7 @@ if show_manifolds:
         vis.displayImageManifold(30, args.latent_dim, generator, height, width, 0, y, y+1, "%s-manifold%d" % (args.prefix, y))
 
 # display randomly generated images
-vis.displayRandom(15, args.latent_dim, model_module.sample, generator, height, width, "%s-random" % args.prefix)
+vis.displayRandom(15, args.latent_dim, sampler, generator, height, width, "%s-random" % args.prefix)
 
 vis.displaySet(x_test[:batch_size], 100, vae, height, width, "%s-test" % args.prefix)
 vis.displaySet(x_train[:batch_size], 100, vae, height, width, "%s-train" % args.prefix)

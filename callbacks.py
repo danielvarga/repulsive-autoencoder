@@ -40,7 +40,7 @@ class imageDisplayCallback(Callback):
 
         vis.displayRandom(15, self.latent_dim, self.sampler, self.generator, self.height, self.width, "%s-random-%i" % (self.name, epoch), batch_size=self.batch_size)
 
-        vis.displaySet(self.x_test[:self.batch_size], 100, self.model, self.height, self.width, "%s-test-%i" % (self.name,epoch), batch_size=self.batch_size)
-        vis.displaySet(self.x_train[:self.batch_size], 100, self.model, self.height, self.width, "%s-train-%i" % (self.name,epoch), batch_size=self.batch_size)
+        vis.displaySet(self.x_test[:self.batch_size], 100, self.model, self.height, self.width, "%s-test-%i" % (self.name,epoch))
+        vis.displaySet(self.x_train[:self.batch_size], 100, self.model, self.height, self.width, "%s-train-%i" % (self.name,epoch))
         
         vis.displayInterp(self.x_train, self.x_test, self.batch_size, self.latent_dim, self.height, self.width, self.encoder, self.generator, 10, "%s-interp-%i" % (self.name,epoch), batch_size=self.batch_size)

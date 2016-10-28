@@ -116,5 +116,5 @@ vis.displaySet(x_test[:batch_size], 100, vae, height, width, "%s-test" % args.pr
 vis.displaySet(x_train[:batch_size], 100, vae, height, width, "%s-train" % args.prefix)
 
 # display image interpolation
-vis.displayInterp(x_train, x_test, batch_size, args.latent_dim, height, width, encoder, generator, 10, "%s-interp" % args.prefix, batch_size=batch_size)
+vis.displayInterp(x_train, x_test, batch_size, args.latent_dim, height, width, encoder, generator, 10, "%s-interp" % args.prefix)
 

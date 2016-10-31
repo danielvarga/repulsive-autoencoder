@@ -67,27 +67,6 @@ class DenseDecoder(Decoder):
         return decoder_input, x_decoded, _x_decoded
 
 
-def loss_factory_vae(original_dim, z_mean, z_log_var):
-    def vae_loss(x, x_decoded):
-        xent_loss = original_dim * objectives.binary_crossentropy(x, x_decoded)
-        kl_loss = - 0.5 * K.sum(1 + z_log_var - K.square(z_mean) - K.exp(z_log_var), axis=-1)
-        return xent_loss + kl_loss
-    return vae_loss
-
-def loss_factory_nvae(original_dim, z):
-    def nvae_loss(x, x_decoded):
-        xent_loss = original_dim * objectives.binary_crossentropy(x, x_decoded)
-        kl_loss = - 0.5 * K.sum(- K.square(z), axis=-1)
-        return xent_loss + kl_loss
-    return nvae_loss
-
-def loss_factory_sae(original_dim, z):
-    def sae_loss(x, x_decoded):
-        xent_loss = original_dim * objectives.binary_crossentropy(x, x_decoded)
-        return xent_loss
-    return sae_loss
-
-
 def build_model(batch_size, original_dim, dense_encoder, latent_dim, dense_decoder, nonvariational=False, spherical=False):
     x = Input(batch_shape=(batch_size, original_dim))
     h = dense_encoder(x)
@@ -106,15 +85,15 @@ def build_model(batch_size, original_dim, dense_encoder, latent_dim, dense_decod
     vae = Model(x, x_decoded)
     if nonvariational:
         if spherical:
-            loss = loss_factory_sae(original_dim, z)
+            loss, metrics = loss_factory("rae", original_dim, (z))
         else:
-            loss = loss_factory_nvae(original_dim, z)
+            loss, metrics = loss_factory("nvae", original_dim, (z))
     else:
         assert not spherical
-        loss = loss_factory_vae(original_dim, z_mean, z_log_var)
+        loss, metrics = loss_factory("vae", original_dim, (z_mean, z_log_var))
 
     optimizer = RMSprop(lr=0.001)
-    vae.compile(optimizer=optimizer, loss=loss)
+    vae.compile(optimizer=optimizer, loss=loss, metrics=metrics)
 
     # build a model to project inputs on the latent space
     if nonvariational:
@@ -135,3 +114,34 @@ def spherical_sampler(batch_size, latent_dim):
     z_sample = np.random.normal(size=(batch_size, latent_dim))
     z_sample /= np.linalg.norm(z_sample)
     return z_sample
+
+
+def loss_factory(model_type, original_dim, layers):
+    def xent_loss(x, x_decoded):
+        loss = original_dim * objectives.binary_crossentropy(x, x_decoded)
+        return K.mean(loss)
+    def mse_loss(x, x_decoded):
+        loss = original_dim * objectives.mean_squared_error(x, x_decoded)
+        return K.mean(loss)
+    def size_loss(x, x_decoded):
+        loss = 0.5 * K.sum(K.square(layers[0]), axis=-1)
+        return K.mean(loss)
+    def kl_loss(x, x_decoded):
+        loss = 0.5 * K.sum(-1 - layers[1] + K.exp(layers[1]), axis=-1)
+        return K.mean(loss)
+
+    if (model_type == "rae"):
+        metrics = [xent_loss]
+    elif (model_type == "nvae"):
+        metrics = [xent_loss, size_loss]
+    elif (model_type == "vae"):
+        metrics = [xent_loss, size_loss, kl_loss]
+    else:
+        assert False, "loss for model type $s not yet implemented" % model_type
+    
+    def lossFun(x, x_decoded):
+        loss = 0
+        for metric in metrics:
+            loss += metric(x, x_decoded)
+        return loss
+    return lossFun, metrics

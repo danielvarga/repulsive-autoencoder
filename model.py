@@ -126,7 +126,7 @@ def loss_factory(model_type, original_dim, layers):
     def size_loss(x, x_decoded):
         loss = 0.5 * K.sum(K.square(layers[0]), axis=-1)
         return K.mean(loss)
-    def kl_loss(x, x_decoded):
+    def variance_loss(x, x_decoded):
         loss = 0.5 * K.sum(-1 - layers[1] + K.exp(layers[1]), axis=-1)
         return K.mean(loss)
 
@@ -135,7 +135,7 @@ def loss_factory(model_type, original_dim, layers):
     elif (model_type == "nvae"):
         metrics = [xent_loss, size_loss]
     elif (model_type == "vae"):
-        metrics = [xent_loss, size_loss, kl_loss]
+        metrics = [xent_loss, size_loss, variance_loss]
     else:
         assert False, "loss for model type $s not yet implemented" % model_type
     

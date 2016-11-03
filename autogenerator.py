@@ -43,6 +43,7 @@ print "Training model of type %s" % args.model
 
 (x_train, x_test), (height, width) = data.load(args.dataset)
 
+
 batch_size = 500
 original_dim = x_test.shape[1]
 intermediate_dims = map(int, args.intermediate_dims_string.split(","))
@@ -69,8 +70,11 @@ elif args.model in ("vae", "nvae"):
                                     nonvariational=nonvariational)
 elif args.model in ("vae_conv", "nvae_conv"):
     sampler = model.gaussian_sampler
+    def __init__(self, levels_config, filter_num_config, latent_dim, img_size, activation_config=None, batch_size=32, wd=0.003):
+
     conv_encoder = model_conv.ConvEncoder([2,2,2], [32,32,32], 20, [60, 72, 1], batch_size=batch_size)
     conv_decoder = model_conv.ConvDecoder([2,2,2], [32,32,32], 20, [60, 72, 1], batch_size=batch_size)
+
     nonvariational = args.model=="nvae_conv"
     vae, encoder, generator = model.build_model(
                                     batch_size, original_dim,
@@ -81,6 +85,26 @@ else:
     assert False, "model type %s not yet implemented, please be patient." % args.model
 
 vae.summary()
+
+
+
+
+
+
+gen_original_dim=args.latent_dim
+gen_sampler = model.gaussian_sampler
+gen_dense_encoder = model.DenseEncoder([20])
+gen_latent_dim = 20
+
+gen_dense_decoder = model.DenseDecoder(gen_latent_dim, intermediate_dims, gen_original_dim)
+gen_nonvariational = args.model=="nvae"
+gen_nonvariational = False
+gen_vae, gen_encoder, gen_generator = model.build_model(
+                	        batch_size, gen_original_dim,
+                                gen_dense_encoder, gen_latent_dim, gen_dense_decoder,
+                                nonvariational=gen_nonvariational)
+
+
 
 cbs = []
 cbs.append(callbacks.get_lr_scheduler(args.nb_epoch))
@@ -100,6 +124,32 @@ vae.fit(x_train, x_train,
 vae.save("model_%s.h5" % args.prefix)
 encoder.save("model_%s.h5" % args.prefix)
 generator.save("model_%s.h5" % args.prefix)
+
+zs = encoder.predict(x_train, batch_size=batch_size)
+zs_test = encoder.predict(x_test, batch_size=batch_size)
+
+
+gen_cbs = []
+gen_cbs.append(callbacks.get_lr_scheduler(args.nb_epoch))
+gen_vae.fit(zs, zs,
+        shuffle=True,
+        nb_epoch=args.nb_epoch,
+        batch_size=batch_size,
+        callbacks = gen_cbs,
+        validation_data=(zs_test, zs_test))
+
+
+z_sample = sampler(batch_size, gen_latent_dim)
+x_decoded = gen_generator.predict(z_sample, batch_size=batch_size)
+
+def gen_sampler(latent_dim, batch_size):
+    return x_decoded
+
+vis.displayRandom(15, args.latent_dim, gen_sampler, generator, height, width, "%s-rando-gen" % args.prefix, batch_size=batch_size)
+
+
+
+
 
 #vae.save("model_%s.h5" % args.prefix)
 

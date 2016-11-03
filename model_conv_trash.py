@@ -219,10 +219,9 @@ class Decoder(object):
 
 class ConvDecoder(Decoder):
 
-    def __init__(self, levels_config, filter_num_config, latent_dim, img_size, activation_config=None, batch_size=32, wd=0.003):
-        self.levels_config = levels_config
-        self.filter_num_config = filter_num_config
+    def __init__(self, latent_dim, intermediate_dim, original_dim, img_size, batch_size=32, wd=0.003):
         self.latent_dim = latent_dim
+        self.intermediate_dim = intermediate_dim
         self.img_size = img_size
         self.batch_size = batch_size
         self.wd = wd
@@ -231,6 +230,9 @@ class ConvDecoder(Decoder):
     def __call__(self, z):
 
         img_chns = 1
+        nb_conv = 3
+        batch_size = self.batch_size
+        nb_filters = self.intermediate_dim
 
         if K.image_dim_ordering() == 'th':
             feat_axis = 1
@@ -247,7 +249,10 @@ class ConvDecoder(Decoder):
         h_decoded = z
         _h_decoded = decoder_input
 
-       decoder_upsample2 = Dense(4*(h//2) * (w//2), W_regularizer=l2(wd))
+        decoder_hid = Dense(self.intermediate_dim)
+
+
+        decoder_upsample2 = Dense(4*(h//2) * (w//2), W_regularizer=l2(self.wd))
         if K.image_dim_ordering() == 'th':
             output_shape = (batch_size, 4, h//2, w//2)
             feat_axis = 1
@@ -278,7 +283,7 @@ class ConvDecoder(Decoder):
                                                   output_shape,
                                                   border_mode='same',
                                                   subsample=(2, 2),
-                                                  activation='relu', name="upsz",W_regularizer=l2(wd))
+                                                  activation='relu', name="upsz",W_regularizer=l2(self.wd))
 
         decoder_deconv_4 = Deconvolution2D(nb_filters, nb_conv, nb_conv,
                                            output_shape,
@@ -288,7 +293,7 @@ class ConvDecoder(Decoder):
 
         decoder_mean_squash = Convolution2D(img_chns, 2, 2,
                                             border_mode='same',
-                                            activation='sigmoid', name='reconv_flatten', W_regularizer=l2(wd))
+                                            activation='sigmoid', name='reconv_flatten', W_regularizer=l2(self.wd))
 
         zp = ZeroPadding2D({'top_pad':1, 'left_pad':1, 'right_pad':0, 'bottom_pad':0})
 

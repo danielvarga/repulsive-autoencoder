@@ -24,6 +24,8 @@ import callbacks
 
 import model
 import model_conv
+import model_conv_trash
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataset', dest="dataset", default="mnist", help="Dataset to use: mnist/celeba")
@@ -69,8 +71,8 @@ elif args.model in ("vae", "nvae"):
                                     nonvariational=nonvariational)
 elif args.model in ("vae_conv", "nvae_conv"):
     sampler = model.gaussian_sampler
-    conv_encoder = model_conv.ConvEncoder([2,2,2], [32,32,32], 20, [60, 72, 1], batch_size=batch_size)
-    conv_decoder = model_conv.ConvDecoder([2,2,2], [32,32,32], 20, [60, 72, 1], batch_size=batch_size)
+    conv_encoder = model_conv.ConvEncoder([2,2,2], [32,32,32], 20, [72, 60, 1], batch_size=batch_size)
+    conv_decoder = model_conv_trash.ConvDecoder(args.latent_dim, intermediate_dims[0], original_dim, [72, 60, 1], batch_size=batch_size)
     nonvariational = args.model=="nvae_conv"
     vae, encoder, generator = model.build_model(
                                     batch_size, original_dim,

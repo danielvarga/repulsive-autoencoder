@@ -105,7 +105,7 @@ def discnet_decoder_drop(image_size, nb_filter=32, act="relu", weights_init=None
     layers.append(act_2)
 
     deconv_3 = Deconvolution2D(nb_filter, 2, 2,
-                                           output_shape=(batch_size, image_size[0]//2, image_size[1]//2, nb_filter),
+                                           output_shape=(batch_size, image_size[0], image_size[1], nb_filter),
                                            border_mode='same',
                                            subsample=(2,2),
                                            activation='linear',
@@ -176,7 +176,7 @@ class ConvDecoder(Decoder):
 	layers = []
 
 	# Decoder MLP
-	self.encoder_filters = self.image_dims[0]//(2**(self.depth-1)) * self.image_dims[1]//(2**(self.depth-1)) * 1
+	self.encoder_filters = self.image_dims[0]//(2**(self.depth)) * self.image_dims[1]//(2**(self.depth)) * 1
         
 	#intermediate_dims = [self.encoder_filters, 1000, self.latent_dim]
 	intermediate_dims = [self.latent_dim, 1000, self.encoder_filters]
@@ -185,11 +185,10 @@ class ConvDecoder(Decoder):
 	    dense = Dense(dim, activation="relu")
 	    layers.append(dense)
 
-        image_size = (self.image_dims[0]//(2**(self.depth-1)), self.image_dims[1]//(2**(self.depth-1)), 1)
-        print(image_size)
+        image_size = (self.image_dims[0]//(2**(self.depth)), self.image_dims[1]//(2**(self.depth)), 1)
 	layers.append(Reshape(image_size))
 
-	for d in range(self.depth, -1, -1):
+	for d in range(self.depth-1, -1, -1):
 	    image_size = (self.image_dims[0]//(2**d), self.image_dims[1]//(2**d))
 	    print(image_size)
 	    layers += discnet_decoder_drop(image_size=image_size, nb_filter=32*(2**d), batch_size=self.batch_size)
@@ -200,6 +199,8 @@ class ConvDecoder(Decoder):
 
 	logistic = Activation("sigmoid")
 	layers.append(logistic)
+
+	layers.append(Flatten())
 
         # we instantiate these layers separately so as to reuse them both for reconstruction and generation
         decoder_input = Input(batch_shape=(self.batch_size, self.latent_dim,))

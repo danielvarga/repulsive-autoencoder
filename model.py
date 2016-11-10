@@ -72,37 +72,38 @@ def build_model(batch_size, original_dim, dense_encoder, latent_dim, dense_decod
     h = dense_encoder(x)
     if nonvariational:
         z = add_nonvariational(h, latent_dim)
+        if spherical:
+            z = Lambda(lambda z_unnormed: K.l2_normalize(z_unnormed, axis=-1))([z])
+        encoder = Model(x, z)
+        latent_layers = (z)
     else:
-        z_mean, z_log_var = add_variational(h, latent_dim)
-        z = add_sampling(z_mean, z_log_var, batch_size, latent_dim)
+        assert not spherical, "Don't know how to normalize ellipsoids."
 
-    if spherical:
-        assert nonvariational, "Don't know how to normalize ellipsoids."
-        z = Lambda(lambda z_unnormed: K.l2_normalize(z_unnormed, axis=-1))([z])
+        z_mean, z_log_var = add_variational(h, latent_dim)
+        encoder = Model(x, z_mean)
+        latent_layers = (z_mean, z_log_var)
+        z = add_sampling(z_mean, z_log_var, batch_size, latent_dim)
 
     decoder_input, x_decoded, _x_decoded = dense_decoder(z)
 
+    # build autoencoder model
     vae = Model(x, x_decoded)
+    # build a digit generator that can sample from the learned distribution
+    generator = Model(decoder_input, _x_decoded)
+
     if nonvariational:
         if spherical:
-            loss, metrics = loss_factory("rae", original_dim, (z))
+            model_type = "rae"
         else:
-            loss, metrics = loss_factory("nvae", original_dim, (z))
+            model_type = "nvae"
     else:
         assert not spherical
-        loss, metrics = loss_factory("vae", original_dim, (z_mean, z_log_var))
+        model_type = "vae"
 
+    loss, metrics = loss_factory(model_type, vae, 3, original_dim, latent_layers) # todo this 3 number should not be burned in here
     optimizer = RMSprop(lr=0.001)
     vae.compile(optimizer=optimizer, loss=loss, metrics=metrics)
 
-    # build a model to project inputs on the latent space
-    if nonvariational:
-        encoder = Model(x, z)
-    else:
-        encoder = Model(x, z_mean)
-
-    # build a digit generator that can sample from the learned distribution
-    generator = Model(decoder_input, _x_decoded)
 
     return vae, encoder, generator
 
@@ -116,7 +117,7 @@ def spherical_sampler(batch_size, latent_dim):
     return z_sample
 
 
-def loss_factory(model_type, original_dim, layers):
+def loss_factory(model_type, model, layer_count, original_dim, layers):
     def xent_loss(x, x_decoded):
         loss = original_dim * objectives.binary_crossentropy(x, x_decoded)
         return K.mean(loss)
@@ -129,6 +130,18 @@ def loss_factory(model_type, original_dim, layers):
     def variance_loss(x, x_decoded):
         loss = 0.5 * K.sum(-1 - layers[1] + K.exp(layers[1]), axis=-1)
         return K.mean(loss)
+    def layerwise_loss(x, x_decoded):
+        loss = 0
+        model_nodes = model.nodes_by_depth
+        for i in range(layer_count):
+            encoder_output = model_nodes[i][0].output_tensors[0]
+            decoder_output = model_nodes[len(model_nodes)-i-1][0].output_tensors[0]
+            enc_shape = K.int_shape(encoder_output)[1:]
+            dec_shape = K.int_shape(decoder_output)[1:]
+            assert enc_shape == dec_shape, "encoder ({}) - decoder ({}) shape mismatch at layer {}".format(enc_shape, dec_shape, i)
+            current_loss = original_dim * objectives.mean_squared_error(encoder_output, decoder_output)
+            loss += current_loss
+        return 0.1 * K.mean(loss)
 
     if (model_type == "rae"):
         metrics = [xent_loss]

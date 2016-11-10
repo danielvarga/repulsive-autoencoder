@@ -45,7 +45,7 @@ print "Training model of type %s" % args.model
 
 (x_train, x_test), (height, width) = data.load(args.dataset)
 
-batch_size = 500
+batch_size = 250
 original_dim = x_test.shape[1]
 intermediate_dims = map(int, args.intermediate_dims_string.split(","))
 
@@ -71,7 +71,10 @@ elif args.model in ("vae", "nvae"):
                                     nonvariational=nonvariational)
 elif args.model in ("vae_conv", "nvae_conv"):
     sampler = model.gaussian_sampler
-    conv_encoder = model_conv.ConvEncoder([2,2,2], [32,32,32], 20, [72, 60, 1], batch_size=batch_size)
+    conv_encoder = model_conv.ConvEncoder([2,2,2], [64,128,128], args.latent_dim, [72, 60, 1], batch_size=batch_size)
+    #conv_decoder = model_conv.ConvDecoder([1,1,1], [128,128,64], args.latent_dim, [72, 60, 1], batch_size=batch_size)
+    #dense_decoder = model.DenseDecoder(args.latent_dim, intermediate_dims, original_dim)
+
     conv_decoder = model_conv_trash.ConvDecoder(args.latent_dim, intermediate_dims[0], original_dim, [72, 60, 1], batch_size=batch_size)
     nonvariational = args.model=="nvae_conv"
     vae, encoder, generator = model.build_model(
@@ -99,9 +102,9 @@ vae.fit(x_train, x_train,
         callbacks = cbs,
         validation_data=(x_test, x_test))
 
-vae.save("model_%s.h5" % args.prefix)
-encoder.save("model_%s.h5" % args.prefix)
-generator.save("model_%s.h5" % args.prefix)
+#vae.save("model_%s.h5" % args.prefix)
+encoder.save("model_%s_encoder.h5" % args.prefix)
+generator.save("model_%s_generator.h5" % args.prefix)
 
 #vae.save("model_%s.h5" % args.prefix)
 

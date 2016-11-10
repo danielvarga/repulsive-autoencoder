@@ -253,12 +253,35 @@ class ConvDecoder(Decoder):
 
 
         decoder_upsample2 = Dense(4*(h//2) * (w//2), W_regularizer=l2(self.wd))
+
+
+
+        if K.image_dim_ordering() == 'th':
+            output_shape = (batch_size, nb_filters, h//2, w//2)
+        else:
+            output_shape = (batch_size, h//2, w//2, nb_filters)
+    
+        decoder_reshape = Reshape(output_shape[1:])
+
+        if K.image_dim_ordering() == 'th':
+            output_shape = (batch_size, nb_filters, h//2, w//2)
+        else:
+            output_shape = (batch_size, h//2, w//2, nb_filters)
+
+        decoder_deconv_1 = Deconvolution2D(nb_filters, nb_conv, nb_conv,
+                                       output_shape,
+                                       border_mode='same',
+                                       subsample=(1, 1),
+                                       activation='relu',
+                                       W_regularizer=l2(self.wd))
+
         if K.image_dim_ordering() == 'th':
             output_shape = (batch_size, 4, h//2, w//2)
             feat_axis = 1
         else:
             output_shape = (batch_size, h//2, w//2, 4)
             feat_axis = 1
+
 
 
         decoder_reshape = Reshape(output_shape[1:])

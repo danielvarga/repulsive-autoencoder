@@ -189,7 +189,7 @@ class ConvDecoder(Decoder):
         print(image_size)
 	layers.append(Reshape(image_size))
 
-	for d in range(self.depth-1, -1, -1):
+	for d in range(self.depth, -1, -1):
 	    image_size = (self.image_dims[0]//(2**d), self.image_dims[1]//(2**d))
 	    print(image_size)
 	    layers += discnet_decoder_drop(image_size=image_size, nb_filter=32*(2**d), batch_size=self.batch_size)

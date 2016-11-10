@@ -25,6 +25,7 @@ import callbacks
 import model
 import model_conv
 import model_conv_trash
+import model_conv_discgen
 
 
 parser = argparse.ArgumentParser()
@@ -71,11 +72,10 @@ elif args.model in ("vae", "nvae"):
                                     nonvariational=nonvariational)
 elif args.model in ("vae_conv", "nvae_conv"):
     sampler = model.gaussian_sampler
-    conv_encoder = model_conv.ConvEncoder([2,2,2], [64,128,128], args.latent_dim, [72, 60, 1], batch_size=batch_size)
-    #conv_decoder = model_conv.ConvDecoder([1,1,1], [128,128,64], args.latent_dim, [72, 60, 1], batch_size=batch_size)
-    #dense_decoder = model.DenseDecoder(args.latent_dim, intermediate_dims, original_dim)
 
-    conv_decoder = model_conv_trash.ConvDecoder(args.latent_dim, intermediate_dims[0], original_dim, [72, 60, 1], batch_size=batch_size)
+    conv_encoder = model_conv_discgen.ConvEncoder(2, args.latent_dim, 500, (72, 60, 1), batch_size=batch_size)
+    conv_decoder = model_conv_discgen.ConvDecoder(2, args.latent_dim, 500, (72, 60, 1), batch_size=batch_size)
+
     nonvariational = args.model=="nvae_conv"
     vae, encoder, generator = model.build_model(
                                     batch_size, original_dim,

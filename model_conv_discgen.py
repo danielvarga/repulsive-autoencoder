@@ -89,7 +89,7 @@ def discnet_decoder_drop(image_size, nb_filter=32, act="relu", weights_init=None
     conv_1 = Convolution2D(nb_filter, 3, 3, subsample=(1,1), border_mode="same", W_regularizer=l2(wd), bias=use_bias)
     layers.append(conv_1)
 
-    bn_1 = BatchNormalization(axis=bn_axis)
+    bn_1 = BatchNormalization(axis=bn_axis, mode=2)
     layers.append(bn_1)
 
     act_1 = Activation(act)
@@ -98,7 +98,7 @@ def discnet_decoder_drop(image_size, nb_filter=32, act="relu", weights_init=None
     conv_2 = Convolution2D(nb_filter, 3, 3, subsample=(1,1), border_mode="same", W_regularizer=l2(wd), bias=use_bias)
     layers.append(conv_2)
 
-    bn_2 = BatchNormalization(axis=bn_axis)
+    bn_2 = BatchNormalization(axis=bn_axis, mode=2)
     layers.append(bn_2)
 
     act_2 = Activation(act)
@@ -112,7 +112,7 @@ def discnet_decoder_drop(image_size, nb_filter=32, act="relu", weights_init=None
                                            W_regularizer=l2(wd), bias=use_bias) # todo
     layers.append(deconv_3)
 
-    bn_3 = BatchNormalization(axis=bn_axis)
+    bn_3 = BatchNormalization(axis=bn_axis, mode=2)
     layers.append(bn_3)
 
     act_3 = Activation(act)
@@ -176,16 +176,22 @@ class ConvDecoder(Decoder):
 	layers = []
 
 	# Decoder MLP
-	intermediate_dims = [self.encoder_filters, 1000, self.latent_dim]
+	self.encoder_filters = self.image_dims[0]//(2**(self.depth-1)) * self.image_dims[1]//(2**(self.depth-1)) * 1
+        
+	#intermediate_dims = [self.encoder_filters, 1000, self.latent_dim]
+	intermediate_dims = [self.latent_dim, 1000, self.encoder_filters]
+
         for dim in intermediate_dims:
 	    dense = Dense(dim, activation="relu")
 	    layers.append(dense)
 
-        image_size = (self.image_dims[0]//(2**self.depth), self.image_dims[1]//(2**self.depth), 1)
+        image_size = (self.image_dims[0]//(2**(self.depth-1)), self.image_dims[1]//(2**(self.depth-1)), 1)
+        print(image_size)
 	layers.append(Reshape(image_size))
 
 	for d in range(self.depth-1, -1, -1):
 	    image_size = (self.image_dims[0]//(2**d), self.image_dims[1]//(2**d))
+	    print(image_size)
 	    layers += discnet_decoder_drop(image_size=image_size, nb_filter=32*(2**d), batch_size=self.batch_size)
 
 	# Make the picture
@@ -200,6 +206,7 @@ class ConvDecoder(Decoder):
 
 	x = decoder_input
         for layer in layers:
+	    print(layer)
             x = layer(x)
         _x_decoded_mean = x
 

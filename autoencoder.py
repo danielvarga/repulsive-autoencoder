@@ -73,8 +73,11 @@ elif args.model in ("vae", "nvae"):
 elif args.model in ("vae_conv", "nvae_conv"):
     sampler = model.gaussian_sampler
 
-    conv_encoder = model_conv_discgen.ConvEncoder(2, args.latent_dim, 500, (72, 60, 1), batch_size=batch_size)
-    conv_decoder = model_conv_discgen.ConvDecoder(2, args.latent_dim, 500, (72, 60, 1), batch_size=batch_size)
+    base_filter_num = 32
+    conv_encoder = model_conv_discgen.ConvEncoder(depth=2, latent_dim=args.latent_dim, intermediate_dims=intermediate_dims, image_dims=(72, 60, 1), 
+						batch_size=batch_size, base_filter_num=base_filter_num)
+    conv_decoder = model_conv_discgen.ConvDecoder(depth=2, latent_dim=args.latent_dim, intermediate_dims=intermediate_dims, image_dims=(72, 60, 1), 
+						batch_size=batch_size, base_filter_num=base_filter_num)
 
     nonvariational = args.model=="nvae_conv"
     vae, encoder, generator = model.build_model(

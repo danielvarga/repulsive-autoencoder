@@ -34,6 +34,7 @@ parser.add_argument('--intermediate_dims', dest="intermediate_dims_string", defa
 parser.add_argument('--frequency', dest="frequency", type=int, default=10, help="image saving frequency")
 parser.add_argument('--model', dest="model", default="rae", help="Model to use: rae/vae/nvae/vae_conv")
 parser.add_argument('--output', dest="prefix", help="File prefix for the output visualizations and models.")
+parser.add_argument('--depth', dest="depth", default=2, help="Depth of model_conv_discgen model.")
 
 args = parser.parse_args()
 
@@ -72,9 +73,9 @@ elif args.model in ("vae_conv", "nvae_conv"):
     sampler = model.gaussian_sampler
 
     base_filter_num = 32
-    conv_encoder = model_conv_discgen.ConvEncoder(depth=2, latent_dim=args.latent_dim, intermediate_dims=intermediate_dims, image_dims=(72, 60, 1), 
+    conv_encoder = model_conv_discgen.ConvEncoder(depth=args.depth, latent_dim=args.latent_dim, intermediate_dims=intermediate_dims, image_dims=(72, 60, 1), 
 						batch_size=batch_size, base_filter_num=base_filter_num)
-    conv_decoder = model_conv_discgen.ConvDecoder(depth=2, latent_dim=args.latent_dim, intermediate_dims=intermediate_dims, image_dims=(72, 60, 1), 
+    conv_decoder = model_conv_discgen.ConvDecoder(depth=args.depth, latent_dim=args.latent_dim, intermediate_dims=intermediate_dims, image_dims=(72, 60, 1), 
 						batch_size=batch_size, base_filter_num=base_filter_num)
 
     nonvariational = args.model=="nvae_conv"

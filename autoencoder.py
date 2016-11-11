@@ -23,8 +23,6 @@ import vis
 import callbacks
 
 import model
-import model_conv
-import model_conv_trash
 import model_conv_discgen
 
 

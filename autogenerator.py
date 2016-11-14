@@ -23,8 +23,7 @@ import vis
 import callbacks
 
 import model
-import model_conv_discgen
-
+import model_conv
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataset', dest="dataset", default="mnist", help="Dataset to use: mnist/celeba")
@@ -32,9 +31,8 @@ parser.add_argument('--nb_epoch', dest="nb_epoch", type=int, default=10, help="N
 parser.add_argument('--latent_dim', dest="latent_dim", type=int, default=3, help="Latent dimension")
 parser.add_argument('--intermediate_dims', dest="intermediate_dims_string", default="256", help="Intermediate dimensions")
 parser.add_argument('--frequency', dest="frequency", type=int, default=10, help="image saving frequency")
-parser.add_argument('--model', dest="model", default="rae", help="Model to use: rae/vae/nvae/vae_conv/nvae_conv")
+parser.add_argument('--model', dest="model", default="rae", help="Model to use: rae/vae/nvae/vae_conv")
 parser.add_argument('--output', dest="prefix", help="File prefix for the output visualizations and models.")
-parser.add_argument('--depth', dest="depth", default=2, type=int, help="Depth of model_conv_discgen model.")
 
 args = parser.parse_args()
 
@@ -45,7 +43,8 @@ print "Training model of type %s" % args.model
 
 (x_train, x_test), (height, width) = data.load(args.dataset)
 
-batch_size = 250
+
+batch_size = 500
 original_dim = x_test.shape[1]
 intermediate_dims = map(int, args.intermediate_dims_string.split(","))
 
@@ -71,12 +70,10 @@ elif args.model in ("vae", "nvae"):
                                     nonvariational=nonvariational)
 elif args.model in ("vae_conv", "nvae_conv"):
     sampler = model.gaussian_sampler
+    def __init__(self, levels_config, filter_num_config, latent_dim, img_size, activation_config=None, batch_size=32, wd=0.003):
 
-    base_filter_num = 32
-    conv_encoder = model_conv_discgen.ConvEncoder(depth=args.depth, latent_dim=args.latent_dim, intermediate_dims=intermediate_dims, image_dims=(72, 60, 1), 
-						batch_size=batch_size, base_filter_num=base_filter_num)
-    conv_decoder = model_conv_discgen.ConvDecoder(depth=args.depth, latent_dim=args.latent_dim, intermediate_dims=intermediate_dims, image_dims=(72, 60, 1), 
-						batch_size=batch_size, base_filter_num=base_filter_num)
+    conv_encoder = model_conv.ConvEncoder([2,2,2], [32,32,32], 20, [60, 72, 1], batch_size=batch_size)
+    conv_decoder = model_conv.ConvDecoder([2,2,2], [32,32,32], 20, [60, 72, 1], batch_size=batch_size)
 
     nonvariational = args.model=="nvae_conv"
     vae, encoder, generator = model.build_model(
@@ -88,6 +85,26 @@ else:
     assert False, "model type %s not yet implemented, please be patient." % args.model
 
 vae.summary()
+
+
+
+
+
+
+gen_original_dim=args.latent_dim
+gen_sampler = model.gaussian_sampler
+gen_dense_encoder = model.DenseEncoder([20])
+gen_latent_dim = 20
+
+gen_dense_decoder = model.DenseDecoder(gen_latent_dim, intermediate_dims, gen_original_dim)
+gen_nonvariational = args.model=="nvae"
+gen_nonvariational = False
+gen_vae, gen_encoder, gen_generator = model.build_model(
+                	        batch_size, gen_original_dim,
+                                gen_dense_encoder, gen_latent_dim, gen_dense_decoder,
+                                nonvariational=gen_nonvariational)
+
+
 
 cbs = []
 cbs.append(callbacks.get_lr_scheduler(args.nb_epoch))
@@ -104,9 +121,35 @@ vae.fit(x_train, x_train,
         callbacks = cbs,
         validation_data=(x_test, x_test))
 
-#vae.save("model_%s.h5" % args.prefix)
-encoder.save("%s_encoder.h5" % args.prefix)
-generator.save("%s_generator.h5" % args.prefix)
+vae.save("model_%s.h5" % args.prefix)
+encoder.save("model_%s.h5" % args.prefix)
+generator.save("model_%s.h5" % args.prefix)
+
+zs = encoder.predict(x_train, batch_size=batch_size)
+zs_test = encoder.predict(x_test, batch_size=batch_size)
+
+
+gen_cbs = []
+gen_cbs.append(callbacks.get_lr_scheduler(args.nb_epoch))
+gen_vae.fit(zs, zs,
+        shuffle=True,
+        nb_epoch=args.nb_epoch,
+        batch_size=batch_size,
+        callbacks = gen_cbs,
+        validation_data=(zs_test, zs_test))
+
+
+z_sample = sampler(batch_size, gen_latent_dim)
+x_decoded = gen_generator.predict(z_sample, batch_size=batch_size)
+
+def gen_sampler(latent_dim, batch_size):
+    return x_decoded
+
+vis.displayRandom(15, args.latent_dim, gen_sampler, generator, height, width, "%s-rando-gen" % args.prefix, batch_size=batch_size)
+
+
+
+
 
 #vae.save("model_%s.h5" % args.prefix)
 

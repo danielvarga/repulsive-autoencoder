@@ -90,17 +90,9 @@ def build_model(batch_size, original_dim, dense_encoder, latent_dim, dense_decod
     vae = Model(x, x_decoded)
     # build a digit generator that can sample from the learned distribution
     generator = Model(decoder_input, _x_decoded)
+    if not nonvariational: assert not spherical
 
-    if nonvariational:
-        if spherical:
-            model_type = "rae"
-        else:
-            model_type = "nvae"
-    else:
-        assert not spherical
-        model_type = "vae"
-
-    loss, metrics = loss_factory(model_type, vae, 3, original_dim, latent_layers) # todo this 3 number should not be burned in here
+    loss, metrics = loss_factory(nonvariational, spherical, vae, 3, original_dim, latent_layers) # todo this 3 number should not be burned in here
     optimizer = RMSprop(lr=0.001)
     vae.compile(optimizer=optimizer, loss=loss, metrics=metrics)
 
@@ -117,7 +109,7 @@ def spherical_sampler(batch_size, latent_dim):
     return z_sample
 
 
-def loss_factory(model_type, model, layer_count, original_dim, layers):
+def loss_factory(nonvariational,spherical, model, layer_count, original_dim, layers):
     def xent_loss(x, x_decoded):
         loss = original_dim * objectives.binary_crossentropy(x, x_decoded)
         return K.mean(loss)
@@ -143,14 +135,13 @@ def loss_factory(model_type, model, layer_count, original_dim, layers):
             loss += current_loss
         return 0.1 * K.mean(loss)
 
-    if (model_type == "rae"):
-        metrics = [xent_loss]
-    elif (model_type == "nvae"):
-        metrics = [xent_loss, size_loss]
-    elif (model_type == "vae"):
-        metrics = [xent_loss, size_loss, variance_loss]
-    else:
-        assert False, "loss for model type $s not yet implemented" % model_type
+    metrics = [xent_loss]
+    if not spherical:
+        metrics.append(size_loss)
+    if not nonvariational:
+        metrics.append(variance_loss)
+
+#    metrics.append(layerwise_loss)
     
     def lossFun(x, x_decoded):
         loss = 0

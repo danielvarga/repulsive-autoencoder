@@ -23,8 +23,8 @@ def load_mnist():
     return (x_train, x_test), (28, 28)
 
 def load_celeba():
-    directory = "/home/daniel/autoencoding_beyond_pixels/datasets/celeba/img_align_celeba-60x72"
-    cacheFile = "/home/csadrian/datasets/celeba.npy"
+    directory = "/home/daniel/autoencoding_beyond_pixels/datasets/celeba/img_align_celeba-64x72"
+    cacheFile = "/home/csadrian/datasets/celeba_6472.npy"
     trainSize = 100000
     testSize = 10000
     if os.path.isfile(cacheFile):

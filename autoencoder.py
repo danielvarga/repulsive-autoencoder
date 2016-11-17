@@ -73,9 +73,9 @@ elif args.model in ("vae_conv", "nvae_conv"):
     sampler = model.gaussian_sampler
 
     base_filter_num = 32
-    conv_encoder = model_conv_discgen.ConvEncoder(depth=args.depth, latent_dim=args.latent_dim, intermediate_dims=intermediate_dims, image_dims=(72, 60, 1), 
+    conv_encoder = model_conv_discgen.ConvEncoder(depth=args.depth, latent_dim=args.latent_dim, intermediate_dims=intermediate_dims, image_dims=(72, 64, 1), 
 						batch_size=batch_size, base_filter_num=base_filter_num)
-    conv_decoder = model_conv_discgen.ConvDecoder(depth=args.depth, latent_dim=args.latent_dim, intermediate_dims=intermediate_dims, image_dims=(72, 60, 1), 
+    conv_decoder = model_conv_discgen.ConvDecoder(depth=args.depth, latent_dim=args.latent_dim, intermediate_dims=intermediate_dims, image_dims=(72, 64, 1), 
 						batch_size=batch_size, base_filter_num=base_filter_num)
 
     nonvariational = args.model=="nvae_conv"

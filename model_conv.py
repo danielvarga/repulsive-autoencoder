@@ -308,8 +308,6 @@ class ConvDecoder(Decoder):
         #decoder_layers.append(Flatten())
 
 
-    
-        
         N = self.levels_config[0]
         for i in range(N - 1):
             net = residual_drop_deconv(

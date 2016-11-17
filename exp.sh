@@ -8,4 +8,4 @@
 #CUDA_VISIBLE_DEVICES=0 nohup python autoencoder.py --nb_epoch 100 --output classic_resi_l512_trash --dataset celeba --model nvae_conv --intermediate_dims 128 --latent_dim 512 --frequency 10 > classic_resi_l512_trash.cout 2> classic_resi_l512_trash.cerr &
 #CUDA_VISIBLE_DEVICES=1 nohup python autoencoder.py --nb_epoch 100 --output disc_1_nonvae --dataset celeba --model nvae_conv --intermediate_dims 128 --latent_dim 512 --frequency 10 > disc_1_nonvae.cout 2> disc_1_nonvae.cerr &
 #CUDA_VISIBLE_DEVICES=1 nohup python autoencoder.py --nb_epoch 100 --output disc_1_vae --dataset celeba --model vae_conv --intermediate_dims 128 --latent_dim 512 --frequency 10 > disc_1_vae.cout 2> disc_1_vae.cerr &
-CUDA_VISIBLE_DEVICES=0 nohup python autoencoder.py --nb_epoch 100 --output disc_2_vae --dataset celeba --model vae_conv --intermediate_dims 1000 --latent_dim 512 --frequency 10 > disc_2_vae.cout 2> disc_2_vae.cerr &
+CUDA_VISIBLE_DEVICES=1 nohup python autoencoder.py --nb_epoch 1000 --depth 3 --output disc_3_1000_d3_vae --dataset celeba --model vae_conv --intermediate_dims 1000 --latent_dim 512 --frequency 10 > disc_3_1000_d3_vae.cout 2> disc_3_1000_d3_vae.cerr &

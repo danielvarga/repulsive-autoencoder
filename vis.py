@@ -5,7 +5,7 @@ import numpy as np
 import math
 
 import grid_layout
-
+from keras.models import model_from_json
 
 
 # TODO Add optional arg y_test for labeling.
@@ -106,7 +106,6 @@ def displayInterp(x_train, x_test, batch_size, dim, height, width, encoder, gene
     interpGrid = grid_layout.create_mine_grid(gridSize, gridSize, dim, gridSize-1, anchors, True, False) # TODO different interpolations for different autoencoders!!!
     n = interpGrid.shape[0]
     interpGrid = np.repeat(interpGrid, (batch_size//n) + 1, axis=0)[0:batch_size]
-    print(interpGrid.shape)
     predictedGrid = generator.predict(interpGrid, batch_size=batch_size)
     predictedGrid = predictedGrid[0:n]
 
@@ -116,3 +115,23 @@ def displayInterp(x_train, x_test, batch_size, dim, height, width, encoder, gene
     grid = np.concatenate([prologGrid, predictedGrid])
     reshapedGrid = grid.reshape([grid.shape[0], height, width])
     plotImages(reshapedGrid, gridSize, gridSize, name)
+
+def saveModel(model, filePrefix):
+    jsonFile = filePrefix + ".json"
+    weightFile = filePrefix + ".h5"
+    with open(filePrefix + ".json", "w") as json_file:
+        json_file.write(model.to_json())
+    model.save_weights(weightFile)
+    print "Saved model to files {}, {}".format(jsonFile, weightFile)
+
+def loadModel(filePrefix):
+    jsonFile = filePrefix + ".json"
+    weightFile = filePrefix + ".h5"
+    jFile = open(jsonFile, 'r')
+    loaded_model_json = jFile.read()
+    jFile.close()
+    model = model_from_json(loaded_model_json)
+    model.load_weights(weightFile)
+    print "Loaded model from files {}, {}".format(jsonFile, weightFile)
+    return model
+    

@@ -67,7 +67,7 @@ class DenseDecoder(Decoder):
         return decoder_input, x_decoded, _x_decoded
 
 
-def build_model(batch_size, original_dim, dense_encoder, latent_dim, dense_decoder, nonvariational=False, spherical=False):
+def build_model(batch_size, original_dim, dense_encoder, latent_dim, dense_decoder, nonvariational=False, spherical=False, convolutional=False):
     x = Input(batch_shape=(batch_size, original_dim))
     h = dense_encoder(x)
     if nonvariational:
@@ -92,7 +92,7 @@ def build_model(batch_size, original_dim, dense_encoder, latent_dim, dense_decod
     generator = Model(decoder_input, _x_decoded)
     if not nonvariational: assert not spherical
 
-    loss, metrics = loss_factory(nonvariational, spherical, vae, 3, original_dim, latent_layers) # todo this 3 number should not be burned in here
+    loss, metrics = loss_factory(nonvariational, spherical, convolutional, vae, original_dim, latent_layers)
     optimizer = RMSprop(lr=0.001)
     vae.compile(optimizer=optimizer, loss=loss, metrics=metrics)
 
@@ -109,7 +109,7 @@ def spherical_sampler(batch_size, latent_dim):
     return z_sample
 
 
-def loss_factory(nonvariational,spherical, model, layer_count, original_dim, layers):
+def loss_factory(nonvariational, spherical, convolutional, model, original_dim, layers):
     def xent_loss(x, x_decoded):
         loss = original_dim * objectives.binary_crossentropy(x, x_decoded)
         return K.mean(loss)
@@ -123,15 +123,25 @@ def loss_factory(nonvariational,spherical, model, layer_count, original_dim, lay
         loss = 0.5 * K.sum(-1 - layers[1] + K.exp(layers[1]), axis=-1)
         return K.mean(loss)
     def layerwise_loss(x, x_decoded):
-        loss = 0
         model_nodes = model.nodes_by_depth
-        for i in range(layer_count):
-            encoder_output = model_nodes[i][0].output_tensors[0]
-            decoder_output = model_nodes[len(model_nodes)-i-1][0].output_tensors[0]
+        encOutputs = []
+        decInputs = []
+        for j in reversed(range(len(model_nodes))):
+            node = model_nodes[j][0]
+            outLayer = node.outbound_layer
+            if outLayer.name.find("dec_conv") != -1:
+                decInputs.append(node.input_tensors[0])
+            if outLayer.name.find("enc_act") != -1:
+                encOutputs.append(node.output_tensors[0])
+
+        loss = 0
+        for i in range(len(encOutputs)):
+            encoder_output = encOutputs[i]
+            decoder_input = decInputs[len(decInputs)-1-i]
             enc_shape = K.int_shape(encoder_output)[1:]
-            dec_shape = K.int_shape(decoder_output)[1:]
+            dec_shape = K.int_shape(decoder_input)[1:]
             assert enc_shape == dec_shape, "encoder ({}) - decoder ({}) shape mismatch at layer {}".format(enc_shape, dec_shape, i)
-            current_loss = original_dim * objectives.mean_squared_error(encoder_output, decoder_output)
+            current_loss = original_dim * K.mean(K.batch_flatten(K.square(decoder_input - encoder_output)), axis=-1)
             loss += current_loss
         return 0.1 * K.mean(loss)
 
@@ -140,8 +150,8 @@ def loss_factory(nonvariational,spherical, model, layer_count, original_dim, lay
         metrics.append(size_loss)
     if not nonvariational:
         metrics.append(variance_loss)
-
-#    metrics.append(layerwise_loss)
+    if convolutional:
+        metrics.append(layerwise_loss)
     
     def lossFun(x, x_decoded):
         loss = 0

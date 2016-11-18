@@ -85,7 +85,7 @@ else:
     assert False, "model type %s not yet implemented, please be patient." % args.model
 
 
-vae, encoder, generator = model.build_model(batch_size, original_dim, enc, args.latent_dim, dec,
+vae, encoder, encoder_var, generator = model.build_model(batch_size, original_dim, enc, args.latent_dim, dec,
                                             nonvariational=nonvariational, spherical=spherical, convolutional=convolutional)
 
 vae.summary()
@@ -107,6 +107,7 @@ vae.fit(x_train, x_train,
 
 vis.saveModel(vae, args.prefix + "_model")
 vis.saveModel(encoder, args.prefix + "_encoder")
+vis.saveModel(encoder_var, args.prefix + "_encoder_var")
 vis.saveModel(generator, args.prefix + "_generator")
 
 #vae.save("model_%s.h5" % args.prefix)

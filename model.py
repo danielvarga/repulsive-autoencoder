@@ -75,15 +75,16 @@ def build_model(batch_size, original_dim, dense_encoder, latent_dim, dense_decod
         if spherical:
             z = Lambda(lambda z_unnormed: K.l2_normalize(z_unnormed, axis=-1))([z])
         encoder = Model(x, z)
+        encoder_var = Model(x,z) # this is not used anywhere
         latent_layers = (z)
     else:
         assert not spherical, "Don't know how to normalize ellipsoids."
 
         z_mean, z_log_var = add_variational(h, latent_dim)
-        encoder = Model(x, z_mean)
         latent_layers = (z_mean, z_log_var)
         z = add_sampling(z_mean, z_log_var, batch_size, latent_dim)
-
+        encoder = Model(x, z_mean)
+        encoder_var = Model(x,z_log_var)
     decoder_input, x_decoded, _x_decoded = dense_decoder(z)
 
     # build autoencoder model
@@ -97,7 +98,7 @@ def build_model(batch_size, original_dim, dense_encoder, latent_dim, dense_decod
     vae.compile(optimizer=optimizer, loss=loss, metrics=metrics)
 
 
-    return vae, encoder, generator
+    return vae, encoder, encoder_var, generator
 
 
 def gaussian_sampler(batch_size, latent_dim):

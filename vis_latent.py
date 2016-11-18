@@ -3,6 +3,10 @@ matplotlib.use('Agg')
 import numpy as np
 import numpy.linalg
 import matplotlib.pyplot as plt
+from matplotlib.offsetbox import OffsetImage, AnnotationBbox
+from PIL import Image
+import data
+from matplotlib import cm
 
 directory = "/home/zombori/latent/"
 model = "vae_var_100"
@@ -21,9 +25,36 @@ working_mask = (center_variances > 0.2)
 relevant_mean = working_mask * mean
 irrelevant_variance = (1 - working_mask) * var
 
+fig, ax = plt.subplots()
+
+if ax is None:
+    ax = plt.gca()
+
 c1 = np.sum(working_mask * var, axis=1) / np.sum(working_mask)
 c2 = np.sum(irrelevant_variance, axis=1) / np.sum(1-working_mask)
+
+(x_train, x_test), (height, width) = data.load("celeba")
+
+
+i = 0
+for x, y in zip(c1, c2):
+    i = i + 1
+    if i > 300:
+	continue
+    im_a = x_train[i-1].reshape(72, 60)
+    image = Image.fromarray(im_a)
+    im = OffsetImage(image, zoom=0.5, cmap=cm.gray)
+    ab = AnnotationBbox(im, (x, y), xycoords='data', frameon=False)
+    ax.add_artist(ab)
+
+ax.autoscale()
 plt.scatter(c1, c2)
+
+
+plt.show()
+
+#quit()
+
 plt.savefig("relevant_var_irrelevant_var.png")
 
 

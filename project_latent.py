@@ -1,5 +1,4 @@
 import matplotlib
-matplotlib.use('Agg')
 import numpy as np
 import numpy.linalg
 from sklearn.random_projection import GaussianRandomProjection
@@ -18,39 +17,59 @@ import model
 #generator = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/nvae_baseline_200_generator")
 #batch_size = 1000
 
-
-modelname = "vae_var_100"
-prefix = "/home/zombori/latent/" + modelname
-encoder = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_encoder")
-encoder_var = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_encoder_var")
-generator = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_generator")
-batch_size = 1000
-
+#modelname = "vae_var_100"
+#prefix = "/home/zombori/latent/" + modelname
+#encoder = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_encoder")
+#encoder_var = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_encoder_var")
+#generator = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_generator")
+#batch_size = 1000
 
 #encoder = vis.loadModel("/home/csadrian/repulsive-autoencoder/models/disc_3_1000_d2_vae/disc_3_1000_d2_vae_encoder")
 #generator = vis.loadModel("/home/csadrian/repulsive-autoencoder/models/disc_3_1000_d2_vae/disc_3_1000_d2_vae_generator")
 #batch_size = 250
 
+shape = (72, 60)
+
+# encoder = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/vae_baseline_300_encoder")
+# generator = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/vae_baseline_300_generator")
+# batch_size = 1000
+
+# encoder = vis.loadModel("/home/csadrian/repulsive-autoencoder/models/disc_3_1000_d2_vae/disc_3_1000_d2_vae_encoder")
+# generator = vis.loadModel("/home/csadrian/repulsive-autoencoder/models/disc_3_1000_d2_vae/disc_3_1000_d2_vae_generator")
+# batch_size = 250
+
 # encoder = vis.loadModel("/home/csadrian/repulsive-autoencoder/models/disc_3_1000_d3_vae/disc_3_1000_d3_vae_encoder")
 # generator = vis.loadModel("/home/csadrian/repulsive-autoencoder/models/disc_3_1000_d3_vae/disc_3_1000_d3_vae_generator")
+# batch_size = 250
+
+shape = (72, 64)
+encoder = vis.loadModel("/home/csadrian/repulsive-autoencoder/disc_l50_e300_d2_vae_encoder")
+generator = vis.loadModel("/home/csadrian/repulsive-autoencoder/disc_l50_e300_d2_vae_generator")
+batch_size = 250
 
 
-(x_train, x_test), (height, width) = data.load("celeba")
-latent_train_mean = encoder.predict(x_train, batch_size = batch_size)
-latent_test_mean = encoder.predict(x_test, batch_size = batch_size)
 
-latent_train_logvar = encoder_var.predict(x_train, batch_size = batch_size)
-latent_test_logvar = encoder_var.predict(x_test, batch_size = batch_size)
-
-latent_train = np.random.normal(size=latent_train_mean.shape) * np.exp(latent_train_logvar/2) + latent_train_mean
-latent_test = np.random.normal(size=latent_test_mean.shape) * np.exp(latent_test_logvar/2) + latent_test_mean
+(x_train, x_test), (height, width) = data.load("celeba", shape=shape)
+latent_train = encoder.predict(x_train, batch_size = batch_size)
+latent_test = encoder.predict(x_test, batch_size = batch_size)
 
 
-np.savez(prefix + "_train_latent_mean.npz", latent_train_mean)
-np.savez(prefix + "_train_latent_logvar.npz", latent_train_logvar)
-np.savez(prefix + "_train_latent.npz", latent_train)
+do_latent_variances = False
+if do_latent_variances:
+    latent_train_mean = encoder.predict(x_train, batch_size = batch_size)
+    latent_test_mean = encoder.predict(x_test, batch_size = batch_size)
 
-np.savez(prefix + "_test_latent.npz", latent_test)
+    latent_train_logvar = encoder_var.predict(x_train, batch_size = batch_size)
+    latent_test_logvar = encoder_var.predict(x_test, batch_size = batch_size)
+
+    latent_train = np.random.normal(size=latent_train_mean.shape) * np.exp(latent_train_logvar/2) + latent_train_mean
+    latent_test = np.random.normal(size=latent_test_mean.shape) * np.exp(latent_test_logvar/2) + latent_test_mean
+
+    np.savez(prefix + "_train_latent_mean.npz", latent_train_mean)
+    np.savez(prefix + "_train_latent_logvar.npz", latent_train_logvar)
+    np.savez(prefix + "_train_latent.npz", latent_train)
+
+    np.savez(prefix + "_test_latent.npz", latent_test)
 
 variances = np.var(latent_train, axis=0)
 working_mask = (variances > 0.2)

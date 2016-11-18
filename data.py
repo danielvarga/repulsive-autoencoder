@@ -4,11 +4,12 @@ import os.path
 from PIL import Image
 import numpy as np
 
-def load(dataset):
+def load(dataset, shape=None):
     if dataset == "mnist":
+        assert shape is None
         (x_train, x_test), (height, width) = load_mnist()
     elif dataset == "celeba":
-        (x_train, x_test), (height, width) = load_celeba()
+        (x_train, x_test), (height, width) = load_celeba(shape=shape)
     else:
         raise Exception("Invalid dataset: ", dataset)
 
@@ -22,9 +23,16 @@ def load_mnist():
     x_test = x_test.astype('float32') / 255.
     return (x_train, x_test), (28, 28)
 
-def load_celeba():
-    directory = "/home/daniel/autoencoding_beyond_pixels/datasets/celeba/img_align_celeba-60x72"
-    cacheFile = "/home/csadrian/datasets/celeba.npy"
+def load_celeba(shape=(72, 60)):
+    if shape==(72, 60):
+        directory = "/home/daniel/autoencoding_beyond_pixels/datasets/celeba/img_align_celeba-60x72"
+        cacheFile = "/home/csadrian/datasets/celeba.npy"
+    elif shape==(72, 64):
+        directory = "/home/daniel/autoencoding_beyond_pixels/datasets/celeba/img_align_celeba-64x72"
+        cacheFile = "/home/csadrian/datasets/celeba6472.npy"
+    else:
+        assert False, "We don't have a celeba dataset with this size. Maybe you forgot about height x width order?"
+
     trainSize = 100000
     testSize = 10000
     if os.path.isfile(cacheFile):
@@ -45,6 +53,8 @@ def load_celeba():
                 imgs.append(arr)
         input = np.array(imgs).astype(float) / 255
         np.save(cacheFile,input)
+
+    assert shape == (height, width), "Loaded dataset not compatible with prescribed shape."
 
     x_train = input[:trainSize]
     x_test = input[trainSize:trainSize+testSize]

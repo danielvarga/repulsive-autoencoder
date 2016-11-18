@@ -1,5 +1,5 @@
 import matplotlib
-matplotlib.use('Agg')
+matplotlib.use('TkAgg')
 import numpy as np
 import numpy.linalg
 import matplotlib.pyplot as plt
@@ -7,6 +7,9 @@ from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 from PIL import Image
 import data
 from matplotlib import cm
+from mpl_toolkits.mplot3d import Axes3D
+import sys
+
 
 directory = "/home/zombori/latent/"
 model = "vae_var_100"
@@ -16,11 +19,46 @@ logvar_file = directory + model + "_train_latent_logvar.npz"
 mean = np.load(mean_file)["arr_0"]
 logvar = np.load(logvar_file)["arr_0"]
 var = np.exp(logvar)
+center_variances = np.var(mean, axis=0)
+working_mask = (center_variances > 0.2)
+# print "\n".join(map(str, list(enumerate(working_mask))))
+
+print mean.shape, var.shape
 assert mean.shape == var.shape
 n, d = mean.shape
 
-center_variances = np.var(mean, axis=0)
-working_mask = (center_variances > 0.2)
+
+# Three relevant coords for vae_var_100:
+# coords = [9, 45, 209]
+# Two relevant and one irrelevant coord:
+coords = [9, 45, 10]
+mean_3d = mean[:500, coords]
+var_3d = var[:500, coords]
+sd_3d = np.sqrt(var_3d)
+
+fig = plt.figure()
+# ax = fig.add_subplot(111, projection='3d')
+ax = fig.gca(projection='3d')
+ax.scatter(mean_3d[:, 0], mean_3d[:, 1], mean_3d[:, 2])
+for i in range(len(mean_3d)):
+    ax.plot([mean_3d[i, 0]-sd_3d[i, 0], mean_3d[i, 0]+sd_3d[i, 0]],
+            [mean_3d[i, 1], mean_3d[i, 1]],
+            [mean_3d[i, 2], mean_3d[i, 2]], c="blue")
+    ax.plot([mean_3d[i, 0], mean_3d[i, 0]],
+            [mean_3d[i, 1]-sd_3d[i, 1], mean_3d[i, 1]+sd_3d[i, 1]],
+            [mean_3d[i, 2], mean_3d[i, 2]], c="red")
+    ax.plot([mean_3d[i, 0], mean_3d[i, 0]],
+            [mean_3d[i, 1], mean_3d[i, 1]],
+            [mean_3d[i, 2]-sd_3d[i, 2], mean_3d[i, 2]+sd_3d[i, 2]], c="green")
+
+#    ax.plot([mean_3d[i, 0], mean_3d[i, 0]+sd_3d[i, 0]],
+#            [mean_3d[i, 1], mean_3d[i, 1]+sd_3d[i, 1]],
+#            [mean_3d[i, 2], mean_3d[i, 2]+sd_3d[i, 2]])
+ax.set_xlim(-4, +4)
+ax.set_ylim(-4, +4)
+ax.set_zlim(-4, +4)
+plt.show()
+sys.exit()
 
 relevant_mean = working_mask * mean
 irrelevant_variance = (1 - working_mask) * var
@@ -40,7 +78,7 @@ i = 0
 for x, y in zip(c1, c2):
     i = i + 1
     if i > 300:
-	continue
+        continue
     im_a = x_train[i-1].reshape(72, 60)
     image = Image.fromarray(im_a)
     im = OffsetImage(image, zoom=0.5, cmap=cm.gray)
@@ -49,7 +87,6 @@ for x, y in zip(c1, c2):
 
 ax.autoscale()
 plt.scatter(c1, c2)
-
 
 plt.show()
 

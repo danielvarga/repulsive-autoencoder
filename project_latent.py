@@ -10,26 +10,47 @@ import data
 import model
 
 
-# encoder = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/vae_baseline_300_encoder")
-# generator = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/vae_baseline_300_generator")
-# batch_size = 1000
+#encoder = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/vae_baseline_300_encoder")
+#generator = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/vae_baseline_300_generator")
+#batch_size = 1000
 
-encoder = vis.loadModel("/home/csadrian/repulsive-autoencoder/models/disc_3_1000_d2_vae/disc_3_1000_d2_vae_encoder")
-generator = vis.loadModel("/home/csadrian/repulsive-autoencoder/models/disc_3_1000_d2_vae/disc_3_1000_d2_vae_generator")
-batch_size = 250
+#encoder = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/nvae_baseline_200_encoder")
+#generator = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/nvae_baseline_200_generator")
+#batch_size = 1000
+
+
+modelname = "vae_var_100"
+prefix = "/home/zombori/latent/" + modelname
+encoder = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_encoder")
+encoder_var = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_encoder_var")
+generator = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_generator")
+batch_size = 1000
+
+
+#encoder = vis.loadModel("/home/csadrian/repulsive-autoencoder/models/disc_3_1000_d2_vae/disc_3_1000_d2_vae_encoder")
+#generator = vis.loadModel("/home/csadrian/repulsive-autoencoder/models/disc_3_1000_d2_vae/disc_3_1000_d2_vae_generator")
+#batch_size = 250
 
 # encoder = vis.loadModel("/home/csadrian/repulsive-autoencoder/models/disc_3_1000_d3_vae/disc_3_1000_d3_vae_encoder")
 # generator = vis.loadModel("/home/csadrian/repulsive-autoencoder/models/disc_3_1000_d3_vae/disc_3_1000_d3_vae_generator")
 
 
 (x_train, x_test), (height, width) = data.load("celeba")
-latent_train = encoder.predict(x_train, batch_size = batch_size)
-latent_test = encoder.predict(x_test, batch_size = batch_size)
+latent_train_mean = encoder.predict(x_train, batch_size = batch_size)
+latent_test_mean = encoder.predict(x_test, batch_size = batch_size)
 
-print "latent_train.shape", latent_train.shape
+latent_train_logvar = encoder_var.predict(x_train, batch_size = batch_size)
+latent_test_logvar = encoder_var.predict(x_test, batch_size = batch_size)
 
-np.savez("latent_train.npz", latent_train)
-np.savez("latent_test.npz", latent_test)
+latent_train = np.random.normal(size=latent_train_mean.shape) * np.exp(latent_train_logvar/2) + latent_train_mean
+latent_test = np.random.normal(size=latent_test_mean.shape) * np.exp(latent_test_logvar/2) + latent_test_mean
+
+
+np.savez(prefix + "_train_latent_mean.npz", latent_train_mean)
+np.savez(prefix + "_train_latent_logvar.npz", latent_train_logvar)
+np.savez(prefix + "_train_latent.npz", latent_train)
+
+np.savez(prefix + "_test_latent.npz", latent_test)
 
 variances = np.var(latent_train, axis=0)
 working_mask = (variances > 0.2)
@@ -42,21 +63,16 @@ def masked_sampler(batch_size, latent_dim):
     z = np.random.normal(size=(batch_size, latent_dim))
     return z * working_mask
 
-
-vis.displayRandom(n=10, latent_dim=n, sampler=masked_sampler,
-        generator=generator, height=72, width=60, name="masked.png", batch_size=batch_size)
-
-
-
+vis.displayRandom(n=20, latent_dim=n, sampler=masked_sampler,
+        generator=generator, height=72, width=60, name=prefix + "_masked", batch_size=batch_size)
 
 
 projector = GaussianRandomProjection(n_components=2, random_state=81)
 projected_train = projector.fit_transform(latent_train)
 projected_test = projector.fit_transform(latent_test)
 
-#projected_train = latent_train[:, [0,1]]
-#projected_test = latent_test[:, [0,1]]
-prefix = "project_random"
+projected_train = latent_train[:, [0,1]]
+projected_test = latent_test[:, [0,1]]
 
 mymin = np.min((np.min(projected_train), np.min(projected_test)))
 mymax = np.max((np.max(projected_train), np.max(projected_test)))
@@ -66,6 +82,8 @@ plt.xlim(mymin,mymax)
 plt.ylim(mymin,mymax)
 ax1 = plt.subplot(121)
 ax1.hexbin( projected_train[:, 0], projected_train[:, 1])
+plt.xlim(mymin,mymax)
+plt.ylim(mymin,mymax)
 ax2 = plt.subplot(122)
 ax2.hexbin( projected_test[:, 0], projected_test[:, 1])
 plt.savefig(prefix + "_hexbin.png")
@@ -80,11 +98,11 @@ ax1 = plt.subplot(211)
 ax1.matshow(np.abs(corr_train), cmap='coolwarm')
 ax2 = plt.subplot(212)
 ax2.matshow(np.abs(corr_test), cmap='coolwarm')
-plt.savefig(prefix + "_cov.png")
+plt.savefig(prefix + "_corr.png")
 
 cov_train = np.cov(latent_train.T)
-
-print "cov_train eigvals = ", sorted(np.linalg.eigvals(cov_train).tolist(), reverse=True)
+eigvals = list(np.linalg.eigvals(cov_train).real)
+print "cov_train eigvals = ", sorted(eigvals, reverse=True)
 
 
 print "CS", cov_train.shape
@@ -103,18 +121,18 @@ ax1 = plt.subplot(211)
 ax1.matshow(np.abs(corr_train), cmap='coolwarm')
 ax2 = plt.subplot(212)
 ax2.matshow(np.abs(corr_learned), cmap='coolwarm')
-plt.savefig(prefix + "_cov_learned.png")
+plt.savefig(prefix + "_corr_learned.png")
 
 
-vis.displayRandom(n=50, latent_dim=n, sampler=model.gaussian_sampler,
-        generator=generator, height=72, width=60, name="standard.png", batch_size=batch_size)
+vis.displayRandom(n=20, latent_dim=n, sampler=model.gaussian_sampler,
+        generator=generator, height=72, width=60, name=prefix + "_standard", batch_size=batch_size)
 
 def oval_sampler(batch_size, latent_dim):
     z = np.random.normal(size=(batch_size, latent_dim))
     return cho.dot(z.T).T+mean_train
 
-vis.displayRandom(n=50, latent_dim=n, sampler=oval_sampler,
-        generator=generator, height=72, width=60, name="oval.png", batch_size=batch_size)
+vis.displayRandom(n=20, latent_dim=n, sampler=oval_sampler,
+        generator=generator, height=72, width=60, name=prefix + "_oval", batch_size=batch_size)
 
 
 do_tsne = True

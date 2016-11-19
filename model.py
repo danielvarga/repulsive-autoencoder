@@ -67,7 +67,8 @@ class DenseDecoder(Decoder):
         return decoder_input, x_decoded, _x_decoded
 
 
-def build_model(batch_size, original_dim, dense_encoder, latent_dim, dense_decoder, nonvariational=False, spherical=False, convolutional=False):
+def build_model(batch_size, original_dim, dense_encoder, latent_dim, dense_decoder,
+                nonvariational=False, spherical=False, convolutional=False, covariance=False):
     x = Input(batch_shape=(batch_size, original_dim))
     h = dense_encoder(x)
     if nonvariational:
@@ -76,7 +77,7 @@ def build_model(batch_size, original_dim, dense_encoder, latent_dim, dense_decod
             z = Lambda(lambda z_unnormed: K.l2_normalize(z_unnormed, axis=-1))([z])
         encoder = Model(x, z)
         encoder_var = Model(x,z) # this is not used anywhere
-        latent_layers = (z)
+        latent_layers = (z,)
     else:
         assert not spherical, "Don't know how to normalize ellipsoids."
 
@@ -88,17 +89,17 @@ def build_model(batch_size, original_dim, dense_encoder, latent_dim, dense_decod
     decoder_input, x_decoded, _x_decoded = dense_decoder(z)
 
     # build autoencoder model
-    vae = Model(x, x_decoded)
+    model = Model(x, x_decoded)
     # build a digit generator that can sample from the learned distribution
     generator = Model(decoder_input, _x_decoded)
     if not nonvariational: assert not spherical
 
-    loss, metrics = loss_factory(nonvariational, spherical, convolutional, vae, original_dim, latent_layers)
+    loss, metrics = loss_factory(model, original_dim, latent_layers,
+        nonvariational=nonvariational, spherical=spherical, convolutional=convolutional, covariance=covariance)
     optimizer = RMSprop(lr=0.001)
-    vae.compile(optimizer=optimizer, loss=loss, metrics=metrics)
+    model.compile(optimizer=optimizer, loss=loss, metrics=metrics)
 
-
-    return vae, encoder, encoder_var, generator
+    return model, encoder, encoder_var, generator
 
 
 def gaussian_sampler(batch_size, latent_dim):
@@ -110,7 +111,8 @@ def spherical_sampler(batch_size, latent_dim):
     return z_sample
 
 
-def loss_factory(nonvariational, spherical, convolutional, model, original_dim, layers):
+def loss_factory(model, original_dim, layers, nonvariational=False,
+                    spherical=False, convolutional=False, covariance=False):
     def xent_loss(x, x_decoded):
         loss = original_dim * objectives.binary_crossentropy(x, x_decoded)
         return K.mean(loss)
@@ -123,6 +125,11 @@ def loss_factory(nonvariational, spherical, convolutional, model, original_dim, 
     def variance_loss(x, x_decoded):
         loss = 0.5 * K.sum(-1 - layers[1] + K.exp(layers[1]), axis=-1)
         return K.mean(loss)
+    def covariance_loss(x, x_decoded):
+        z = layers[0]
+        z_centered = z - K.mean(z, axis=0)
+        loss = K.sum(K.square(K.eye(K.int_shape(z_centered)[1]) - K.dot(K.transpose(z_centered), z_centered)))
+        return loss
     def layerwise_loss(x, x_decoded):
         model_nodes = model.nodes_by_depth
         encOutputs = []
@@ -153,7 +160,9 @@ def loss_factory(nonvariational, spherical, convolutional, model, original_dim, 
         metrics.append(variance_loss)
     if convolutional:
         metrics.append(layerwise_loss)
-    
+    if covariance:
+        metrics.append(covariance_loss)
+
     def lossFun(x, x_decoded):
         loss = 0
         for metric in metrics:

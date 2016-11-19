@@ -85,8 +85,15 @@ else:
     assert False, "model type %s not yet implemented, please be patient." % args.model
 
 
+# Waiting to make this work.
+# covariance = True ; assert nonvariational ; assert not spherical
+covariance = False
+
 vae, encoder, encoder_var, generator = model.build_model(batch_size, original_dim, enc, args.latent_dim, dec,
-                                            nonvariational=nonvariational, spherical=spherical, convolutional=convolutional)
+                                            nonvariational=nonvariational,
+                                            spherical=spherical,
+                                            convolutional=convolutional,
+                                            covariance=covariance)
 
 vae.summary()
 

@@ -9,7 +9,8 @@ def load(dataset, shape=None):
         assert shape is None
         (x_train, x_test), (height, width) = load_mnist()
     elif dataset == "celeba":
-        (x_train, x_test), (height, width) = load_celeba(shape=shape)
+        # What's the pythonic way of doing this?
+        (x_train, x_test), (height, width) = load_celeba(shape=shape) if shape is not None else load_celeba()
     else:
         raise Exception("Invalid dataset: ", dataset)
 

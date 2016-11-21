@@ -19,7 +19,7 @@ import model
 #batch_size = 1000
 
 
-modelname = "vae_var_100"
+modelname = "vae_var_3"
 prefix = "/home/zombori/latent/" + modelname
 encoder = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_encoder")
 encoder_var = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_encoder_var")
@@ -67,31 +67,31 @@ vis.displayRandom(n=20, latent_dim=n, sampler=masked_sampler,
         generator=generator, height=72, width=60, name=prefix + "_masked", batch_size=batch_size)
 
 
-projector = GaussianRandomProjection(n_components=2, random_state=81)
-projected_train = projector.fit_transform(latent_train)
-projected_test = projector.fit_transform(latent_test)
+# projector = GaussianRandomProjection(n_components=2, random_state=81)
+# projected_train = projector.fit_transform(latent_train)
+# projected_test = projector.fit_transform(latent_test)
 
 projected_train = latent_train[:, [0,1]]
 projected_test = latent_test[:, [0,1]]
 
 mymin = np.min((np.min(projected_train), np.min(projected_test)))
 mymax = np.max((np.max(projected_train), np.max(projected_test)))
+dim = np.max(np.abs((mymin,mymax)))
+print "dim: ", mymin, mymax, dim
 
-plt.figure(figsize=(12,6))
-plt.xlim(mymin,mymax)
-plt.ylim(mymin,mymax)
+plt.figure(figsize=(14,6))
 ax1 = plt.subplot(121)
 ax1.hexbin( projected_train[:, 0], projected_train[:, 1])
-plt.xlim(mymin,mymax)
-plt.ylim(mymin,mymax)
+plt.xlim(-dim,dim)
+plt.ylim(-dim,dim)
 ax2 = plt.subplot(122)
 ax2.hexbin( projected_test[:, 0], projected_test[:, 1])
+plt.xlim(-dim,dim)
+plt.ylim(-dim,dim)
 plt.savefig(prefix + "_hexbin.png")
 
 corr_train = np.corrcoef(latent_train.T)
 corr_test = np.corrcoef(latent_test.T)
-
-
 
 plt.figure(figsize=(12,24))
 ax1 = plt.subplot(211)

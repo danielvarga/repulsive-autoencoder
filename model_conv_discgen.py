@@ -139,8 +139,8 @@ class ConvEncoder(Encoder):
 
 	layers = []
 
-	reshape = Reshape(self.image_dims)
-	layers.append(reshape)
+#	reshape = Reshape(self.image_dims)
+#	layers.append(reshape)
 
 	for d in range(self.depth):
 	    layers += discnet_encoder_drop(nb_filter=self.base_filter_num*(2**d), batch_size=self.batch_size)
@@ -210,7 +210,7 @@ class ConvDecoder(Decoder):
 	logistic = Activation("sigmoid")
 	layers.append(logistic)
 
-	layers.append(Flatten())
+#	layers.append(Flatten())
 
         # we instantiate these layers separately so as to reuse them both for reconstruction and generation
         decoder_input = Input(batch_shape=(self.batch_size, self.latent_dim,))

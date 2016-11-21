@@ -22,23 +22,27 @@ def latentScatter(encoder, x_test, batch_size, name):
 
 
 def plotImages(data, n_x, n_y, name):
-    height, width = data.shape[-2:]
-    height_inc = height+1
-    width_inc = width+1
+    if data.shape[3] == 1:
+        mode = "L"
+    else:
+        mode = "RGB"
+    (height, width, channel) = data.shape[1:]
+    height_inc = height + 1
+    width_inc = width + 1
     n = len(data)
 #    assert n <= n_x*n_y
     if n > n_x*n_y: n = n_x * n_y
 
     image_data = np.zeros(
-        (height_inc * n_y + 1, width_inc * n_x - 1),
+        (height_inc * n_y + 1, width_inc * n_x - 1, channel),
         dtype='uint8'
     )
     for idx in xrange(n):
         x = idx % n_x
         y = idx / n_x
-        sample = data[idx].reshape((height, width))
+        sample = data[idx]
         image_data[height_inc*y:height_inc*y+height, width_inc*x:width_inc*x+width] = 255*sample.clip(0, 0.99999)
-    img = Image.fromarray(image_data)
+    img = Image.fromarray(image_data,mode=mode)
     fileName = name + ".png"
     print "Creating file " + fileName
     img.save(fileName)
@@ -76,17 +80,17 @@ def displayImageManifold(n, latent_dim, generator, height, width, xdim, ydim, zd
     plotImages(images, n, 2*n, name)
 
 
-def displayRandom(n, latent_dim, sampler, generator, height, width, name, batch_size=32):
+def displayRandom(n, latent_dim, sampler, generator, original_shape, name, batch_size=32):
     images = []
     for i in range(n):
         for j in range(n):
             z_sample = sampler(batch_size, latent_dim)
             x_decoded = generator.predict(z_sample, batch_size=batch_size)
-            image = x_decoded[0].reshape(height, width)
+            image = x_decoded[0].reshape(original_shape)
             images.append(image)
     plotImages(np.array(images), n, n, name)
 
-def displaySet(imageBatch, n, generator, height, width, name):
+def displaySet(imageBatch, n, generator, original_shape, name):
     batchSize = imageBatch.shape[0]
     nsqrt = int(np.ceil(np.sqrt(n)))
     recons = generator.predict(imageBatch, batch_size=batchSize)
@@ -95,10 +99,10 @@ def displaySet(imageBatch, n, generator, height, width, name):
     for i in range(n):
         mergedSet[2*i] = imageBatch[i]
         mergedSet[2*i+1] = recons[i]
-    result = mergedSet.reshape([2*n,height,width])
+    result = mergedSet.reshape([2*n] + list(original_shape))
     plotImages(result, 2*nsqrt, nsqrt, name)
 
-def displayInterp(x_train, x_test, batch_size, dim, height, width, encoder, generator, gridSize, name):
+def displayInterp(x_train, x_test, batch_size, dim, original_shape, encoder, generator, gridSize, name):
     train_latent = encoder.predict(x_train[:batch_size], batch_size=batch_size)
     test_latent = encoder.predict(x_test[:batch_size], batch_size=batch_size)
     parallelogram_point = test_latent[0] + train_latent[1] - train_latent[0]
@@ -109,11 +113,11 @@ def displayInterp(x_train, x_test, batch_size, dim, height, width, encoder, gene
     predictedGrid = generator.predict(interpGrid, batch_size=batch_size)
     predictedGrid = predictedGrid[0:n]
 
-    prologGrid = np.zeros([gridSize,height*width])
+    prologGrid = np.zeros([gridSize] + list(x_train.shape[1:]))
     prologGrid[0:3] = [x_train[0],x_train[1], x_test[0]]
 
     grid = np.concatenate([prologGrid, predictedGrid])
-    reshapedGrid = grid.reshape([grid.shape[0], height, width])
+    reshapedGrid = grid.reshape([grid.shape[0]] + list(original_shape))
     plotImages(reshapedGrid, gridSize, gridSize, name)
 
 def saveModel(model, filePrefix):

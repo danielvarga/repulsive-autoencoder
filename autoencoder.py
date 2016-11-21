@@ -36,6 +36,7 @@ parser.add_argument('--model', dest="model", default="rae", help="Model to use: 
 parser.add_argument('--output', dest="prefix", help="File prefix for the output visualizations and models.")
 parser.add_argument('--depth', dest="depth", default=2, type=int, help="Depth of model_conv_discgen model.")
 parser.add_argument('--batch', dest="batch_size", default=1000, type=int, help="Batch size.")
+parser.add_argument('--color', dest="color", default=0, type=int, help="color(0/1)")
 
 args = parser.parse_args()
 
@@ -44,10 +45,15 @@ assert args.prefix is not None, "Please specify an output file prefix with the -
 assert args.model in ("rae", "vae", "nvae", "vae_conv", "nvae_conv", "vae_conv_sym", "nvae_conv_sym", "universal"), "Unknown model type."
 print "Training model of type %s" % args.model
 
-(x_train, x_test), (height, width) = data.load(args.dataset)
+if args.color == 1:
+    color = True
+else:
+    color = False
+
+(x_train, x_test) = data.load(args.dataset, color=color)
 
 batch_size = args.batch_size
-original_dim = x_test.shape[1]
+original_shape = x_test.shape[1:]
 intermediate_dims = map(int, args.intermediate_dims_string.split(","))
 
 # Using modules where normal people would use classes.
@@ -57,36 +63,43 @@ if args.model == "rae":
     spherical = True
     convolutional = False
     enc = model.DenseEncoder(intermediate_dims)
-    dec = model.DenseDecoder(args.latent_dim, intermediate_dims, original_dim)
+    dec = model.DenseDecoder(args.latent_dim, intermediate_dims, original_shape)
 elif args.model in ("vae", "nvae"):
     sampler = model.gaussian_sampler
     nonvariational = args.model=="nvae"
     spherical = False
     convolutional = False
     enc = model.DenseEncoder(intermediate_dims)
-    dec = model.DenseDecoder(args.latent_dim, intermediate_dims, original_dim)
+    dec = model.DenseDecoder(args.latent_dim, intermediate_dims, original_shape)
 elif args.model in ("vae_conv", "nvae_conv"):
     sampler = model.gaussian_sampler
     nonvariational = args.model=="nvae_conv"
     spherical = False
     convolutional = False
     base_filter_num = 32
-    enc = model_conv_discgen.ConvEncoder(depth=args.depth, latent_dim=args.latent_dim, intermediate_dims=intermediate_dims, image_dims=(72, 60, 1), batch_size=batch_size, base_filter_num=base_filter_num)
-    dec = model_conv_discgen.ConvDecoder(depth=args.depth, latent_dim=args.latent_dim, intermediate_dims=intermediate_dims, image_dims=(72, 60, 1), batch_size=batch_size, base_filter_num=base_filter_num)
+    enc = model_conv_discgen.ConvEncoder(depth=args.depth, latent_dim=args.latent_dim, intermediate_dims=intermediate_dims, image_dims=original_shape, batch_size=batch_size, base_filter_num=base_filter_num)
+    dec = model_conv_discgen.ConvDecoder(depth=args.depth, latent_dim=args.latent_dim, intermediate_dims=intermediate_dims, image_dims=original_shape, batch_size=batch_size, base_filter_num=base_filter_num)
 elif args.model in ("vae_conv_sym", "nvae_conv_sym"):
     sampler = model.gaussian_sampler
     nonvariational = args.model=="nvae_conv_sym"
     spherical = False
     convolutional = True
     base_filter_nums = (32, 32, 64)
-    enc = model_conv_symmetrical.ConvEncoder(args.depth, args.latent_dim, intermediate_dims, (72, 60, 1), base_filter_nums, batch_size)
-    dec = model_conv_symmetrical.ConvDecoder(args.depth, args.latent_dim, intermediate_dims, (72, 60, 1), base_filter_nums, batch_size)
+    enc = model_conv_symmetrical.ConvEncoder(args.depth, args.latent_dim, intermediate_dims, original_shape, base_filter_nums, batch_size)
+    dec = model_conv_symmetrical.ConvDecoder(args.depth, args.latent_dim, intermediate_dims, original_shape, base_filter_nums, batch_size)
 else:
     assert False, "model type %s not yet implemented, please be patient." % args.model
 
 
-vae, encoder, encoder_var, generator = model.build_model(batch_size, original_dim, enc, args.latent_dim, dec,
-                                            nonvariational=nonvariational, spherical=spherical, convolutional=convolutional)
+# Waiting to make this work.
+# covariance = True ; assert nonvariational ; assert not spherical
+covariance = False
+
+vae, encoder, encoder_var, generator = model.build_model(batch_size, original_shape, enc, args.latent_dim, dec,
+                                            nonvariational=nonvariational,
+                                            spherical=spherical,
+                                            convolutional=convolutional,
+                                            covariance=covariance)
 
 vae.summary()
 
@@ -94,7 +107,7 @@ cbs = []
 cbs.append(callbacks.get_lr_scheduler(args.nb_epoch))
 cbs.append(callbacks.imageDisplayCallback(
     x_train, x_test,
-    args.latent_dim, batch_size, height, width,
+    args.latent_dim, batch_size, original_shape,
     encoder, generator, sampler,
     args.prefix, args.frequency))
 
@@ -119,17 +132,17 @@ vis.saveModel(generator, args.prefix + "_generator")
 # vis.latentScatter(encoder, x_test, batch_size, args.prefix+"-fig1")
 
 # display 2D manifolds of images
-show_manifolds = False
-if show_manifolds:
-    for y in range(1, args.latent_dim-1):
-        vis.displayImageManifold(30, args.latent_dim, generator, height, width, 0, y, y+1, "%s-manifold%d" % (args.prefix, y), batch_size=batch_size)
+# show_manifolds = False
+# if show_manifolds:
+#     for y in range(1, args.latent_dim-1):
+#         vis.displayImageManifold(30, args.latent_dim, generator, height, width, 0, y, y+1, "%s-manifold%d" % (args.prefix, y), batch_size=batch_size)
 
 # display randomly generated images
-vis.displayRandom(15, args.latent_dim, sampler, generator, height, width, "%s-random" % args.prefix, batch_size=batch_size)
+vis.displayRandom(15, args.latent_dim, sampler, generator, original_shape, "%s-random" % args.prefix, batch_size=batch_size)
 
-vis.displaySet(x_test[:batch_size], 100, vae, height, width, "%s-test" % args.prefix)
-vis.displaySet(x_train[:batch_size], 100, vae, height, width, "%s-train" % args.prefix)
+vis.displaySet(x_test[:batch_size], 100, vae, original_shape, "%s-test" % args.prefix)
+vis.displaySet(x_train[:batch_size], 100, vae, original_shape, "%s-train" % args.prefix)
 
 # display image interpolation
-vis.displayInterp(x_train, x_test, batch_size, args.latent_dim, height, width, encoder, generator, 10, "%s-interp" % args.prefix)
+vis.displayInterp(x_train, x_test, batch_size, args.latent_dim, original_shape, encoder, generator, 10, "%s-interp" % args.prefix)
 

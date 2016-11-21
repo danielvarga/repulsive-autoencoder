@@ -16,7 +16,7 @@ def get_lr_scheduler(nb_epoch):
 class imageDisplayCallback(Callback):
     def __init__(self, 
                  x_train, x_test, 
-                 latent_dim, batch_size, height, width,
+                 latent_dim, batch_size, original_shape,
                  encoder, generator, sampler, 
                  name,
                  frequency,
@@ -25,8 +25,7 @@ class imageDisplayCallback(Callback):
         self.x_test = x_test
         self.latent_dim = latent_dim
         self.batch_size = batch_size
-        self.height = height
-        self.width = width
+        self.original_shape = original_shape
         self.encoder = encoder
         self.generator = generator
         self.sampler = sampler
@@ -38,7 +37,7 @@ class imageDisplayCallback(Callback):
         if (epoch+1) % self.frequency != 0:
             return
 
-        vis.displayRandom(15, self.latent_dim, self.sampler, self.generator, self.height, self.width, "%s-random-%i" % (self.name, epoch+1), batch_size=self.batch_size)
-        vis.displaySet(self.x_test[:self.batch_size], 100, self.model, self.height, self.width, "%s-test-%i" % (self.name,epoch+1))
-        vis.displaySet(self.x_train[:self.batch_size], 100, self.model, self.height, self.width, "%s-train-%i" % (self.name,epoch+1))
-        vis.displayInterp(self.x_train, self.x_test, self.batch_size, self.latent_dim, self.height, self.width, self.encoder, self.generator, 10, "%s-interp-%i" % (self.name,epoch+1))
+        vis.displayRandom(15, self.latent_dim, self.sampler, self.generator, self.original_shape, "%s-random-%i" % (self.name, epoch+1), batch_size=self.batch_size)
+        vis.displaySet(self.x_test[:self.batch_size], 100, self.model, self.original_shape, "%s-test-%i" % (self.name,epoch+1))
+        vis.displaySet(self.x_train[:self.batch_size], 100, self.model, self.original_shape, "%s-train-%i" % (self.name,epoch+1))
+        vis.displayInterp(self.x_train, self.x_test, self.batch_size, self.latent_dim, self.original_shape, self.encoder, self.generator, 10, "%s-interp-%i" % (self.name,epoch+1))

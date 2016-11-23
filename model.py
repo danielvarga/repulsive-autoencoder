@@ -130,6 +130,9 @@ def loss_factory(model, original_shape, layers, nonvariational=False,
     def variance_loss(x, x_decoded):
         loss = 0.5 * K.sum(-1 - layers[1] + K.exp(layers[1]), axis=-1)
         return K.mean(loss)
+    def gauss_uniform_kl_loss(x, x_decoded):
+        loss = 0.5 * K.sum(-1 - layers[1] - K.log(2*np.pi))
+        return K.mean(loss)
     def covariance_loss(x, x_decoded):
         z = layers[0]
         z_centered = z - K.mean(z, axis=0)

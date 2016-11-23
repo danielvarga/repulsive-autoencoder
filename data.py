@@ -46,8 +46,8 @@ def load_celeba(shape=(72, 60),color=False):
     else:
         assert False, "We don't have a celeba dataset with this size. Maybe you forgot about height x width order?"
 
-    trainSize = 100000
-    testSize = 10000
+    trainSize = 50000
+    testSize = 5000
     if os.path.isfile(cacheFile):
         input = np.load(cacheFile)
     else:

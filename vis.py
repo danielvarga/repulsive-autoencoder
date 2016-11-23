@@ -22,21 +22,19 @@ def latentScatter(encoder, x_test, batch_size, name):
 
 
 def plotImages(data, n_x, n_y, name):
-    if data.shape[3] == 1:
-        mode = "L"
-    else:
-        mode = "RGB"
     (height, width, channel) = data.shape[1:]
     height_inc = height + 1
     width_inc = width + 1
     n = len(data)
-#    assert n <= n_x*n_y
     if n > n_x*n_y: n = n_x * n_y
 
-    image_data = np.zeros(
-        (height_inc * n_y + 1, width_inc * n_x - 1, channel),
-        dtype='uint8'
-    )
+    if channel == 1:
+        mode = "L"
+        data = data[:,:,:,0]
+        image_data = np.zeros((height_inc * n_y + 1, width_inc * n_x - 1), dtype='uint8')
+    else:
+        mode = "RGB"
+        image_data = np.zeros((height_inc * n_y + 1, width_inc * n_x - 1, channel), dtype='uint8')
     for idx in xrange(n):
         x = idx % n_x
         y = idx / n_x
@@ -80,17 +78,25 @@ def displayImageManifold(n, latent_dim, generator, height, width, xdim, ydim, zd
     plotImages(images, n, 2*n, name)
 
 
-def displayRandom(n, latent_dim, sampler, generator, original_shape, name, batch_size=32):
+def displayRandom(n, x_train, latent_dim, sampler, generator, name, batch_size=32):
     images = []
     for i in range(n):
         for j in range(n):
             z_sample = sampler(batch_size, latent_dim)
             x_decoded = generator.predict(z_sample, batch_size=batch_size)
-            image = x_decoded[0].reshape(original_shape)
+            image = x_decoded[0].reshape(x_train.shape[1:])
             images.append(image)
-    plotImages(np.array(images), n, n, name)
+    images = np.array(images)
+    distToTrain = distanceMatrix(images.reshape([images.shape[0],-1]), x_train.reshape([x_train.shape[0],-1]))
+    distIndices = distToTrain.argmin(axis=0)
+    nearestTrain = x_train[distIndices]
+    images2 = []
+    for i in range(images.shape[0]):
+        images2.append(images[i])
+        images2.append(nearestTrain[i])
+    plotImages(np.array(images2), 2*n, n, name)
 
-def displaySet(imageBatch, n, generator, original_shape, name):
+def displaySet(imageBatch, n, generator, name):
     batchSize = imageBatch.shape[0]
     nsqrt = int(np.ceil(np.sqrt(n)))
     recons = generator.predict(imageBatch, batch_size=batchSize)
@@ -99,10 +105,10 @@ def displaySet(imageBatch, n, generator, original_shape, name):
     for i in range(n):
         mergedSet[2*i] = imageBatch[i]
         mergedSet[2*i+1] = recons[i]
-    result = mergedSet.reshape([2*n] + list(original_shape))
+    result = mergedSet.reshape([2*n] + list(imageBatch.shape[1:]))
     plotImages(result, 2*nsqrt, nsqrt, name)
 
-def displayInterp(x_train, x_test, batch_size, dim, original_shape, encoder, generator, gridSize, name):
+def displayInterp(x_train, x_test, batch_size, dim, encoder, generator, gridSize, name):
     train_latent = encoder.predict(x_train[:batch_size], batch_size=batch_size)
     test_latent = encoder.predict(x_test[:batch_size], batch_size=batch_size)
     parallelogram_point = test_latent[0] + train_latent[1] - train_latent[0]
@@ -117,7 +123,7 @@ def displayInterp(x_train, x_test, batch_size, dim, original_shape, encoder, gen
     prologGrid[0:3] = [x_train[0],x_train[1], x_test[0]]
 
     grid = np.concatenate([prologGrid, predictedGrid])
-    reshapedGrid = grid.reshape([grid.shape[0]] + list(original_shape))
+    reshapedGrid = grid.reshape([grid.shape[0]] + list(x_train.shape[1:]))
     plotImages(reshapedGrid, gridSize, gridSize, name)
 
 def saveModel(model, filePrefix):
@@ -139,3 +145,13 @@ def loadModel(filePrefix):
     print "Loaded model from files {}, {}".format(jsonFile, weightFile)
     return model
     
+
+# returns matrix M, such that M[i][j] is the distance between the j-th row in x and the i-th row in y
+def distanceMatrix(x, y):
+    xL2S = np.sum(x*x, axis=-1)
+    yL2S = np.sum(y*y, axis=-1)
+    xL2SM = np.tile(xL2S, (len(y), 1))
+    yL2SM = np.tile(yL2S, (len(x), 1))
+    squaredDistances = xL2SM + yL2SM.T - 2.0*y.dot(x.T)
+    distances = np.sqrt(squaredDistances+1e-6) # elementwise. +1e-6 is to supress sqrt-of-negative warning.
+    return distances

@@ -204,7 +204,7 @@ class ConvDecoder(Decoder):
 	    layers += discnet_decoder_drop(image_size=image_size, nb_filter=self.base_filter_num*(2**d), batch_size=self.batch_size)
 
 	# Make the picture
-	conv_out = Convolution2D(1, 1, 1, subsample=(1,1), border_mode="same")
+	conv_out = Convolution2D(self.image_dims[2], 1, 1, subsample=(1,1), border_mode="same")
         layers.append(conv_out)
 
 	logistic = Activation("sigmoid")

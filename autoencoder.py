@@ -42,7 +42,7 @@ args = parser.parse_args()
 
 assert args.prefix is not None, "Please specify an output file prefix with the --output arg."
 
-assert args.model in ("rae", "vae", "nvae", "vae_conv", "nvae_conv", "vae_conv_sym", "nvae_conv_sym", "universal"), "Unknown model type."
+assert args.model in ("ae", "rae", "vae", "nvae", "vae_conv", "nvae_conv", "vae_conv_sym", "nvae_conv_sym", "universal"), "Unknown model type."
 print "Training model of type %s" % args.model
 
 if args.color == 1:
@@ -57,7 +57,14 @@ original_shape = x_test.shape[1:]
 intermediate_dims = map(int, args.intermediate_dims_string.split(","))
 
 # Using modules where normal people would use classes.
-if args.model == "rae":
+if args.model == "ae":
+    sampler = model.gaussian_sampler
+    nonvariational = True
+    spherical = False
+    convolutional = False
+    enc = model.DenseEncoder(intermediate_dims)
+    dec = model.DenseDecoder(args.latent_dim, intermediate_dims, original_shape)
+elif args.model == "rae":
     sampler = model.spherical_sampler
     nonvariational = True
     spherical = True
@@ -107,7 +114,7 @@ cbs = []
 cbs.append(callbacks.get_lr_scheduler(args.nb_epoch))
 cbs.append(callbacks.imageDisplayCallback(
     x_train, x_test,
-    args.latent_dim, batch_size, original_shape,
+    args.latent_dim, batch_size,
     encoder, generator, sampler,
     args.prefix, args.frequency))
 
@@ -138,11 +145,11 @@ vis.saveModel(generator, args.prefix + "_generator")
 #         vis.displayImageManifold(30, args.latent_dim, generator, height, width, 0, y, y+1, "%s-manifold%d" % (args.prefix, y), batch_size=batch_size)
 
 # display randomly generated images
-vis.displayRandom(15, args.latent_dim, sampler, generator, original_shape, "%s-random" % args.prefix, batch_size=batch_size)
+vis.displayRandom(15, x_test, args.latent_dim, sampler, generator, "%s-random" % args.prefix, batch_size=batch_size)
 
-vis.displaySet(x_test[:batch_size], 100, vae, original_shape, "%s-test" % args.prefix)
-vis.displaySet(x_train[:batch_size], 100, vae, original_shape, "%s-train" % args.prefix)
+vis.displaySet(x_test[:batch_size], 100, vae, "%s-test" % args.prefix)
+vis.displaySet(x_train[:batch_size], 100, vae, "%s-train" % args.prefix)
 
 # display image interpolation
-vis.displayInterp(x_train, x_test, batch_size, args.latent_dim, original_shape, encoder, generator, 10, "%s-interp" % args.prefix)
+vis.displayInterp(x_train, x_test, batch_size, args.latent_dim, encoder, generator, 10, "%s-interp" % args.prefix)
 

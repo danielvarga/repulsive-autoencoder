@@ -22,6 +22,7 @@ do_latent_variances = True
 """
 
 # simple vae with dense encoder/decoder, 100 dim hidden space
+"""
 modelname = "vae_var_100"
 prefix = "/home/zombori/latent/" + modelname
 encoder = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_encoder")
@@ -30,6 +31,18 @@ generator = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + mode
 shape = (72, 60)
 batch_size = 1000
 do_latent_variances = True
+"""
+# conv vae, 200 dim hidden space, 200 epoch, color images, hidden variables have been sampled
+modelname = "vae_conv_dim200"
+prefix = "/home/zombori/latent/" + modelname
+encoder = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_encoder")
+encoder_var = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_encoder_var")
+generator = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_generator")
+shape = (72, 60)
+batch_size = 200
+do_latent_variances = True
+color = True
+
 
 #encoder = vis.loadModel("/home/csadrian/repulsive-autoencoder/models/disc_3_1000_d2_vae/disc_3_1000_d2_vae_encoder")
 #generator = vis.loadModel("/home/csadrian/repulsive-autoencoder/models/disc_3_1000_d2_vae/disc_3_1000_d2_vae_generator")
@@ -84,7 +97,7 @@ batch_size = 250
 do_latent_variances = True
 """
 
-(x_train, x_test), (height, width) = data.load("celeba", shape=shape)
+(x_train, x_test) = data.load("celeba", shape=shape, color=color)
 latent_train = encoder.predict(x_train, batch_size = batch_size)
 latent_test = encoder.predict(x_test, batch_size = batch_size)
 
@@ -107,6 +120,7 @@ if do_latent_variances:
 
 variances = np.var(latent_train, axis=0)
 working_mask = (variances > 0.2)
+print "Variances"
 print np.sum(working_mask), "/", working_mask.shape
 print np.histogram(variances)
 
@@ -116,8 +130,8 @@ def masked_sampler(batch_size, latent_dim):
     z = np.random.normal(size=(batch_size, latent_dim))
     return z * working_mask
 
-vis.displayRandom(n=20, latent_dim=n, sampler=masked_sampler,
-        generator=generator, height=72, width=60, name=prefix + "_masked", batch_size=batch_size)
+vis.displayRandom(n=20, x_train=x_train, latent_dim=n, sampler=masked_sampler,
+        generator=generator, name=prefix + "_masked", batch_size=batch_size)
 
 
 # projector = GaussianRandomProjection(n_components=2, random_state=81)
@@ -130,7 +144,6 @@ projected_test = latent_test[:, [0,1]]
 mymin = np.min((np.min(projected_train), np.min(projected_test)))
 mymax = np.max((np.max(projected_train), np.max(projected_test)))
 dim = np.max(np.abs((mymin,mymax)))
-print "dim: ", mymin, mymax, dim
 
 plt.figure(figsize=(14,6))
 ax1 = plt.subplot(121)
@@ -177,15 +190,15 @@ ax2.matshow(np.abs(corr_learned), cmap='coolwarm')
 plt.savefig(prefix + "_corr_learned.png")
 
 
-vis.displayRandom(n=20, latent_dim=n, sampler=model.gaussian_sampler,
-        generator=generator, height=72, width=60, name=prefix + "_standard", batch_size=batch_size)
+vis.displayRandom(n=20, x_train=x_train, latent_dim=n, sampler=model.gaussian_sampler,
+        generator=generator, name=prefix + "_standard", batch_size=batch_size)
 
 def oval_sampler(batch_size, latent_dim):
     z = np.random.normal(size=(batch_size, latent_dim))
     return cho.dot(z.T).T+mean_train
 
-vis.displayRandom(n=20, latent_dim=n, sampler=oval_sampler,
-        generator=generator, height=72, width=60, name=prefix + "_oval", batch_size=batch_size)
+vis.displayRandom(n=20, x_train=x_train, latent_dim=n, sampler=oval_sampler,
+        generator=generator, name=prefix + "_oval", batch_size=batch_size)
 
 
 do_tsne = True

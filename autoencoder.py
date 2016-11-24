@@ -49,8 +49,12 @@ if args.color == 1:
     color = True
 else:
     color = False
+if args.dataset == 'celeba':
+    shape = (72, 64)
+else:
+    shape = None
 
-(x_train, x_test) = data.load(args.dataset, color=color)
+(x_train, x_test) = data.load(args.dataset, shape=shape, color=color)
 
 batch_size = args.batch_size
 original_shape = x_test.shape[1:]
@@ -117,6 +121,7 @@ cbs.append(callbacks.imageDisplayCallback(
     args.latent_dim, batch_size,
     encoder, generator, sampler,
     args.prefix, args.frequency))
+cbs.append(callbacks.meanVarPlotCallback(x_train, batch_size, encoder, encoder_var, args.prefix))
 
 vae.fit(x_train, x_train,
         shuffle=True,

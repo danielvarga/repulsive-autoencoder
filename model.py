@@ -78,6 +78,7 @@ def build_model(batch_size, original_shape, dense_encoder, latent_dim, dense_dec
     x = Input(batch_shape=([batch_size] + list(original_shape)))
     h = dense_encoder(x)
     if nonvariational:
+        print "nvae!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
         z = add_nonvariational(h, latent_dim)
         if spherical:
             z = Lambda(lambda z_unnormed: K.l2_normalize(z_unnormed, axis=-1))([z])
@@ -147,6 +148,17 @@ def loss_factory(model, original_shape, layers, nonvariational=False,
         z_centered = z - K.mean(z, axis=0)
         loss = K.sum(K.square(K.eye(K.int_shape(z_centered)[1]) - K.dot(K.transpose(z_centered), z_centered)))
         return loss
+    # KL-divergence aka L2 activation loss on a random projection of the latent minibatch.
+    def projection_loss(x, x_decoded):
+        assert len(layers)==1, "Projection loss does not work with variance modeling."
+        z = layers[0]
+        _, latent_dim = K.int_shape(z)
+        rnd = K.random_normal(shape=(1, latent_dim), mean=0.)
+        rnd = K.l2_normalize(rnd, axis=-1) * latent_dim * 5 # * latent_dim because this is like sum not like mean.
+        scalars = K.dot(rnd, z) # shape: (batch_size, )
+        print "K.int_shape(scalar)", K.int_shape(scalars)
+        loss = K.mean(0.5 * K.square(scalars))
+        return loss
     def layerwise_loss(x, x_decoded):
         model_nodes = model.nodes_by_depth
         encOutputs = []
@@ -172,13 +184,16 @@ def loss_factory(model, original_shape, layers, nonvariational=False,
 
     metrics = [xent_loss]
     if not spherical:
-        metrics.append(size_loss)
+        # metrics.append(size_loss)
+        print "!!!!!!!!!!!!!!!!!!!!! Adding projection loss instead of size_loss, don't use this code unless you know what you're doing."
+        metrics.append(projection_loss)
     if not nonvariational:
         metrics.append(variance_loss)
     if convolutional:
         metrics.append(layerwise_loss)
     if covariance:
         metrics.append(covariance_loss)
+
 
     def lossFun(x, x_decoded):
         loss = 0

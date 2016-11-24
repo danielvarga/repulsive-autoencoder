@@ -155,3 +155,16 @@ def distanceMatrix(x, y):
     squaredDistances = xL2SM + yL2SM.T - 2.0*y.dot(x.T)
     distances = np.sqrt(squaredDistances+1e-6) # elementwise. +1e-6 is to supress sqrt-of-negative warning.
     return distances
+
+"""
+def edgeDetect(images):
+    (height, width, channel) = images.shape[1:]
+    horizontalEdges = np.zeros(images.shape)
+    horizontalEdges[:,:height-1,:,:] = images[:,:height-1,:,:] - images[:,1:,:,:]
+    verticalEdges = np.zeros(images.shape)
+    verticalEdges[:,:,:width-1:,:] = images[:,:,:width-1,:] - images[:,:,1:,:]    
+    diagonalEdges = np.zeros(images.shape)
+    diagonalEdges[:,:height-1,:width-1,:] = images[:,:height-1,:width-1,:] - images[:,1:,1:,:]
+    edges = horizontalEdges + verticalEdges + diagonalEdges
+    return edges
+"""

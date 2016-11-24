@@ -3,13 +3,13 @@ Standard VAE taken from https://github.com/fchollet/keras/blob/master/examples/v
 '''
 import numpy as np
 
-from keras.layers import Input, Dense, Lambda, Reshape, Flatten
+from keras.layers import Input, Dense, Lambda, Reshape, Flatten, Activation
 from keras.models import Model
 from keras import backend as K
 from keras import objectives
 from keras.datasets import mnist
 from keras.optimizers import *
-
+import activations
 
 class Encoder(object):
     pass
@@ -21,7 +21,8 @@ class DenseEncoder(Encoder):
     def __call__(self, x):
         h = Flatten()(x)
         for intermediate_dim in self.intermediate_dims:
-            h = Dense(intermediate_dim, activation='relu')(h)
+            h = Dense(intermediate_dim)(h)
+            h = Activation(activations.activation)(h)
         return h
 
 
@@ -58,9 +59,11 @@ class DenseDecoder(Decoder):
         h_decoded = z
         _h_decoded = decoder_input
         for intermediate_dim in reversed(self.intermediate_dims):
-            decoder_h = Dense(intermediate_dim, activation='relu')
-            h_decoded = decoder_h(h_decoded)    
+            decoder_h = Dense(intermediate_dim)
+            h_decoded = decoder_h(h_decoded)   
+            h_decoded = Activation(activations.activation)(h_decoded)
             _h_decoded = decoder_h(_h_decoded)
+            _h_decoded = Activation(activations.activation)(_h_decoded)
         decoder_top = Dense(np.prod(self.original_shape), activation='sigmoid', name="decoder_top")
         decoder_top_reshape = Reshape(self.original_shape)
         x_decoded = decoder_top(h_decoded)
@@ -119,6 +122,7 @@ def loss_factory(model, original_shape, layers, nonvariational=False,
     original_dim = np.prod(original_shape)
 
     def xent_loss(x, x_decoded):
+        print K.int_shape(x), "---", K.int_shape(x_decoded)
         loss = original_dim * objectives.binary_crossentropy(x, x_decoded)
         return K.mean(loss)
     def mse_loss(x, x_decoded):
@@ -133,6 +137,11 @@ def loss_factory(model, original_shape, layers, nonvariational=False,
     def gauss_uniform_kl_loss(x, x_decoded):
         loss = 0.5 * K.sum(-1 - layers[1] - K.log(2*np.pi))
         return K.mean(loss)
+    def edge_loss(x, x_decoded):
+        edge_x = edgeDetect(x, original_shape)
+        edge_x_decoded = edgeDetect(x_decoded, original_shape)
+        loss = original_dim * objectives.mean_squared_error(edge_x, edge_x_decoded)
+        return 10 * K.mean(loss)
     def covariance_loss(x, x_decoded):
         z = layers[0]
         z_centered = z - K.mean(z, axis=0)
@@ -177,3 +186,11 @@ def loss_factory(model, original_shape, layers, nonvariational=False,
             loss += metric(x, x_decoded)
         return loss
     return lossFun, metrics
+
+def edgeDetect(images, shape):
+    (width, height) = shape[:2]
+    verticalEdges   = images[:,:width-1,:height-1,:] - images[:,1:      ,:height-1,:]
+    horizontalEdges = images[:,:width-1,:height-1,:] - images[:,:width-1,1:       ,:]    
+    diagonalEdges   = images[:,:width-1,:height-1,:] - images[:,1:       ,1:      ,:]
+    edges = horizontalEdges + verticalEdges + diagonalEdges
+    return edges

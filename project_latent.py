@@ -33,12 +33,50 @@ batch_size = 1000
 do_latent_variances = True
 """
 # conv vae, 200 dim hidden space, 200 epoch, color images, hidden variables have been sampled
+"""
 modelname = "vae_conv_dim200"
 prefix = "/home/zombori/latent/" + modelname
 encoder = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_encoder")
 encoder_var = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_encoder_var")
 generator = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_generator")
 shape = (72, 60)
+batch_size = 200
+do_latent_variances = True
+color = True
+"""
+
+# dense vae, 600 dim hidden space, 200 epoch, color images, hidden variables have been sampled
+"""
+modelname = "vae_color_dim600"
+prefix = "/home/zombori/latent/" + modelname
+encoder = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_encoder")
+encoder_var = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_encoder_var")
+generator = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_generator")
+shape = (72, 64)
+batch_size = 200
+do_latent_variances = True
+color = True
+"""
+
+# dense nvae, 200 dim hidden space, 30 epoch, color images, hidden variables have been sampled, leaky relu
+"""
+modelname = "nvae_leakyrelu_dim200"
+prefix = "/home/zombori/latent/" + modelname
+encoder = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_encoder")
+encoder_var = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_encoder_var")
+generator = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_generator")
+shape = (72, 64)
+batch_size = 200
+do_latent_variances = True
+color = True
+"""
+# conv nvae, 200 dim hidden space, 100 epoch, color images, hidden variables have been sampled, L2 norm after edge detection
+modelname = "vae_conv_outline_dim200"
+prefix = "/home/zombori/latent/" + modelname
+encoder = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_encoder")
+encoder_var = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_encoder_var")
+generator = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_generator")
+shape = (72, 64)
 batch_size = 200
 do_latent_variances = True
 color = True
@@ -115,9 +153,17 @@ if do_latent_variances:
     np.savez(prefix + "_train_latent_mean.npz", latent_train_mean)
     np.savez(prefix + "_train_latent_logvar.npz", latent_train_logvar)
     np.savez(prefix + "_train_latent.npz", latent_train)
-
     np.savez(prefix + "_test_latent.npz", latent_test)
 
+    mean_variances = np.var(latent_train_mean, axis=0)
+    variance_means = np.mean(np.exp(latent_train_logvar), axis=0)
+    plt.scatter(mean_variances, variance_means)
+    plt.savefig(prefix+"_mvvm.png")
+    print "Mean variances"
+    print np.histogram(mean_variances)    
+    variances = np.var(latent_train, axis=0)
+    
+    
 variances = np.var(latent_train, axis=0)
 working_mask = (variances > 0.2)
 print "Variances"

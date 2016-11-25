@@ -1,3 +1,5 @@
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from keras.callbacks import LearningRateScheduler, Callback
 import numpy as np
@@ -57,5 +59,7 @@ class meanVarPlotCallback(Callback):
         mean_variances = np.var(latent_train_mean, axis=0)
         variance_means = np.mean(np.exp(latent_train_logvar), axis=0)
         plt.scatter(mean_variances, variance_means)
+        plt.xlim(-1, 12)
+        plt.ylim(-1, 3)
         plt.savefig("{}_mvvm_{}.png".format(self.name,epoch+1))
         

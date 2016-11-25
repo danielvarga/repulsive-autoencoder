@@ -11,15 +11,14 @@ from keras import objectives
 from keras.datasets import mnist
 from keras.optimizers import *
 from keras.regularizers import l1, l2
-
 import tensorflow as tf
-
+import activations
 
 add_tables=[]
 decoder_layers = []
 
 
-def discnet_encoder_drop(nb_filter=32, act="relu", weights_init=None, biases_init=None, use_bias=False, wd=0.003, batch_size=32):
+def discnet_encoder_drop(nb_filter=32, act=activations.activation, weights_init=None, biases_init=None, use_bias=False, wd=0.003, batch_size=32):
 
     if weights_init is None:
 	#weights_init = normal(shape, scale)
@@ -71,7 +70,7 @@ def discnet_encoder_drop(nb_filter=32, act="relu", weights_init=None, biases_ini
 
 
 
-def discnet_decoder_drop(image_size, nb_filter=32, act="relu", weights_init=None, biases_init=None, use_bias=False, wd=0.003, batch_size=32):
+def discnet_decoder_drop(image_size, nb_filter=32, act=activations.activation, weights_init=None, biases_init=None, use_bias=False, wd=0.003, batch_size=32):
 
     if weights_init is None:
 	#weights_init = normal(shape, scale)
@@ -158,7 +157,7 @@ class ConvEncoder(Encoder):
 	    bn = BatchNormalization(mode=2)
 	    layers.append(bn)
 
-	    act = Activation("relu")
+	    act = Activation(activations.activation)
 	    layers.append(act)
 
 
@@ -192,8 +191,9 @@ class ConvDecoder(Decoder):
 
 	intermediate_dims = self.intermediate_dims + [self.encoder_filters]
         for dim in intermediate_dims:
-	    dense = Dense(dim, activation="relu")
+	    dense = Dense(dim)
 	    layers.append(dense)
+            layers.append(Activation(activations.activation))
 
         image_size = (self.image_dims[0]//(2**(self.depth)), self.image_dims[1]//(2**(self.depth)), self.base_filter_num * (2**(self.depth-1)))
 	layers.append(Reshape(image_size))

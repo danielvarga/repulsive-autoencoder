@@ -58,20 +58,9 @@ do_latent_variances = True
 color = True
 """
 
-# dense nvae, 200 dim hidden space, 30 epoch, color images, hidden variables have been sampled, leaky relu
-"""
-modelname = "nvae_leakyrelu_dim200"
-prefix = "/home/zombori/latent/" + modelname
-encoder = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_encoder")
-encoder_var = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_encoder_var")
-generator = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_generator")
-shape = (72, 64)
-batch_size = 200
-do_latent_variances = True
-color = True
-"""
-# conv nvae, 200 dim hidden space, 100 epoch, color images, hidden variables have been sampled, L2 norm after edge detection
-modelname = "vae_conv_outline_dim200"
+# conv vae, 200 dim hidden space, 30 epoch, color images, hidden variables have been sampled, leaky relu
+
+modelname = "vae_conv_leaky_dim200"
 prefix = "/home/zombori/latent/" + modelname
 encoder = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_encoder")
 encoder_var = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_encoder_var")
@@ -81,6 +70,18 @@ batch_size = 200
 do_latent_variances = True
 color = True
 
+# conv vae, 200 dim hidden space, 100 epoch, color images, hidden variables have been sampled, L2 norm after edge detection
+"""
+modelname = "vae_conv_outline_dim200"
+prefix = "/home/zombori/latent/" + modelname
+encoder = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_encoder")
+encoder_var = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_encoder_var")
+generator = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_generator")
+shape = (72, 64)
+batch_size = 200
+do_latent_variances = True
+color = True
+"""
 
 #encoder = vis.loadModel("/home/csadrian/repulsive-autoencoder/models/disc_3_1000_d2_vae/disc_3_1000_d2_vae_encoder")
 #generator = vis.loadModel("/home/csadrian/repulsive-autoencoder/models/disc_3_1000_d2_vae/disc_3_1000_d2_vae_generator")

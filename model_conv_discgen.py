@@ -147,10 +147,9 @@ class ConvEncoder(Encoder):
 	layers.append(Flatten())
 
 	# Decoder MLP
-	intermediate_dims = [1000]
 	bn_axis = 3
 	## bn rect, 1st, linear 2nd act
-        for dim in intermediate_dims:
+        for dim in self.intermediate_dims:
 	    dense = Dense(dim)
 	    layers.append(dense)
 

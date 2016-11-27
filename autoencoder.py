@@ -26,7 +26,12 @@ import model
 import model_conv_discgen
 import model_conv_symmetrical
 
+import exp
+
 parser = argparse.ArgumentParser()
+
+parser.add_argument('ini_files', nargs='+', help="Ini files to use for configuration")
+
 parser.add_argument('--dataset', dest="dataset", default="mnist", help="Dataset to use: mnist/celeba")
 parser.add_argument('--nb_epoch', dest="nb_epoch", type=int, default=10, help="Number of epochs")
 parser.add_argument('--latent_dim', dest="latent_dim", type=int, default=3, help="Latent dimension")
@@ -38,7 +43,11 @@ parser.add_argument('--depth', dest="depth", default=2, type=int, help="Depth of
 parser.add_argument('--batch', dest="batch_size", default=1000, type=int, help="Batch size.")
 parser.add_argument('--color', dest="color", default=0, type=int, help="color(0/1)")
 
-args = parser.parse_args()
+args_param = parser.parse_args()
+
+args = exp.mergeParamsWithInis(args_param)
+
+print(args)
 
 assert args.prefix is not None, "Please specify an output file prefix with the --output arg."
 

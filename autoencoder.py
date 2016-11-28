@@ -69,7 +69,7 @@ else:
 
 batch_size = args.batch_size
 original_shape = x_test.shape[1:]
-intermediate_dims = map(int, args.intermediate_dims.split(","))
+intermediate_dims = map(int, str(args.intermediate_dims).split(","))
 
 # Using modules where normal people would use classes.
 if args.model == "ae":

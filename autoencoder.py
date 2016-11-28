@@ -30,7 +30,7 @@ import exp
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument('ini_files', nargs='*', help="Ini files to use for configuration")
+parser.add_argument('ini_file', nargs='*', help="Ini file to use for configuration")
 
 parser.add_argument('--dataset', dest="dataset", default="mnist", help="Dataset to use: mnist/celeba")
 parser.add_argument('--nb_epoch', dest="nb_epoch", type=int, default=10, help="Number of epochs")

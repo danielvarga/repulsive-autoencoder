@@ -45,7 +45,7 @@ def paramsFromConf(f):
         params[k] = v
     return params
 
-def mergeParamsWithInis(args_param, ini_files_param="ini_files"):
+def mergeParamsWithInis(args_param, ini_files_param="ini_file"):
 
     args = AttrDict()
 

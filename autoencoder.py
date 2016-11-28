@@ -35,17 +35,19 @@ parser.add_argument('ini_files', nargs='*', help="Ini files to use for configura
 parser.add_argument('--dataset', dest="dataset", default="mnist", help="Dataset to use: mnist/celeba")
 parser.add_argument('--nb_epoch', dest="nb_epoch", type=int, default=10, help="Number of epochs")
 parser.add_argument('--latent_dim', dest="latent_dim", type=int, default=3, help="Latent dimension")
-parser.add_argument('--intermediate_dims', dest="intermediate_dims_string", default="256", help="Intermediate dimensions")
+parser.add_argument('--intermediate_dims', dest="intermediate_dims", default="256", help="Intermediate dimensions")
 parser.add_argument('--frequency', dest="frequency", type=int, default=10, help="image saving frequency")
 parser.add_argument('--model', dest="model", default="rae", help="Model to use: rae/vae/nvae/vae_conv/nvae_conv/vae_conv_sym/nvae_conv_sym")
-parser.add_argument('--output', dest="prefix", help="File prefix for the output visualizations and models.")
+parser.add_argument('--prefix', dest="prefix", help="File prefix for the output visualizations and models.")
 parser.add_argument('--depth', dest="depth", default=2, type=int, help="Depth of model_conv_discgen model.")
-parser.add_argument('--batch', dest="batch_size", default=1000, type=int, help="Batch size.")
+parser.add_argument('--batch_size', dest="batch_size", default=1000, type=int, help="Batch size.")
 parser.add_argument('--color', dest="color", default=0, type=int, help="color(0/1)")
 
 args_param = parser.parse_args()
 
 args = exp.mergeParamsWithInis(args_param)
+if args.prefix:
+    exp.dumpParams(args, open(args.prefix + ".ini", "w"))
 
 print(args)
 
@@ -67,7 +69,7 @@ else:
 
 batch_size = args.batch_size
 original_shape = x_test.shape[1:]
-intermediate_dims = map(int, args.intermediate_dims_string.split(","))
+intermediate_dims = map(int, args.intermediate_dims.split(","))
 
 # Using modules where normal people would use classes.
 if args.model == "ae":

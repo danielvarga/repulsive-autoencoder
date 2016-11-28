@@ -55,11 +55,11 @@ def mergeParamsWithInis(args_param, ini_files_param="ini_file"):
         args[k] = args_param_dict[k]
 
     if args_param_dict[ini_files_param]:
-        for ini_file in args_param_dict[ini_files_param]:
-           args_ini_dict = paramsFromConf(file(ini_file))
-           for k in args_ini_dict:
-               if k not in args_param_dict:
-                   args[k] = args_ini_dict[k]
+	for ini_file in args_param_dict[ini_files_param]:
+    	    args_ini_dict = paramsFromConf(file(ini_file))
+    	    for k in args_ini_dict:
+		#if k not in args_param_dict:
+            	args[k] = args_ini_dict[k]
 
     return args
 

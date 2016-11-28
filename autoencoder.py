@@ -47,7 +47,7 @@ args_param = parser.parse_args()
 
 args = exp.mergeParamsWithInis(args_param)
 if args.prefix:
-    exp.dumpParams(args, open(args.prefix + ".ini", "w"))
+    exp.dumpParams(args, open(args.prefix + ".ini", "w+"))
 
 print(args)
 

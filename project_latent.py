@@ -8,6 +8,42 @@ import vis
 import data
 import model
 
+# rae, 200 dim hidden space, 200 epoch, bw images,
+modelname = "rae"
+prefix = "/home/zombori/latent/" + modelname
+encoder = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_encoder")
+encoder_var = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_encoder_var")
+generator = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_generator")
+shape = (72, 64)
+batch_size = 200
+do_latent_variances = False
+color = False
+
+# conv vae, 200 dim hidden space, 200 epoch, color images, xent loss has weight 100
+"""
+modelname = "vae_conv_xent1"
+prefix = "/home/zombori/latent/" + modelname
+encoder = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_encoder")
+encoder_var = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_encoder_var")
+generator = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_generator")
+shape = (72, 64)
+batch_size = 200
+do_latent_variances = True
+color = True
+"""
+
+# vae, 200 dim hidden space, 100 epoch, bw images, xent loss has weight 100
+"""
+modelname = "vae"
+prefix = "/home/zombori/latent/" + modelname
+encoder = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_encoder")
+encoder_var = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_encoder_var")
+generator = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_generator")
+shape = (72, 64)
+batch_size = 200
+do_latent_variances = True
+color = False
+"""
 
 # simple vae with dense encoder/decoder, 3 dim hidden space
 """
@@ -59,7 +95,7 @@ color = True
 """
 
 # conv vae, 200 dim hidden space, 30 epoch, color images, hidden variables have been sampled, leaky relu
-
+"""
 modelname = "vae_conv_leaky_dim200"
 prefix = "/home/zombori/latent/" + modelname
 encoder = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_encoder")
@@ -69,6 +105,7 @@ shape = (72, 64)
 batch_size = 200
 do_latent_variances = True
 color = True
+"""
 
 # conv vae, 200 dim hidden space, 100 epoch, color images, hidden variables have been sampled, L2 norm after edge detection
 """
@@ -169,7 +206,7 @@ variances = np.var(latent_train, axis=0)
 working_mask = (variances > 0.2)
 print "Variances"
 print np.sum(working_mask), "/", working_mask.shape
-print np.histogram(variances)
+print np.histogram(variances, 100)
 
 n = latent_train.shape[1]
 
@@ -237,17 +274,33 @@ ax2.matshow(np.abs(corr_learned), cmap='coolwarm')
 plt.savefig(prefix + "_corr_learned.png")
 
 
-vis.displayRandom(n=20, x_train=x_train, latent_dim=n, sampler=model.gaussian_sampler,
-        generator=generator, name=prefix + "_standard", batch_size=batch_size)
+# vis.displayRandom(n=20, x_train=x_train, latent_dim=n, sampler=model.spherical_sampler,
+#        generator=generator, name=prefix + "_standard", batch_size=batch_size)
 
 def oval_sampler(batch_size, latent_dim):
     z = np.random.normal(size=(batch_size, latent_dim))
-    return cho.dot(z.T).T+mean_train
+    z = cho.dot(z.T).T+mean_train
+#    z /= np.linalg.norm(z)
+    return z
 
+eigs = np.linalg.eig(cov_train)
+eigVal = eigs[0][0]
+eigVect = eigs[1][0]
+def eigval_sampler(batch_size, latent_dim):
+    x = np.linspace(-1.0, 1.0, num=batch_size)
+    xs = []
+    for i in range(batch_size):
+        xi = x[i] * eigVect * np.sqrt(eigVal) + mean_train
+        xs.append(xi)
+    print xs
+    return np.array(xs)
+
+vis.displayRandom(n=20, x_train=x_train, latent_dim=n, sampler=eigval_sampler,
+        generator=generator, name=prefix + "_eigval", batch_size=batch_size)
 vis.displayRandom(n=20, x_train=x_train, latent_dim=n, sampler=oval_sampler,
         generator=generator, name=prefix + "_oval", batch_size=batch_size)
 
-
+xxx
 do_tsne = True
 
 if do_tsne:

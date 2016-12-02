@@ -80,13 +80,37 @@ def displayImageManifold(n, latent_dim, generator, height, width, xdim, ydim, zd
     plotImages(images, n, 2*n, name)
 
 
+def displayPlane(x_train, latent_dim, plane, generator, name, batch_size=32, showNearest=False):
+    images = []
+    height, width, l_d = plane.shape
+    assert l_d == latent_dim
+    for y in range(height):
+        for x in range(width):
+            z_sample = np.tile(plane[y, x], (batch_size, 1)) # TODO Grossly inefficient
+            x_decoded = generator.predict(z_sample, batch_size=batch_size)
+            image = x_decoded[0].reshape(x_train.shape[1:])
+            images.append(image)
+    images = np.array(images)
+    if not showNearest:
+        plotImages(np.array(images), width, height, name)
+    else:
+        distToTrain = distanceMatrix(images.reshape([images.shape[0],-1]), x_train.reshape([x_train.shape[0],-1]))
+        distIndices = distToTrain.argmin(axis=0)
+        nearestTrain = x_train[distIndices]
+        images2 = []
+        for i in range(images.shape[0]):
+            images2.append(images[i])
+            images2.append(nearestTrain[i])
+        plotImages(np.array(images2), 2*width, height, name)
+
+
 def displayRandom(n, x_train, latent_dim, sampler, generator, name, batch_size=32, showNearest=False):
     images = []
     for i in range(n):
         for j in range(n):
             z_sample = sampler(batch_size, latent_dim)
             x_decoded = generator.predict(z_sample, batch_size=batch_size)
-            image = x_decoded[0].reshape(x_train.shape[1:])
+            image = x_decoded[0].reshape(x_train.shape[1:]) # TODO Grossly inefficient
             images.append(image)
     images = np.array(images)
     if not showNearest:

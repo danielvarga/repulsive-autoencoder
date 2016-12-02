@@ -9,8 +9,9 @@ import data
 import model
 
 # rae, 200 dim hidden space, 200 epoch, bw images,
+"""
 modelname = "rae"
-prefix = "/home/zombori/latent/" + modelname
+prefix = "tmp/latent/" + modelname
 encoder = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_encoder")
 encoder_var = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_encoder_var")
 generator = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_generator")
@@ -18,11 +19,11 @@ shape = (72, 64)
 batch_size = 200
 do_latent_variances = False
 color = False
+"""
 
 # conv vae, 200 dim hidden space, 200 epoch, color images, xent loss has weight 100
-"""
 modelname = "vae_conv_xent1"
-prefix = "/home/zombori/latent/" + modelname
+prefix = "tmp/latent/" + modelname
 encoder = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_encoder")
 encoder_var = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_encoder_var")
 generator = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_generator")
@@ -30,7 +31,7 @@ shape = (72, 64)
 batch_size = 200
 do_latent_variances = True
 color = True
-"""
+
 
 # vae, 200 dim hidden space, 100 epoch, bw images, xent loss has weight 100
 """
@@ -250,13 +251,13 @@ ax2 = plt.subplot(212)
 ax2.matshow(np.abs(corr_test), cmap='coolwarm')
 plt.savefig(prefix + "_corr.png")
 
-cov_train = np.cov(latent_train.T)
+cov_train = np.cov(latent_train_mean.T)
 eigvals = list(np.linalg.eigvals(cov_train).real)
 print "cov_train eigvals = ", sorted(eigvals, reverse=True)
 
 
 print "CS", cov_train.shape
-mean_train = np.mean(latent_train, axis=0)
+mean_train = np.mean(latent_train_mean, axis=0)
 print "MS", mean_train.shape
 cho = np.linalg.cholesky(cov_train)
 print "CHOS", cho.shape
@@ -283,25 +284,42 @@ def oval_sampler(batch_size, latent_dim):
 #    z /= np.linalg.norm(z)
     return z
 
-eigs = np.linalg.eig(cov_train)
-eigVal = eigs[0][0]
-eigVect = eigs[1][0]
-def eigval_sampler(batch_size, latent_dim):
-    x = np.linspace(-1.0, 1.0, num=batch_size)
+eigVals, eigVects = np.linalg.eig(cov_train)
+
+def eigval1d_grid(grid_size, latent_dim):
+    x = np.linspace(-2.0, 2.0, num=grid_size)
     xs = []
-    for i in range(batch_size):
-        xi = x[i] * eigVect * np.sqrt(eigVal) + mean_train
+    for i in range(grid_size):
+        xi = x[i] * eigVects[0] * np.sqrt(eigVals[0]) + mean_train
         xs.append(xi)
-    print xs
     return np.array(xs)
 
-vis.displayRandom(n=20, x_train=x_train, latent_dim=n, sampler=eigval_sampler,
+def eigval2d_grid(grid_size, latent_dim):
+    x = np.linspace(-2.0, 2.0, num=grid_size)
+    xs = []
+    for i in range(grid_size):
+        for j in range(grid_size):
+            d1 = eigVects[0] * np.sqrt(eigVals[0]) * x[i]
+            d2 = eigVects[1] * np.sqrt(eigVals[1]) * x[j]
+            xi = mean_train + d1 + d2
+            xs.append(xi)
+    return np.array(xs).reshape((grid_size, grid_size, latent_dim))
+
+grid_size=25
+# plane = eigval1d_grid(grid_size, n)
+# plane = plane.reshape((grid_size, 1, n))
+plane = eigval2d_grid(grid_size, n)
+
+vis.displayPlane(x_train=x_train, latent_dim=n, plane=plane,
         generator=generator, name=prefix + "_eigval", batch_size=batch_size)
+
 vis.displayRandom(n=20, x_train=x_train, latent_dim=n, sampler=oval_sampler,
         generator=generator, name=prefix + "_oval", batch_size=batch_size)
 
-xxx
-do_tsne = True
+
+
+
+do_tsne = False
 
 if do_tsne:
     from sklearn.manifold import TSNE

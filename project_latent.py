@@ -294,24 +294,25 @@ def eigval1d_grid(grid_size, latent_dim):
         xs.append(xi)
     return np.array(xs)
 
-def eigval2d_grid(grid_size, latent_dim):
-    x = np.linspace(-2.0, 2.0, num=grid_size)
+def eigval2d_grid(grid_size, latent_dim, eigIndex1=0, eigIndex2=1, radius=2.0):
+    x = np.linspace(-radius, radius, num=grid_size)
     xs = []
     for i in range(grid_size):
         for j in range(grid_size):
-            d1 = eigVects[0] * np.sqrt(eigVals[0]) * x[i]
-            d2 = eigVects[1] * np.sqrt(eigVals[1]) * x[j]
+            d1 = eigVects[eigIndex1] * np.sqrt(eigVals[0]) * x[i]
+            d2 = eigVects[eigIndex2] * np.sqrt(eigVals[1]) * x[j]
             xi = mean_train + d1 + d2
             xs.append(xi)
     return np.array(xs).reshape((grid_size, grid_size, latent_dim))
 
 grid_size=25
-# plane = eigval1d_grid(grid_size, n)
-# plane = plane.reshape((grid_size, 1, n))
-plane = eigval2d_grid(grid_size, n)
 
-vis.displayPlane(x_train=x_train, latent_dim=n, plane=plane,
-        generator=generator, name=prefix + "_eigval", batch_size=batch_size)
+# eigpairs = ((0, 1), (0, 2), (99, 100), (0, 101))
+eigpairs = ((2, 3), (0, 4), (110, 111), (0, 102))
+for eigIndex1, eigIndex2 in eigpairs:
+    plane = eigval2d_grid(grid_size, n, eigIndex1=eigIndex1, eigIndex2=eigIndex2, radius=4.0)
+    vis.displayPlane(x_train=x_train, latent_dim=n, plane=plane,
+        generator=generator, name=prefix + "_eigs%d-%d" % (eigIndex1, eigIndex2), batch_size=batch_size)
 
 vis.displayRandom(n=20, x_train=x_train, latent_dim=n, sampler=oval_sampler,
         generator=generator, name=prefix + "_oval", batch_size=batch_size)

@@ -106,12 +106,18 @@ def displayPlane(x_train, latent_dim, plane, generator, name, batch_size=32, sho
 
 def displayRandom(n, x_train, latent_dim, sampler, generator, name, batch_size=32, showNearest=False):
     images = []
+    cnt = n * n
+    cnt_aligned = (cnt // batch_size + 1) * batch_size
+    z_sample = sampler(cnt_aligned, latent_dim)
+    x_decoded = generator.predict(z_sample, batch_size=batch_size)
+    x_decoded = x_decoded[:cnt]
+    indx = 0
     for i in range(n):
         for j in range(n):
-            z_sample = sampler(batch_size, latent_dim)
-            x_decoded = generator.predict(z_sample, batch_size=batch_size)
-            image = x_decoded[0].reshape(x_train.shape[1:]) # TODO Grossly inefficient
+            image = x_decoded[indx].reshape(x_train.shape[1:])
             images.append(image)
+            indx += 1
+    assert indx == cnt
     images = np.array(images)
     if not showNearest:
         plotImages(np.array(images), n, n, name)

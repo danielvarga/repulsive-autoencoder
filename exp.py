@@ -1,4 +1,4 @@
-
+import os
 
 
 # Causes memory leak below python 2.7.3
@@ -8,7 +8,7 @@ class AttrDict(dict):
         self.__dict__ = self
 
 def dumpParams(params, ini_file):
-    if not os.path.exists(ini_file):
+    if not os.path.exists(os.path.dirname(ini_file)):
         os.makedirs(os.path.dirname(ini_file))
     f = open(ini_file, "w+")
     for k in sorted(params.keys()):

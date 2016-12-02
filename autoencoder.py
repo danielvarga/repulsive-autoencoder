@@ -27,6 +27,15 @@ import model_conv_discgen
 import model_conv_symmetrical
 
 import exp
+import os
+
+"""
+import tensorflow as tf
+from keras.backend.tensorflow_backend import set_session
+config = tf.ConfigProto()
+config.gpu_options.per_process_gpu_memory_fraction = 0.29
+set_session(tf.Session(config=config))
+"""
 
 parser = argparse.ArgumentParser()
 
@@ -47,7 +56,8 @@ args_param = parser.parse_args()
 
 args = exp.mergeParamsWithInis(args_param)
 if args.prefix:
-    exp.dumpParams(args, open(args.prefix + ".ini", "w+"))
+    ini_file = args.prefix + ".ini"
+    exp.dumpParams(args, ini_file)
 
 print(args)
 

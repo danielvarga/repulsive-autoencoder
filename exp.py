@@ -7,7 +7,10 @@ class AttrDict(dict):
         super(AttrDict, self).__init__(*args, **kwargs)
         self.__dict__ = self
 
-def dumpParams(params, f):
+def dumpParams(params, ini_file):
+    if not os.path.exists(ini_file):
+        os.makedirs(os.path.dirname(ini_file))
+    f = open(ini_file, "w+")
     for k in sorted(params.keys()):
         print >>f, k+"\t"+str(params[k])
 

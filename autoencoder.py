@@ -29,14 +29,6 @@ import model_conv_symmetrical
 import exp
 import os
 
-"""
-import tensorflow as tf
-from keras.backend.tensorflow_backend import set_session
-config = tf.ConfigProto()
-config.gpu_options.per_process_gpu_memory_fraction = 0.29
-set_session(tf.Session(config=config))
-"""
-
 parser = argparse.ArgumentParser()
 
 parser.add_argument('ini_file', nargs='*', help="Ini file to use for configuration")
@@ -51,6 +43,8 @@ parser.add_argument('--prefix', dest="prefix", help="File prefix for the output 
 parser.add_argument('--depth', dest="depth", default=2, type=int, help="Depth of model_conv_discgen model.")
 parser.add_argument('--batch_size', dest="batch_size", default=1000, type=int, help="Batch size.")
 parser.add_argument('--color', dest="color", default=0, type=int, help="color(0/1)")
+parser.add_argument('--xent_weight', dest="xent_weight", default=1, type=int, help="weight of the crossentropy loss")
+parser.add_argument('--memory_share', dest="memory_share", type=float, default=0.7, help="fraction of memory that can be allocated to this process")
 
 args_param = parser.parse_args()
 
@@ -65,6 +59,13 @@ assert args.prefix is not None, "Please specify an output file prefix with the -
 
 assert args.model in ("ae", "rae", "vae", "nvae", "vae_conv", "nvae_conv", "vae_conv_sym", "nvae_conv_sym", "universal"), "Unknown model type."
 print "Training model of type %s" % args.model
+
+import tensorflow as tf
+from keras.backend.tensorflow_backend import set_session
+config = tf.ConfigProto()
+config.gpu_options.per_process_gpu_memory_fraction = args.memory_share
+set_session(tf.Session(config=config))
+
 
 if args.color == 1:
     color = True
@@ -127,7 +128,12 @@ else:
 # covariance = True ; assert nonvariational ; assert not spherical
 covariance = False
 
+# weights to control the contribution of L2 loss on the image space (weightIm) and on the latent space (weightLat)
+weightIm = K.variable(args.xent_weight)
+weightLat = K.variable(0.0)
+
 vae, encoder, encoder_var, generator = model.build_model(batch_size, original_shape, enc, args.latent_dim, dec,
+                                            lossWeights=(weightIm, weightLat),
                                             nonvariational=nonvariational,
                                             spherical=spherical,
                                             convolutional=convolutional,
@@ -140,9 +146,9 @@ cbs.append(callbacks.get_lr_scheduler(args.nb_epoch))
 cbs.append(callbacks.imageDisplayCallback(
     x_train, x_test,
     args.latent_dim, batch_size,
-    encoder, generator, sampler,
-    args.prefix, args.frequency))
-cbs.append(callbacks.meanVarPlotCallback(x_train, batch_size, encoder, encoder_var, args.prefix))
+    encoder, encoder_var, generator, sampler,
+    "tmp/{}".format(args.prefix), args.frequency))
+# cbs.append(callbacks.weightSchedulerCallback(args.nb_epoch, weightIm, weightLat, 0.2, 0.8))
 
 vae.fit(x_train, x_train,
         shuffle=True,
@@ -155,11 +161,6 @@ vis.saveModel(vae, args.prefix + "_model")
 vis.saveModel(encoder, args.prefix + "_encoder")
 vis.saveModel(encoder_var, args.prefix + "_encoder_var")
 vis.saveModel(generator, args.prefix + "_generator")
-
-#vae.save("model_%s.h5" % args.prefix)
-#encoder.save("%s_encoder.h5" % args.prefix)
-#generator.save("%s_generator.h5" % args.prefix)
-
 
 # # display a 2D plot of the validation set in the latent space
 # vis.latentScatter(encoder, x_test, batch_size, args.prefix+"-fig1")
@@ -179,3 +180,7 @@ vis.displaySet(x_train[:batch_size], 100, vae, "%s-train" % args.prefix)
 # display image interpolation
 vis.displayInterp(x_train, x_test, batch_size, args.latent_dim, encoder, generator, 10, "%s-interp" % args.prefix)
 
+vis.plotMVhist(x_train, encoder, batch_size, "{}-mvhist.png".format(args.prefix))
+
+if encoder != encoder_var:
+    vis.plotMVVM(x_train, encoder, encoder_var, batch_size, "{}-mvvm.png".format(args.prefix))

@@ -219,6 +219,19 @@ vis.displayRandom(n=20, x_train=x_train, latent_dim=n, sampler=masked_sampler,
         generator=generator, name=prefix + "_masked", batch_size=batch_size)
 
 
+
+for focus_index in range(5): # Index of a specific sample
+    focus_latent_mean = latent_train_mean[focus_index]
+    focus_latent_logvar = latent_train_logvar[focus_index]
+
+    def single_gaussian_sampler(batch_size, latent_dim):
+        shape = [batch_size] + list(focus_latent_mean.shape)
+        return np.random.normal(size=shape) * np.exp(focus_latent_logvar/2) + focus_latent_mean
+
+    vis.displayRandom(n=10, x_train=x_train, latent_dim=n, sampler=single_gaussian_sampler,
+        generator=generator, name=prefix + "_singlesample%d" % focus_index, batch_size=batch_size)
+
+
 # projector = GaussianRandomProjection(n_components=2, random_state=81)
 # projected_train = projector.fit_transform(latent_train)
 # projected_test = projector.fit_transform(latent_test)
@@ -284,6 +297,7 @@ def oval_sampler(batch_size, latent_dim):
 #    z /= np.linalg.norm(z)
     return z
 
+
 eigVals, eigVects = np.linalg.eig(cov_train)
 
 def eigval1d_grid(grid_size, latent_dim):
@@ -294,25 +308,35 @@ def eigval1d_grid(grid_size, latent_dim):
         xs.append(xi)
     return np.array(xs)
 
-def eigval2d_grid(grid_size, latent_dim, eigIndex1=0, eigIndex2=1, radius=2.0):
+
+# elliptic==True samples from the Cholesky projected to the eigenvectors' plane.
+# elliptic==False samples from the same thing stretched to a circle.
+def eigval2d_grid(grid_size, latent_dim, eigIndex1=0, eigIndex2=1, radius=2.0, elliptic=True):
     x = np.linspace(-radius, radius, num=grid_size)
     xs = []
     for i in range(grid_size):
         for j in range(grid_size):
-            d1 = eigVects[eigIndex1] * np.sqrt(eigVals[0]) * x[i]
-            d2 = eigVects[eigIndex2] * np.sqrt(eigVals[1]) * x[j]
+            d1 = eigVects[eigIndex1] * np.sqrt(eigVals[eigIndex1]) * x[i]
+            if elliptic:
+                d2 = eigVects[eigIndex2] * np.sqrt(eigVals[eigIndex2]) * x[j]
+            else:
+                d2 = eigVects[eigIndex2] * np.sqrt(eigVals[eigIndex1]) * x[j] # eigIndex1!                
             xi = mean_train + d1 + d2
             xs.append(xi)
     return np.array(xs).reshape((grid_size, grid_size, latent_dim))
 
 grid_size=25
 
-# eigpairs = ((0, 1), (0, 2), (99, 100), (0, 101))
-eigpairs = ((2, 3), (0, 4), (110, 111), (0, 102))
+eigpairs =  [(0, 1), (0, 2), (99, 100), (0, 101)]
+eigpairs += [(2, 3), (0, 4), (110, 111), (0, 102)]
 for eigIndex1, eigIndex2 in eigpairs:
-    plane = eigval2d_grid(grid_size, n, eigIndex1=eigIndex1, eigIndex2=eigIndex2, radius=4.0)
+    print "eigenplane grid", eigIndex1, eigIndex2
+    plane = eigval2d_grid(grid_size, n, eigIndex1=eigIndex1, eigIndex2=eigIndex2, radius=4.0, elliptic=True)
     vis.displayPlane(x_train=x_train, latent_dim=n, plane=plane,
         generator=generator, name=prefix + "_eigs%d-%d" % (eigIndex1, eigIndex2), batch_size=batch_size)
+    plane = eigval2d_grid(grid_size, n, eigIndex1=eigIndex1, eigIndex2=eigIndex2, radius=4.0, elliptic=False)
+    vis.displayPlane(x_train=x_train, latent_dim=n, plane=plane,
+        generator=generator, name=prefix + "_eigs-nonell%d-%d" % (eigIndex1, eigIndex2), batch_size=batch_size)
 
 vis.displayRandom(n=20, x_train=x_train, latent_dim=n, sampler=oval_sampler,
         generator=generator, name=prefix + "_oval", batch_size=batch_size)

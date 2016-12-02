@@ -84,15 +84,16 @@ def displayPlane(x_train, latent_dim, plane, generator, name, batch_size=32, sho
     images = []
     height, width, l_d = plane.shape
     assert l_d == latent_dim
-    for y in range(height):
-        for x in range(width):
-            z_sample = np.tile(plane[y, x], (batch_size, 1)) # TODO Grossly inefficient
-            x_decoded = generator.predict(z_sample, batch_size=batch_size)
-            image = x_decoded[0].reshape(x_train.shape[1:])
-            images.append(image)
-    images = np.array(images)
+    cnt = height * width
+    cnt_aligned = (cnt // batch_size + 1) * batch_size
+    plane_flat = plane.reshape((cnt, latent_dim))
+    plane_tailed = np.copy(plane_flat).resize((cnt_aligned, latent_dim)) # Extra zeros added.
+    x_decoded = generator.predict(plane_tailed, batch_size=batch_size)
+    x_decoded = x_decoded[:cnt] # Extra zeros removed.
+    shape = [height, width] + list(x_train.shape[1:])
+    images = x_decoded.reshape(shape)
     if not showNearest:
-        plotImages(np.array(images), width, height, name)
+        plotImages(images, width, height, name)
     else:
         distToTrain = distanceMatrix(images.reshape([images.shape[0],-1]), x_train.reshape([x_train.shape[0],-1]))
         distIndices = distToTrain.argmin(axis=0)

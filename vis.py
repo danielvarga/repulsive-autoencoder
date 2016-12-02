@@ -80,7 +80,7 @@ def displayImageManifold(n, latent_dim, generator, height, width, xdim, ydim, zd
     plotImages(images, n, 2*n, name)
 
 
-def displayRandom(n, x_train, latent_dim, sampler, generator, name, batch_size=32):
+def displayRandom(n, x_train, latent_dim, sampler, generator, name, batch_size=32, showNearest=False):
     images = []
     for i in range(n):
         for j in range(n):
@@ -89,14 +89,17 @@ def displayRandom(n, x_train, latent_dim, sampler, generator, name, batch_size=3
             image = x_decoded[0].reshape(x_train.shape[1:])
             images.append(image)
     images = np.array(images)
-    distToTrain = distanceMatrix(images.reshape([images.shape[0],-1]), x_train.reshape([x_train.shape[0],-1]))
-    distIndices = distToTrain.argmin(axis=0)
-    nearestTrain = x_train[distIndices]
-    images2 = []
-    for i in range(images.shape[0]):
-        images2.append(images[i])
-        images2.append(nearestTrain[i])
-    plotImages(np.array(images2), 2*n, n, name)
+    if not showNearest:
+        plotImages(np.array(images), n, n, name)
+    else:
+        distToTrain = distanceMatrix(images.reshape([images.shape[0],-1]), x_train.reshape([x_train.shape[0],-1]))
+        distIndices = distToTrain.argmin(axis=0)
+        nearestTrain = x_train[distIndices]
+        images2 = []
+        for i in range(images.shape[0]):
+            images2.append(images[i])
+            images2.append(nearestTrain[i])
+        plotImages(np.array(images2), 2*n, n, name)
 
 def displaySet(imageBatch, n, generator, name):
     batchSize = imageBatch.shape[0]
@@ -157,6 +160,36 @@ def distanceMatrix(x, y):
     squaredDistances = xL2SM + yL2SM.T - 2.0*y.dot(x.T)
     distances = np.sqrt(squaredDistances+1e-6) # elementwise. +1e-6 is to supress sqrt-of-negative warning.
     return distances
+
+def plotMVVM(x_train, encoder, encoder_var, batch_size, name):
+    latent_train_mean = encoder.predict(x_train, batch_size = batch_size)
+    mean_variances = np.var(latent_train_mean, axis=0)
+    latent_train_logvar = encoder_var.predict(x_train, batch_size = batch_size)
+    variance_means = np.mean(np.exp(latent_train_logvar), axis=0)
+    xlim = (-1, 12)
+    ylim = (-1, 3)
+    plt.figure(figsize=(12,6))
+    plt.scatter(mean_variances, variance_means)
+    plt.xlim(xlim[0], xlim[1])
+    plt.ylim(ylim[0], ylim[1])
+    print "Creating file " + name
+    plt.savefig(name)
+
+def plotMVhist(x_train, encoder, batch_size, name):
+    latent_train_mean = encoder.predict(x_train, batch_size = batch_size)
+    mean_variances = np.var(latent_train_mean, axis=0)
+    histogram = np.histogram(mean_variances, 30)
+    mean_variances = histogram[1]
+    variance_means = [0] + list(histogram[0])
+    xlim = (0,np.max(mean_variances))
+    ylim = (0,np.max(variance_means))
+    plt.figure(figsize=(12,6))
+    plt.scatter(mean_variances, variance_means)
+    plt.xlim(xlim[0], xlim[1])
+    plt.ylim(ylim[0], ylim[1])
+    print "Creating file " + name
+    plt.savefig(name)
+
 
 """
 def edgeDetect(images):

@@ -43,7 +43,6 @@ def add_nonvariational(h, latent_dim):
     z = Dense(latent_dim)(h)
     return z
 
-
 class Decoder(object):
     pass # TODO interface
 
@@ -73,7 +72,7 @@ class DenseDecoder(Decoder):
         return decoder_input, x_decoded, _x_decoded
 
 
-def build_model(batch_size, original_shape, dense_encoder, latent_dim, dense_decoder,
+def build_model(batch_size, original_shape, dense_encoder, latent_dim, dense_decoder, lossWeights,
                 nonvariational=False, spherical=False, convolutional=False, covariance=False):
     x = Input(batch_shape=([batch_size] + list(original_shape)))
     h = dense_encoder(x)
@@ -82,7 +81,7 @@ def build_model(batch_size, original_shape, dense_encoder, latent_dim, dense_dec
         if spherical:
             z = Lambda(lambda z_unnormed: K.l2_normalize(z_unnormed, axis=-1))([z])
         encoder = Model(x, z)
-        encoder_var = Model(x,z) # this is not used anywhere
+        encoder_var = encoder
         latent_layers = (z,)
     else:
         assert not spherical, "Don't know how to normalize ellipsoids."
@@ -100,7 +99,7 @@ def build_model(batch_size, original_shape, dense_encoder, latent_dim, dense_dec
     generator = Model(decoder_input, _x_decoded)
     if not nonvariational: assert not spherical
 
-    loss, metrics = loss_factory(model, original_shape, latent_layers,
+    loss, metrics = loss_factory(model, original_shape, latent_layers, encoder, lossWeights,
         nonvariational=nonvariational, spherical=spherical, convolutional=convolutional, covariance=covariance)
     optimizer = RMSprop(lr=0.001)
     model.compile(optimizer=optimizer, loss=loss, metrics=metrics)
@@ -117,16 +116,24 @@ def spherical_sampler(batch_size, latent_dim):
     return z_sample
 
 
-def loss_factory(model, original_shape, layers, nonvariational=False,
+def loss_factory(model, original_shape, layers, encoder, lossWeights, nonvariational=False,
                     spherical=False, convolutional=False, covariance=False):
     original_dim = np.prod(original_shape)
 
     def xent_loss(x, x_decoded):
-        print K.int_shape(x), "---", K.int_shape(x_decoded)
         loss = original_dim * objectives.binary_crossentropy(x, x_decoded)
-        return K.mean(loss)
+        return lossWeights[0] * K.mean(loss)
     def mse_loss(x, x_decoded):
         loss = original_dim * objectives.mean_squared_error(x, x_decoded)
+        return lossWeights[0] * K.mean(loss)
+    def hidden_mse_loss(x, x_decoded):
+        hidden_x_decoded = encoder(x_decoded)
+        x = K.reshape(x, K.shape(x_decoded))
+        hidden_x = encoder(x)
+        loss= original_dim * objectives.mean_squared_error(hidden_x, hidden_x_decoded)
+        return lossWeights[1] * K.mean(loss)        
+    def mae_loss(x, x_decoded):
+        loss = original_dim * objectives.mean_absolute_error(x, x_decoded)
         return K.mean(loss)
     def size_loss(x, x_decoded):
         loss = 0.5 * K.sum(K.square(layers[0]), axis=-1)
@@ -141,7 +148,7 @@ def loss_factory(model, original_shape, layers, nonvariational=False,
         edge_x = edgeDetect(x, original_shape)
         edge_x_decoded = edgeDetect(x_decoded, original_shape)
         loss = original_dim * objectives.mean_squared_error(edge_x, edge_x_decoded)
-        return 10 * K.mean(loss)
+        return 100 * K.mean(loss)
     def covariance_loss(x, x_decoded):
         z = layers[0]
         z_centered = z - K.mean(z, axis=0)

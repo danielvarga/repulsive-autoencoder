@@ -87,10 +87,11 @@ def displayPlane(x_train, latent_dim, plane, generator, name, batch_size=32, sho
     cnt = height * width
     cnt_aligned = (cnt // batch_size + 1) * batch_size
     plane_flat = plane.reshape((cnt, latent_dim))
-    plane_tailed = np.copy(plane_flat).resize((cnt_aligned, latent_dim)) # Extra zeros added.
+    plane_tailed = np.copy(plane_flat)
+    plane_tailed.resize((cnt_aligned, latent_dim)) # Extra zeros added.
     x_decoded = generator.predict(plane_tailed, batch_size=batch_size)
     x_decoded = x_decoded[:cnt] # Extra zeros removed.
-    shape = [height, width] + list(x_train.shape[1:])
+    shape = [cnt] + list(x_train.shape[1:])
     images = x_decoded.reshape(shape)
     if not showNearest:
         plotImages(images, width, height, name)

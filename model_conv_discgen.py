@@ -36,7 +36,7 @@ def discnet_encoder_drop(nb_filter=32, act=activations.activation, weights_init=
     conv_1 = Convolution2D(nb_filter, 3, 3, subsample=(1,1), border_mode="same", W_regularizer=l2(wd), bias=use_bias)
     layers.append(conv_1)
 
-    bn_1 = BatchNormalization(axis=bn_axis)
+    bn_1 = BatchNormalization(axis=bn_axis, mode=2)
     layers.append(bn_1)
 
     act_1 = Activation(act)
@@ -45,7 +45,7 @@ def discnet_encoder_drop(nb_filter=32, act=activations.activation, weights_init=
     conv_2 = Convolution2D(nb_filter, 3, 3, subsample=(1,1), border_mode="same", W_regularizer=l2(wd), bias=use_bias)
     layers.append(conv_2)
 
-    bn_2 = BatchNormalization(axis=bn_axis)
+    bn_2 = BatchNormalization(axis=bn_axis, mode=2)
     layers.append(bn_2)
 
     act_2 = Activation(act)
@@ -59,7 +59,7 @@ def discnet_encoder_drop(nb_filter=32, act=activations.activation, weights_init=
                                            W_regularizer=l2(wd), bias=use_bias) # todo
     layers.append(deconv_3)
 
-    bn_3 = BatchNormalization(axis=bn_axis)
+    bn_3 = BatchNormalization(axis=bn_axis, mode=2)
     layers.append(bn_3)
 
     act_3 = Activation(act)

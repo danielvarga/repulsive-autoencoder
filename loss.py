@@ -24,7 +24,7 @@ def loss_factory(model, encoder, latent_layers, args):
         loss = 0.5 * K.sum(K.square(latent_layers[1]), axis=-1)
         return K.mean(loss)
     def variance_loss(x, x_decoded): # pushing the variance towards 1
-        loss = 0.5 * K.sum(-1 - layers[2] + K.exp(layers[2]), axis=-1)
+        loss = 0.5 * K.sum(-1 - latent_layers[2] + K.exp(latent_layers[2]), axis=-1)
         return K.mean(loss)
     def edge_loss(x, x_decoded):
         edge_x = edgeDetect(x, args.original_shape)
@@ -32,7 +32,7 @@ def loss_factory(model, encoder, latent_layers, args):
         loss = original_dim * objectives.mean_squared_error(edge_x, edge_x_decoded)
         return K.mean(loss)
     def covariance_loss(x, x_decoded):
-        z = layers[1]
+        z = latent_layers[1]
         z_centered = z - K.mean(z, axis=0)
         loss = K.sum(K.square(K.eye(K.int_shape(z_centered)[1]) - K.dot(K.transpose(z_centered), z_centered)))
         return loss

@@ -57,8 +57,3 @@ def getArgs():
     args.intermediate_dims = map(int, str(args.intermediate_dims).split(","))
     args.losses = str(args.losses).split(",")
     return args
-
-
-
-# assert args.model in ("ae", "rae", "vae", "nvae", "vae_conv", "nvae_conv", "vae_conv_sym", "nvae_conv_sym", "universal"), "Unknown model type."
-# print "Training model of type %s" % args.model

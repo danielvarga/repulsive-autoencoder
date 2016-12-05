@@ -29,7 +29,7 @@ def build_model(args):
             base_filter_num = args.base_filter_num)
     hidden = encoder(x)
 
-    z, z_mean, z_log_var = add_sampling(hidden, args.sampling, args.latent_dim)
+    z, z_mean, z_log_var = add_sampling(hidden, args.sampling, args.batch_size, args.latent_dim)
 
     if args.spherical:
         z = Lambda(lambda z_unnormed: K.l2_normalize(z_unnormed, axis=-1))([z])
@@ -59,7 +59,7 @@ def build_model(args):
     return ae, encoder, encoder_var, generator
 
 
-def add_sampling(hidden, sampling, latent_dim):
+def add_sampling(hidden, sampling, batch_size, latent_dim):
     z_mean = Dense(latent_dim)(hidden)
     if not sampling:
         z_log_var = Lambda(lambda x: 0*x, output_shape=[latent_dim])((z_mean))

@@ -1,4 +1,5 @@
 import matplotlib
+matplotlib.use('Agg')
 import numpy as np
 import numpy.linalg
 from sklearn.random_projection import GaussianRandomProjection

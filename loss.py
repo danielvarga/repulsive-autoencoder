@@ -31,6 +31,10 @@ def loss_factory(model, encoder, latent_layers, args):
         edge_x_decoded = edgeDetect(x_decoded, args.original_shape)
         loss = original_dim * objectives.mean_squared_error(edge_x, edge_x_decoded)
         return K.mean(loss)
+    def phantom_loss(x, x_decoded):
+        edge_x = edgeDetect(x, args.original_shape)
+        loss = original_dim * objectives.mean_squared_error(edge_x, x_decoded)
+        return K.mean(loss)
     def covariance_loss(x, x_decoded):
         z = latent_layers[1]
         z_centered = z - K.mean(z, axis=0)
@@ -75,4 +79,6 @@ def edgeDetect(images, shape):
     horizontalEdges = images[:,:width-1,:height-1,:] - images[:,:width-1,1:       ,:]    
     diagonalEdges   = images[:,:width-1,:height-1,:] - images[:,1:       ,1:      ,:]
     edges = horizontalEdges + verticalEdges + diagonalEdges
+    edges = K.asymmetric_spatial_2d_padding(edges, top_pad=0, left_pad=0, bottom_pad=1, right_pad=1)
     return edges
+

@@ -25,6 +25,8 @@ parser.add_argument('--memory_share', dest="memory_share", type=float, default=0
 parser.add_argument('--xent_weight', dest="xent_weight", default=1, type=int, help="weight of the crossentropy loss")
 parser.add_argument('--losses', dest="losses", default="xent_loss", help="list of losses")
 parser.add_argument('--activation', dest="activation", default="relu", help="activation function")
+parser.add_argument('--decoder_wd', dest="decoder_wd", type=float, default=0.0, help="Weight decay param for the decoder")
+parser.add_argument('--decoder_use_bn', dest="decoder_use_bn", type=int, default=0, help="Use batch norm in decoder")
 
 args_param = parser.parse_args()
 args = exp.mergeParamsWithInis(args_param)
@@ -53,7 +55,10 @@ def getArgs():
         args.shape = (72, 64)
     else:
         args.shape = None
-
+    if args.decoder_use_bn == 1:
+        args.decoder_use_bn = True
+    else:
+        args.decoder_use_bn = False
     args.intermediate_dims = map(int, str(args.intermediate_dims).split(","))
     args.losses = str(args.losses).split(",")
     return args

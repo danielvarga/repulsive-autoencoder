@@ -43,7 +43,9 @@ def build_model(args):
             intermediate_dims =args.intermediate_dims,
             image_dims = args.original_shape,
             batch_size = args.batch_size,
-            base_filter_num = args.base_filter_num)
+            base_filter_num = args.base_filter_num,
+            wd = args.decoder_wd,
+            use_bn = args.decoder_use_bn)
     generator_input, recons_output, generator_output = decoder(z)
 
     encoder = Model(x, z_mean)

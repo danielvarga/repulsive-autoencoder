@@ -42,11 +42,12 @@ cbs.append(callbacks.imageDisplayCallback(
     args.callback_prefix, args.frequency))
 
 ae.fit(x_train, x_train,
-        shuffle=True,
-        nb_epoch=args.nb_epoch,
-        batch_size=args.batch_size,
-        callbacks = cbs,
-        validation_data=(x_test, x_test))
+       verbose=2,
+       shuffle=True,
+       nb_epoch=args.nb_epoch,
+       batch_size=args.batch_size,
+       callbacks = cbs,
+       validation_data=(x_test, x_test))
 
 
 import vis

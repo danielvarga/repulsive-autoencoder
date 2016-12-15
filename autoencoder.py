@@ -13,11 +13,13 @@ args = params.getArgs()
 print(args)
 
 # limit memory usage
-import tensorflow as tf
-from keras.backend.tensorflow_backend import set_session
-config = tf.ConfigProto()
-config.gpu_options.per_process_gpu_memory_fraction = args.memory_share
-set_session(tf.Session(config=config))
+import keras
+if keras.backend._BACKEND == "tensorflow":
+    import tensorflow as tf
+    from keras.backend.tensorflow_backend import set_session
+    config = tf.ConfigProto()
+    config.gpu_options.per_process_gpu_memory_fraction = args.memory_share
+    set_session(tf.Session(config=config))
 
 import data
 (x_train, x_test) = data.load(args.dataset, shape=args.shape, color=args.color)

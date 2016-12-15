@@ -11,7 +11,6 @@ from keras import objectives
 from keras.datasets import mnist
 from keras.optimizers import *
 from keras.regularizers import l1, l2
-import tensorflow as tf
 import activations
 
 add_tables=[]

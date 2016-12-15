@@ -1,3 +1,4 @@
+import sys # for FlushCallback
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -18,7 +19,7 @@ def get_lr_scheduler(nb_epoch):
             return base_lr * 0.01
     return LearningRateScheduler(get_lr)
 
-class imageDisplayCallback(Callback):
+class ImageDisplayCallback(Callback):
     def __init__(self, 
                  x_train, x_test, 
                  latent_dim, batch_size,
@@ -36,7 +37,7 @@ class imageDisplayCallback(Callback):
         self.sampler = sampler
         self.name = name
         self.frequency = frequency
-        super(imageDisplayCallback, self).__init__(**kwargs)
+        super(ImageDisplayCallback, self).__init__(**kwargs)
 
     def on_epoch_end(self, epoch, logs):
         if (epoch+1) % self.frequency != 0:
@@ -51,7 +52,7 @@ class imageDisplayCallback(Callback):
         vis.plotMVhist(self.x_train, self.encoder, self.batch_size, "{}-mvhist-{}.png".format(self.name, epoch+1))
 
 
-class weightSchedulerCallback(Callback):
+class WeightSchedulerCallback(Callback):
     # weightPrimary and weightSecondary should be Keras variables
     def __init__(self, nb_epoch, weightPrimary, weightSecondary, start, stop, **kwargs):
         self.nb_epoch = nb_epoch
@@ -59,7 +60,7 @@ class weightSchedulerCallback(Callback):
         self.weightSecondary = weightSecondary
         self.start = start
         self.stop = stop
-        super(weightSchedulerCallback, self).__init__(**kwargs)
+        super(WeightSchedulerCallback, self).__init__(**kwargs)
 
     def on_epoch_end(self, epoch, logs):
         phase = 1.0 * (epoch+1) / self.nb_epoch
@@ -73,4 +74,8 @@ class weightSchedulerCallback(Callback):
             K.set_value(self.weightPrimary, 0)
             K.set_value(self.weightSecondary, 1)
         print "\n{}: Primary - secondary weights: ({} - {})".format(phase, K.eval(self.weightPrimary), K.eval(self.weightSecondary))
-        
+
+
+class FlushCallback(Callback):
+    def on_epoch_end(self, epoch, logs):
+        sys.stdout.flush()

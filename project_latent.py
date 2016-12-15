@@ -22,8 +22,8 @@ do_latent_variances = False
 color = False
 """
 
-# conv vae, 200 dim hidden space, 200 epoch, color images, xent loss has weight 100
-modelname = "vae_conv_xent1"
+# conv vae, 200 dim hidden space, 200 epoch, color images, xent loss has weight 1
+modelname = "conv_dim200_sampling0_kl0"
 prefix = "tmp/latent/" + modelname
 encoder = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_encoder")
 encoder_var = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_encoder_var")
@@ -289,8 +289,8 @@ ax2.matshow(np.abs(corr_learned), cmap='coolwarm')
 plt.savefig(prefix + "_corr_learned.png")
 
 
-# vis.displayRandom(n=20, x_train=x_train, latent_dim=n, sampler=model.spherical_sampler,
-#        generator=generator, name=prefix + "_standard", batch_size=batch_size)
+vis.displayRandom(n=20, x_train=x_train, latent_dim=n, sampler=model.gaussian_sampler,
+                  generator=generator, name=prefix + "_standard", batch_size=batch_size)
 
 def oval_sampler(batch_size, latent_dim):
     z = np.random.normal(size=(batch_size, latent_dim))

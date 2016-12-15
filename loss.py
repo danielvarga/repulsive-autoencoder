@@ -2,7 +2,8 @@ from keras import objectives
 import keras.backend as K
 import numpy as np
 
-def loss_factory(model, encoder, latent_layers, args):
+# loss_features = [z, z_mean, z_log_var, sparse_input, sparse_output]
+def loss_factory(model, encoder, loss_features, args):
     original_dim = np.prod(args.original_shape)
 
     def xent_loss(x, x_decoded):
@@ -20,11 +21,14 @@ def loss_factory(model, encoder, latent_layers, args):
     def mae_loss(x, x_decoded):
         loss = original_dim * objectives.mean_absolute_error(x, x_decoded)
         return K.mean(loss)
+    def arm_loss(x, x_decoded):
+        loss = original_dim * objectives.mean_absolute_error(loss_features[3], loss_features[4])
+        return K.mean(loss)
     def size_loss(x, x_decoded): # pushing the means towards the origo
-        loss = 0.5 * K.sum(K.square(latent_layers[1]), axis=-1)
+        loss = 0.5 * K.sum(K.square(loss_features[1]), axis=-1)
         return K.mean(loss)
     def variance_loss(x, x_decoded): # pushing the variance towards 1
-        loss = 0.5 * K.sum(-1 - latent_layers[2] + K.exp(latent_layers[2]), axis=-1)
+        loss = 0.5 * K.sum(-1 - loss_features[2] + K.exp(loss_features[2]), axis=-1)
         return K.mean(loss)
     def edge_loss(x, x_decoded):
         edge_x = edgeDetect(x, args.original_shape)
@@ -36,7 +40,7 @@ def loss_factory(model, encoder, latent_layers, args):
         loss = original_dim * objectives.mean_squared_error(edge_x, x_decoded)
         return K.mean(loss)
     def covariance_loss(x, x_decoded):
-        z = latent_layers[1]
+        z = loss_features[1]
         z_centered = z - K.mean(z, axis=0)
         loss = K.sum(K.square(K.eye(K.int_shape(z_centered)[1]) - K.dot(K.transpose(z_centered), z_centered)))
         return loss

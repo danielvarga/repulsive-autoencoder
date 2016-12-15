@@ -1,0 +1,25 @@
+We trained 12 conv nets for 200 epoch, with the following options:
+dim in (3, 200, 1000), sampling in (0, 1), kl loss in (0, 1)
+
+output prefix: /home/zombori/repulsive-autoencoder/pictures/conv_dim{3/200/1000}_sampling{0/1}_kl{0/1}
+
+Losses (dim, sampling, kl):
+[   3, 0, 0]: loss: 7048.9326 - xent_loss: 7046.5238 - val_loss: 7157.5477 - val_xent_loss: 7157.5475
+[   3, 0, 1]: loss: 7042.7633 - xent_loss: 7038.8262 - size_loss: 1.1471 - variance_loss: 0.0000e+00 - val_loss: 7147.3812 - val_xent_loss: 7146.3118 - val_size_loss: 1.0693 - val_variance_loss: 0.0000e+00
+[   3, 1, 0]: loss: 7047.7721 - xent_loss: 7045.6291 - val_loss: 7152.0238 - val_xent_loss: 7152.0234
+[   3, 1, 1]: loss: 7054.4521 - xent_loss: 7037.8829 - size_loss: 2.0539 - variance_loss: 12.4255 - val_loss: 7174.0216 - val_xent_loss: 7159.6089 - val_size_loss: 1.9450 - val_variance_loss: 12.4676
+[ 200, 0, 0]: loss: 6334.6506 - xent_loss: 6333.2731 - val_loss: 6587.5781 - val_xent_loss: 6587.5780
+[ 200, 0, 1]: loss: 6343.8237 - xent_loss: 6339.1562 - size_loss: 3.1344 - variance_loss: 0.0000e+00 - val_loss: 6532.0695 - val_xent_loss: 6528.8453 - val_size_loss: 3.2241 - val_variance_loss: 0.0000e+00
+[ 200, 1, 0]: loss: 6435.4892 - xent_loss: 6434.1567 - val_loss: 6635.8769 - val_xent_loss: 6635.8764
+[ 200, 1, 1]: loss: 6493.4830 - xent_loss: 6439.0127 - size_loss: 12.1726 - variance_loss: 40.8973 - val_loss: 6697.1584 - val_xent_loss: 6644.1525 - val_size_loss: 12.0635 - val_variance_loss: 40.9421
+[1000, 0, 0]: loss: 6380.6332 - xent_loss: 6379.2644 - val_loss: 6606.2489 - val_xent_loss: 6606.2486
+[1000, 0, 1]: loss: 6398.9401 - xent_loss: 6394.3576 - size_loss: 2.9555 - variance_loss: 0.0000e+00 - val_loss: 6514.2091 - val_xent_loss: 6511.2708 - val_size_loss: 2.9380 - val_variance_loss: 0.0000e+00
+[1000, 1, 0]: loss: 6414.5050 - xent_loss: 6413.1743 - val_loss: 6611.6011 - val_xent_loss: 6611.6009
+[1000, 1, 1]: loss: 6515.2784 - xent_loss: 6456.4840 - size_loss: 16.7666 - variance_loss: 40.5438 - val_loss: 6709.0410 - val_xent_loss: 6651.8314 - val_size_loss: 16.5473 - val_variance_loss: 40.6619
+- Dim=200 seems to be a good baseline.
+- Adding sampling and KL noticably reduces xent_loss (not in 3 dim though...) Maybe because it did not have enough learning time?
+- In terms of test image reconstruction, there is barely any visible difference due to sampling/kl
+- In terms of random images, the lack of KL divergence makes the images almost completely gray, with very faint shadows of faces. 
+  The presence of sampling makes images smoother, nicer, the colors duller (more realistic) KL + sampling is clearly superior here
+- With KL loss, most of the dimensions are not really used: the variance of their means is zero (the mean of their variances is 1 to compensate)
+- When we have sampling, but no KL loss, variances go to zero quickly. Why? Possibly because it does help the reconstruction if the encoder is deterministic

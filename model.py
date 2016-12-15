@@ -13,6 +13,7 @@ from keras.datasets import mnist
 from keras.optimizers import *
 import activations
 from loss import loss_factory
+from arm import ArmLayer
 
 def build_model(args):
     x = Input(batch_shape=([args.batch_size] + list(args.original_shape)))
@@ -53,8 +54,13 @@ def build_model(args):
     ae = Model(x, recons_output)
     generator = Model(generator_input, generator_output)
 
-    latent_layers = (z, z_mean, z_log_var)
-    loss, metrics = loss_factory(ae, encoder, latent_layers, args)
+    armLayer = ArmLayer(dict_size=1000, iteration=10, threshold=0.02, reconsCoef=1)
+    sparse_input = Flatten()(x)
+    sparse_input = armLayer(sparse_input)
+    sparse_output = Flatten()(recons_output)
+    sparse_output = armLayer(sparse_output)
+    loss_features = (z, z_mean, z_log_var, sparse_input, sparse_output)
+    loss, metrics = loss_factory(ae, encoder, loss_features, args)
     optimizer = RMSprop(lr=args.lr)
     ae.compile(optimizer=optimizer, loss=loss, metrics=metrics)
 

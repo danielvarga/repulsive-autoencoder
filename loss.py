@@ -7,7 +7,7 @@ def loss_factory(model, encoder, loss_features, args):
     original_dim = np.prod(args.original_shape)
 
     def xent_loss(x, x_decoded):
-        loss = original_dim * objectives.binary_crossentropy(x, x_decoded)
+        loss = np.float32(original_dim) * objectives.binary_crossentropy(x, x_decoded)
         return args.xent_weight * K.mean(loss)
     def mse_loss(x, x_decoded):
         loss = original_dim * objectives.mean_squared_error(x, x_decoded)

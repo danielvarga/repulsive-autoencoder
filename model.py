@@ -61,7 +61,8 @@ def build_model(args):
     sparse_output = armLayer(sparse_output)
     loss_features = (z, z_mean, z_log_var, sparse_input, sparse_output)
     loss, metrics = loss_factory(ae, encoder, loss_features, args)
-    optimizer = RMSprop(lr=args.lr)
+#    optimizer = RMSprop(lr=args.lr)
+    optimizer = Adam(lr=args.lr)
     ae.compile(optimizer=optimizer, loss=loss, metrics=metrics)
 
     return ae, encoder, encoder_var, generator

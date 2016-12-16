@@ -1,0 +1,6 @@
+Compare same dense vae models with xent loss vs mse loss.
+Mse loss creates smoother images with less artifacts, potentially to the expense of less diversity (not obvious, though)
+
+See:
+repulsive-autoencoder/ini/dense_dim200_vae.ini
+repulsive-autoencoder/ini/dense_vae_mae.ini

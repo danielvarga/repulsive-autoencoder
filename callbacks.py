@@ -7,10 +7,9 @@ from keras import backend as K
 import numpy as np
 import vis
 
-def get_lr_scheduler(nb_epoch):
+def get_lr_scheduler(nb_epoch, base_lr):
 
     def get_lr(epoch):
-        base_lr = 0.001
         if epoch < nb_epoch * 0.5:
             return base_lr
         elif epoch < nb_epoch * 0.8:

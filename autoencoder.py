@@ -36,7 +36,7 @@ else:
 
 import callbacks
 cbs = [callbacks.FlushCallback()]
-cbs.append(callbacks.get_lr_scheduler(args.nb_epoch))
+cbs.append(callbacks.get_lr_scheduler(args.nb_epoch, args.lr))
 cbs.append(callbacks.ImageDisplayCallback(
     x_train, x_test,
     args.latent_dim, args.batch_size,

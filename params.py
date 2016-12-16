@@ -27,7 +27,7 @@ parser.add_argument('--losses', dest="losses", default="xent_loss", help="list o
 parser.add_argument('--activation', dest="activation", default="relu", help="activation function")
 parser.add_argument('--decoder_wd', dest="decoder_wd", type=float, default=0.0, help="Weight decay param for the decoder")
 parser.add_argument('--decoder_use_bn', dest="decoder_use_bn", type=int, default=0, help="Use batch norm in decoder")
-parser.add_argument('--optimizer', dest="optimizer", type=string, default="adam", help="Optimizer, adam or rmsprop.")
+parser.add_argument('--optimizer', dest="optimizer", type=str, default="adam", help="Optimizer, adam or rmsprop.")
 
 args_param = parser.parse_args()
 args = exp.mergeParamsWithInis(args_param)

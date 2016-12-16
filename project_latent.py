@@ -23,6 +23,7 @@ color = False
 """
 
 # conv vae, 200 dim hidden space, 200 epoch, color images, xent loss has weight 1
+"""
 modelname = "conv_dim200_sampling0_kl0"
 prefix = "tmp/latent/" + modelname
 encoder = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_encoder")
@@ -32,7 +33,7 @@ shape = (72, 64)
 batch_size = 200
 do_latent_variances = True
 color = True
-
+"""
 
 # vae, 200 dim hidden space, 100 epoch, bw images, xent loss has weight 100
 """
@@ -175,7 +176,36 @@ batch_size = 250
 do_latent_variances = True
 """
 
+
+import params
+args = params.getArgs()
+print(args)
+
+
+# limit memory usage
+import keras
+if keras.backend._BACKEND == "tensorflow":
+    import tensorflow as tf
+    from keras.backend.tensorflow_backend import set_session
+    config = tf.ConfigProto()
+    config.gpu_options.per_process_gpu_memory_fraction = args.memory_share
+    set_session(tf.Session(config=config))
+
+
+prefix = args.prefix
+shape = args.shape
+batch_size = args.batch_size
+do_latent_variances = True # bool(args.sampling)
+color = args.color
+
+import data
 (x_train, x_test) = data.load("celeba", shape=shape, color=color)
+
+encoder = vis.loadModel(prefix + "_encoder")
+generator = vis.loadModel(prefix + "_generator")
+if do_latent_variances:
+    encoder_var = vis.loadModel(prefix + "_encoder_var")
+
 latent_train = encoder.predict(x_train, batch_size = batch_size)
 latent_test = encoder.predict(x_test, batch_size = batch_size)
 

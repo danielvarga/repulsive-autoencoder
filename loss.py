@@ -35,6 +35,13 @@ def loss_factory(model, encoder, loss_features, args):
         edge_x_decoded = edgeDetect(x_decoded, args.original_shape)
         loss = original_dim * objectives.mean_squared_error(edge_x, edge_x_decoded)
         return K.mean(loss)
+    # pushing latent points towards unit sphere surface, both from inside and out.
+    def sphere_loss(x, x_decoded):
+        z = loss_features[1]
+        squared_distances = K.sum(K.square(loss_features[1]), axis=-1)
+        FUDGE = 0.01
+        loss = 0.5 * (-1 - K.ln(squared_distances + FUDGE) + FUDGE + squared_distances)
+        return K.mean(loss)
     def phantom_loss(x, x_decoded):
         edge_x = edgeDetect(x, args.original_shape)
         loss = original_dim * objectives.mean_squared_error(edge_x, x_decoded)

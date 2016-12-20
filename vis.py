@@ -222,6 +222,19 @@ def plotMVhist(x_train, encoder, batch_size, name):
     print "Creating file " + name
     plt.savefig(name)
 
+def plot2Dprojections(dataset, indices, name):
+    dims = len(indices)
+    plt.figure(figsize=(6 * dims, 6 * dims))
+    f, axarr = plt.subplots(dims, dims)
+    for i in range(dims):
+        for j in range(i,dims):
+            axarr[i, j].hexbin(dataset[:, indices[i]], dataset[:, indices[j]])
+            plt.xlim(4, 4)
+            plt.ylim(4, 4)
+        print i
+    print "Creating file " + name
+    plt.savefig(name)
+    plt.close()
 
 """
 def edgeDetect(images):

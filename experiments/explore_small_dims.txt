@@ -1,0 +1,17 @@
+ini/dense_nvae_d5.ini
+ini/dense_nvae_d10.ini
+ini/dense_nvae_d15.ini
+
+Run a nonvariational autoencoder with size loss and mse loss for 200 epochs
+See how the latent space looks like
+Try it with latent dims 5, 10, 15
+
+Losses:
+5  dim: loss: 333.7168 - mse_loss: 332.6068 - size_loss: 1.1100 - val_loss: 370.1832 - val_mse_loss: 369.1163 - val_size_loss: 1.0669
+10 dim: loss: 229.8469 - mse_loss: 228.5375 - size_loss: 1.3094 - val_loss: 294.6135 - val_mse_loss: 293.3325 - val_size_loss: 1.2811
+15 dim: loss: 188.1116 - mse_loss: 186.9572 - size_loss: 1.1543 - val_loss: 249.0181 - val_mse_loss: 247.8758 - val_size_loss: 1.1423
+losses go down sharply as we increase latent dimensions (better reconstruction)
+
+For random images, dim5 has the best colors, the others are over exposed (I presume the higher the dimension, the farther we are from normal gaussian)
+
+The variance of the means is extremely close to zero for all three scenarios (least for 5 dim)

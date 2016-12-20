@@ -232,6 +232,12 @@ if do_latent_variances:
     print "Mean variances"
     print np.histogram(mean_variances)    
     variances = np.var(latent_train, axis=0)
+
+
+# for i in range(10):
+#     indices = np.random.choice(200, 10)
+#     vis.plot2Dprojections(latent_train[:], indices, prefix + "_projections_{}.png".format(i))
+# xxx
     
     
 variances = np.var(latent_train, axis=0)
@@ -240,13 +246,13 @@ print "Variances"
 print np.sum(working_mask), "/", working_mask.shape
 print np.histogram(variances, 100)
 
-n = latent_train.shape[1]
+latent_dim = latent_train.shape[1]
 
 def masked_sampler(batch_size, latent_dim):
     z = np.random.normal(size=(batch_size, latent_dim))
     return z * working_mask
 
-vis.displayRandom(n=20, x_train=x_train, latent_dim=n, sampler=masked_sampler,
+vis.displayRandom(n=20, x_train=x_train, latent_dim=latent_dim, sampler=masked_sampler,
         generator=generator, name=prefix + "_masked", batch_size=batch_size)
 
 
@@ -259,7 +265,7 @@ for focus_index in range(5): # Index of a specific sample
         shape = [batch_size] + list(focus_latent_mean.shape)
         return np.random.normal(size=shape) * np.exp(focus_latent_logvar/2) + focus_latent_mean
 
-    vis.displayRandom(n=10, x_train=x_train, latent_dim=n, sampler=single_gaussian_sampler,
+    vis.displayRandom(n=10, x_train=x_train, latent_dim=latent_dim, sampler=single_gaussian_sampler,
         generator=generator, name=prefix + "_singlesample%d" % focus_index, batch_size=batch_size)
 
 
@@ -306,7 +312,7 @@ print "MS", mean_train.shape
 cho = np.linalg.cholesky(cov_train)
 print "CHOS", cho.shape
 N = 100000
-z = np.random.normal(0.0, 1.0, (N, n))
+z = np.random.normal(0.0, 1.0, (N, latent_dim))
 sample = cho.dot(z.T).T+mean_train
 print sample.shape
 
@@ -319,7 +325,7 @@ ax2.matshow(np.abs(corr_learned), cmap='coolwarm')
 plt.savefig(prefix + "_corr_learned.png")
 
 
-vis.displayRandom(n=20, x_train=x_train, latent_dim=n, sampler=model.gaussian_sampler,
+vis.displayRandom(n=20, x_train=x_train, latent_dim=latent_dim, sampler=model.gaussian_sampler,
                   generator=generator, name=prefix + "_standard", batch_size=batch_size)
 
 def oval_sampler(batch_size, latent_dim):
@@ -360,16 +366,21 @@ grid_size=25
 
 eigpairs =  [(0, 1), (0, 2), (99, 100), (0, 101)]
 eigpairs += [(2, 3), (0, 4), (110, 111), (0, 102)]
+for i in reversed(range(len(eigpairs))):
+    dim1, dim2 = eigpairs[i]
+    if (dim1 >= latent_dim) or (dim2 >= latent_dim):
+        del eigpairs[i]
+    
 for eigIndex1, eigIndex2 in eigpairs:
     print "eigenplane grid", eigIndex1, eigIndex2
-    plane = eigval2d_grid(grid_size, n, eigIndex1=eigIndex1, eigIndex2=eigIndex2, radius=4.0, elliptic=True)
-    vis.displayPlane(x_train=x_train, latent_dim=n, plane=plane,
+    plane = eigval2d_grid(grid_size, latent_dim, eigIndex1=eigIndex1, eigIndex2=eigIndex2, radius=4.0, elliptic=True)
+    vis.displayPlane(x_train=x_train, latent_dim=latent_dim, plane=plane,
         generator=generator, name=prefix + "_eigs%d-%d" % (eigIndex1, eigIndex2), batch_size=batch_size)
-    plane = eigval2d_grid(grid_size, n, eigIndex1=eigIndex1, eigIndex2=eigIndex2, radius=4.0, elliptic=False)
-    vis.displayPlane(x_train=x_train, latent_dim=n, plane=plane,
+    plane = eigval2d_grid(grid_size, latent_dim, eigIndex1=eigIndex1, eigIndex2=eigIndex2, radius=4.0, elliptic=False)
+    vis.displayPlane(x_train=x_train, latent_dim=latent_dim, plane=plane,
         generator=generator, name=prefix + "_eigs-nonell%d-%d" % (eigIndex1, eigIndex2), batch_size=batch_size)
 
-vis.displayRandom(n=20, x_train=x_train, latent_dim=n, sampler=oval_sampler,
+vis.displayRandom(n=20, x_train=x_train, latent_dim=latent_dim, sampler=oval_sampler,
         generator=generator, name=prefix + "_oval", batch_size=batch_size)
 
 

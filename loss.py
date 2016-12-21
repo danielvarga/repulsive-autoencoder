@@ -4,10 +4,10 @@ import numpy as np
 
 # loss_features = [z, z_mean, z_log_var, sparse_input, sparse_output]
 def loss_factory(model, encoder, loss_features, args):
-    original_dim = np.prod(args.original_shape)
+    original_dim = np.float32(np.prod(args.original_shape))
 
     def xent_loss(x, x_decoded):
-        loss = np.float32(original_dim) * objectives.binary_crossentropy(x, x_decoded)
+        loss = original_dim * objectives.binary_crossentropy(x, x_decoded)
         return args.xent_weight * K.mean(loss)
     def mse_loss(x, x_decoded):
         loss = original_dim * objectives.mean_squared_error(x, x_decoded)
@@ -37,11 +37,25 @@ def loss_factory(model, encoder, loss_features, args):
         return K.mean(loss)
     # pushing latent points towards unit sphere surface, both from inside and out.
     def sphere_loss(x, x_decoded):
-        z = loss_features[1]
-        squared_distances = K.sum(K.square(loss_features[1]), axis=-1)
+        z = loss_features[0]
+        squared_radius = np.float32(args.latent_dim)
+        squared_distances = K.sum(K.square(z), axis=-1)
         FUDGE = 0.01
-        loss = 0.5 * (-1 - K.ln(squared_distances + FUDGE) + FUDGE + squared_distances)
+        offset = -squared_radius + squared_radius * K.log(squared_radius)
+        loss = -squared_radius * K.log(squared_distances + FUDGE) + FUDGE + squared_distances + offset
+#        loss = 0.5 * (-1 - K.log(K.max(0.1,squared_distances) + FUDGE) + FUDGE + squared_distances)
         return K.mean(loss)
+    def repulsive_loss(x, x_decoded): #pushing points away from each other
+        z = loss_features[1]
+        z_squared = K.sum(K.square(z))
+        print "z shape: ", K.int_shape(z)
+        print K.int_shape(z_squared)
+        z_squared = K.tile(z_squared,[args.batch_size,1]) # TODO make it KERAS friendly
+        square_sum = "z squared shape: ", z_squared + K.transpose(z_squared)
+        epsilon = 0.0001
+        distances = (square_sum + epsilon - 2.0 * K.dot(z, K.transpose(z))) ** 0.5
+        loss = -distances
+        return 0.005 * K.mean(loss)
     def phantom_loss(x, x_decoded):
         edge_x = edgeDetect(x, args.original_shape)
         loss = original_dim * objectives.mean_squared_error(edge_x, x_decoded)

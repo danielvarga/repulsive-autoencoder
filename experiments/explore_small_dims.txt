@@ -13,5 +13,6 @@ Losses:
 losses go down sharply as we increase latent dimensions (better reconstruction)
 
 For random images, dim5 has the best colors, the others are over exposed (I presume the higher the dimension, the farther we are from normal gaussian)
+Oval transformation improves sampling significantly (in terms of image quality, but not in terms of diversity)
 
 The variance of the means is extremely close to zero for all three scenarios (least for 5 dim)

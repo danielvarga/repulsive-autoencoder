@@ -24,6 +24,7 @@ parser.add_argument('--batch_size', dest="batch_size", default=200, type=int, he
 parser.add_argument('--memory_share', dest="memory_share", type=float, default=0.98, help="fraction of memory that can be allocated to this process")
 parser.add_argument('--xent_weight', dest="xent_weight", default=1, type=int, help="weight of the crossentropy loss")
 parser.add_argument('--losses', dest="losses", default="xent_loss", help="list of losses")
+parser.add_argument('--metrics', dest="metrics", default="xent_loss", help="list of metrics")
 parser.add_argument('--activation', dest="activation", default="relu", help="activation function")
 parser.add_argument('--decoder_wd', dest="decoder_wd", type=float, default=0.0, help="Weight decay param for the decoder")
 parser.add_argument('--decoder_use_bn', dest="decoder_use_bn", type=int, default=0, help="Use batch norm in decoder")
@@ -37,7 +38,6 @@ exp.dumpParams(args, ini_file)
 def getArgs():
     assert args.encoder in ("dense", "conv")
     assert args.decoder in ("dense", "conv")
-    assert args.optimizer in ("adam", "rmsprop")
 
     if args.callback_prefix == "same":
         args.callback_prefix = args.prefix
@@ -63,4 +63,6 @@ def getArgs():
         args.decoder_use_bn = False
     args.intermediate_dims = map(int, str(args.intermediate_dims).split(","))
     args.losses = str(args.losses).split(",")
+    args.metrics = str(args.metrics).split(",")
+    args.metrics = sorted(set(args.metrics + args.losses))
     return args

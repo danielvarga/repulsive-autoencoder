@@ -32,8 +32,9 @@ def build_model(args):
 
     z, z_mean, z_log_var = add_sampling(hidden, args.sampling, args.batch_size, args.latent_dim)
 
+    z_normed = Lambda(lambda z_unnormed: K.l2_normalize(z_unnormed, axis=-1))([z])
     if args.spherical:
-        z = Lambda(lambda z_unnormed: K.l2_normalize(z_unnormed, axis=-1))([z])
+        z = z_normed
 
     if args.decoder == "dense":
         decoder = dense.DenseDecoder(args.latent_dim, args.intermediate_dims, args.original_shape, args.activation)
@@ -54,18 +55,20 @@ def build_model(args):
     ae = Model(x, recons_output)
     generator = Model(generator_input, generator_output)
 
-    armLayer = ArmLayer(dict_size=1000, iteration=10, threshold=0.02, reconsCoef=1)
+    armLayer = ArmLayer(dict_size=1000, iteration=5, threshold=0.01, reconsCoef=1)
     sparse_input = Flatten()(x)
     sparse_input = armLayer(sparse_input)
     sparse_output = Flatten()(recons_output)
     sparse_output = armLayer(sparse_output)
-    loss_features = (z, z_mean, z_log_var, sparse_input, sparse_output)
+    loss_features = (z, z_mean, z_log_var, z_normed, sparse_input, sparse_output)
     loss, metrics = loss_factory(ae, encoder, loss_features, args)
 
     if args.optimizer == "rmsprop":
         optimizer = RMSprop(lr=args.lr)
     elif args.optimizer == "adam":
         optimizer = Adam(lr=args.lr)
+    elif args.optimizer == "sgd":
+        optimizer = SGD(lr = args.lr)
     else:
         assert False, "Unknown optimizer %s" % args.optimizer
 

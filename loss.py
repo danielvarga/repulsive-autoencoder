@@ -23,7 +23,7 @@ def loss_factory(model, encoder, loss_features, args):
         loss = original_dim * objectives.mean_absolute_error(x, x_decoded)
         return K.mean(loss)
     def arm_loss(x, x_decoded):
-        loss = original_dim * objectives.mean_absolute_error(loss_features[3], loss_features[4])
+        loss = original_dim * objectives.mean_absolute_error(loss_features[4], loss_features[4])
         return K.mean(loss)
     def size_loss(x, x_decoded): # pushing the means towards the origo
         loss = 0.5 * K.sum(K.square(loss_features[1]), axis=-1)
@@ -36,10 +36,6 @@ def loss_factory(model, encoder, loss_features, args):
         edge_x_decoded = edgeDetect(x_decoded, args.original_shape)
         loss = original_dim * objectives.mean_squared_error(edge_x, edge_x_decoded)
         return K.mean(loss)
-    def sphere_distance(x, x_decoded):
-        z = loss_features[0]
-        squared_distances = K.sum(K.square(z), axis=-1)
-        return K.mean(squared_distances)
     # pushing latent points towards unit sphere surface, both from inside and out.
     def sphere_loss(x, x_decoded):
         z = loss_features[0]
@@ -51,15 +47,14 @@ def loss_factory(model, encoder, loss_features, args):
 #        loss = 0.5 * (-1 - K.log(K.max(0.1,squared_distances) + FUDGE) + FUDGE + squared_distances)
         return K.mean(loss)
     def repulsive_loss(x, x_decoded): #pushing points away from each other
-        z = loss_features[1]
-        z_squared = K.sum(K.square(z), axis=1)
-        z_squared = tf.tile([z_squared],[args.batch_size,1])
-        square_sum = z_squared + K.transpose(z_squared)
+        z_normed = loss_features[3]
         epsilon = 0.0001
-        distances = (square_sum - 2.0 * K.dot(z, K.transpose(z))) ** 0.5
+        distances = (2 + epsilon - 2.0 * K.dot(z_normed, K.transpose(z_normed))) ** 0.5
         loss = K.mean(-distances)
-        loss = 1e-6 * loss
-        loss = K.clip(K.mean(-distances), 0, 1e-12)
+#        loss = - K.dot(z, K.transpose(z))
+#        return K.mean(loss)
+#        loss = 1e-6 * loss
+#        loss = K.clip(loss, 0, 1e-12)
         return loss
     def phantom_loss(x, x_decoded):
         edge_x = edgeDetect(x, args.original_shape)
@@ -93,14 +88,17 @@ def loss_factory(model, encoder, loss_features, args):
         return K.mean(loss)
 
     metrics = []
+    for metric in args.metrics:
+        metrics.append(locals().get(metric))
+    losses = []
     for loss in args.losses:
-        metrics.append(locals().get(loss))
+        losses.append(locals().get(loss))
 
     def lossFun(x, x_decoded):
-        loss = 0
-        for metric in metrics:
-            loss += metric(x, x_decoded)
-        return loss
+        lossValue = 0
+        for loss in losses:
+            lossValue += loss(x, x_decoded)
+        return lossValue
     return lossFun, metrics
 
 def edgeDetect(images, shape):

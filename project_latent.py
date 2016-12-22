@@ -38,31 +38,34 @@ generator = vis.loadModel(prefix + "_generator")
 if do_latent_variances:
     encoder_var = vis.loadModel(prefix + "_encoder_var")
 
-latent_train_mean_file = prefix + "_latent_train_mean.npz"
-latent_train_logvar_file = prefix + "_latent_train_logvar.npz"
-latent_train_file = prefix + "_latent_train.npz"
+latent_train_mean_file = prefix + "_latent_train_mean.npy"
+latent_train_logvar_file = prefix + "_latent_train_logvar.npy"
+latent_train_file = prefix + "_latent_train.npy"
 
 if os.path.isfile(latent_train_file):
     latent_train_mean = np.load(latent_train_mean_file)
 else:
     latent_train_mean = encoder.predict(x_train, batch_size = batch_size)
-    np.savez(latent_train_mean_file, latent_train_mean)
+    np.save(latent_train_mean_file, latent_train_mean)
 if do_latent_variances:
     if os.path.isfile(latent_train_logvar_file):
         latent_train_logvar = np.load(latent_train_logvar_file)
     else:
         latent_train_logvar = encoder_var.predict(x_train, batch_size = batch_size)
-        np.savez(latent_train_logvar_file, latent_train_logvar)
+        np.save(latent_train_logvar_file, latent_train_logvar)
     if os.path.isfile(latent_train_file):
         latent_train = np.load(latent_train_file)
     else:
         latent_train = np.random.normal(size=latent_train_mean.shape) * np.exp(latent_train_logvar/2) + latent_train_mean
-        np.savez(latent_train_file, latent_train)
+        np.save(latent_train_file, latent_train)
 else:
     latent_train = latent_train_mean
 
+print latent_train.shape
 origo = np.mean(latent_train, axis=0)
+origo_mean = np.mean(latent_train_mean, axis=0)
 mean_variances = np.var(latent_train_mean, axis=0)
+variances = np.var(latent_train, axis=0)
 
 if do_latent_variances:
     variance_means = np.mean(np.exp(latent_train_logvar), axis=0)
@@ -71,10 +74,10 @@ if do_latent_variances:
     plt.close()
     print "Mean variances"
     print np.histogram(mean_variances)    
-    variances = np.var(latent_train, axis=0)
 
 # histogram of the origo
 plt.hist(origo, bins = 30)
+plt.hist(origo_mean, bins = 30)
 plt.savefig(prefix + "_origo.png")
 plt.close()
 
@@ -84,6 +87,47 @@ variance2 = np.sum(np.square(latent_train), axis=1)
 plt.hist(variance, bins = 30)
 plt.hist(variance2, bins = 30)
 plt.savefig(prefix+"_variance_hist.png")
+plt.close()
+
+# histogram of distances from the origo and from zero
+sumSquares = np.mean(np.square(latent_train_mean), axis=0)
+plt.hist(sumSquares, bins = 30)
+plt.savefig(prefix+"_size_contribution.png")
+plt.close()
+print np.sum(sumSquares)
+x1 = np.argmax(sumSquares)
+x2 = np.argmin(sumSquares)
+plt.figure()
+f, axarr = plt.subplots(3, 2)
+greatest = latent_train[:,x1]
+greatest_mean = latent_train_mean[:, x1]
+smallest = latent_train[:,x2]
+smallest_mean = latent_train_mean[:, x2]
+axarr[0, 0].hist(np.square(greatest), bins=100)
+axarr[0, 0].set_title('Greatest')
+axarr[0, 0].locator_params(nbins=5, axis='x')
+axarr[0, 1].hist(np.square(smallest), bins=100)
+axarr[0, 1].set_title('Smallest')
+axarr[0, 1].locator_params(nbins=5, axis='x')
+axarr[1, 0].hist(np.square(greatest_mean), bins=100)
+axarr[1, 0].set_title('Greatest_mean')
+axarr[1, 0].locator_params(nbins=5, axis='x')
+axarr[1, 1].hist(np.square(smallest_mean), bins=100)
+axarr[1, 1].set_title('Smallest_mean')
+axarr[1, 1].locator_params(nbins=5, axis='x')
+#axarr[2, 0].hist(greatest_mean, bins=100)
+#axarr[2, 0].set_title('Greatest_nosquare')
+#axarr[2, 1].hist(smallest_mean, bins=100)
+#axarr[2, 1].set_title('Smallest_nosquare')
+plt.savefig(prefix + "_square_contribution.png")
+plt.close()
+
+# histogram of distances from the origo and from zero
+variance_mean = np.sum(np.square(latent_train_mean - origo), axis=1)
+variance2_mean = np.sum(np.square(latent_train_mean), axis=1)
+plt.hist(variance_mean, bins = 30)
+plt.hist(variance2_mean, bins = 30)
+plt.savefig(prefix+"_variance_hist_mean.png")
 plt.close()
 
 # show mean variances against the location of the origo
@@ -103,8 +147,6 @@ def masked_sampler(batch_size, latent_dim):
     z = np.random.normal(size=(batch_size, latent_dim))
     return z * working_mask
 
-vis.displayRandom(n=20, x_train=x_train, latent_dim=latent_dim, sampler=masked_sampler,
-        generator=generator, name=prefix + "_masked", batch_size=batch_size)
 
 
 
@@ -137,6 +179,7 @@ print "cov_train eigvals = ", sorted(eigvals, reverse=True)
 
 print "CS", cov_train.shape
 mean_train = np.mean(latent_train_mean, axis=0)
+std_train = np.std(latent_train_mean)
 print "MS", mean_train.shape
 cho = np.linalg.cholesky(cov_train)
 print "CHOS", cho.shape
@@ -145,8 +188,6 @@ z = np.random.normal(0.0, 1.0, (N, latent_dim))
 sample = cho.dot(z.T).T+mean_train
 print sample.shape
 
-vis.displayRandom(n=20, x_train=x_train, latent_dim=latent_dim, sampler=model.gaussian_sampler,
-                  generator=generator, name=prefix + "_standard", batch_size=batch_size)
 
 def oval_sampler(batch_size, latent_dim):
     z = np.random.normal(size=(batch_size, latent_dim))
@@ -154,6 +195,15 @@ def oval_sampler(batch_size, latent_dim):
 #    z /= np.linalg.norm(z)
     return z
 
+def diagonal_oval_sampler(batch_size, latent_dim):
+    z = np.random.normal(size=(batch_size, latent_dim))
+    z = std_train * z + mean_train
+    return z
+
+def diagonal_oval_sampler_nomean(batch_size, latent_dim):
+    z = np.random.normal(size=(batch_size, latent_dim))
+    z = std_train * z
+    return z
 
 eigVals, eigVects = np.linalg.eig(cov_train)
 
@@ -200,8 +250,25 @@ for eigIndex1, eigIndex2 in eigpairs:
     vis.displayPlane(x_train=x_train, latent_dim=latent_dim, plane=plane,
         generator=generator, name=prefix + "_eigs-nonell%d-%d" % (eigIndex1, eigIndex2), batch_size=batch_size)
 
+np.random.seed(10)
+vis.displayRandom(n=20, x_train=x_train, latent_dim=latent_dim, sampler=masked_sampler,
+        generator=generator, name=prefix + "_masked", batch_size=batch_size)
+
+np.random.seed(10)
+vis.displayRandom(n=20, x_train=x_train, latent_dim=latent_dim, sampler=model.gaussian_sampler,
+                  generator=generator, name=prefix + "_standard", batch_size=batch_size)
+
+np.random.seed(10)
 vis.displayRandom(n=20, x_train=x_train, latent_dim=latent_dim, sampler=oval_sampler,
         generator=generator, name=prefix + "_oval", batch_size=batch_size)
+
+np.random.seed(10)
+vis.displayRandom(n=20, x_train=x_train, latent_dim=latent_dim, sampler=diagonal_oval_sampler,
+        generator=generator, name=prefix + "_diagonal_oval", batch_size=batch_size)
+
+np.random.seed(10)
+vis.displayRandom(n=20, x_train=x_train, latent_dim=latent_dim, sampler=diagonal_oval_sampler_nomean,
+        generator=generator, name=prefix + "_diagonal_oval_nomean", batch_size=batch_size)
 
 
 
@@ -281,6 +348,19 @@ if do_tsne:
 
 
 
+
+# conv vae, 200 dim hidden space, 200 epoch, color images, xent loss has weight 1
+"""
+modelname = "dense_dim200_sampling0_kl1"
+prefix = "tmp/latent/" + modelname
+encoder = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_encoder")
+encoder_var = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_encoder_var")
+generator = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_generator")
+shape = (72, 64)
+batch_size = 200
+do_latent_variances = True
+color = True
+"""
 
 # rae, 200 dim hidden space, 200 epoch, bw images,
 """

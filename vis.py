@@ -21,6 +21,7 @@ def latentScatter(encoder, x_test, batch_size, name):
     fileName = name + ".png"
     print "Creating file " + fileName
     plt.savefig(fileName)
+    plt.close()
 
 
 def plotImages(data, n_x, n_y, name):
@@ -206,6 +207,7 @@ def plotMVVM(x_train, encoder, encoder_var, batch_size, name):
     plt.ylim(ylim[0], ylim[1])
     print "Creating file " + name
     plt.savefig(name)
+    plt.close()
 
 def plotMVhist(x_train, encoder, batch_size, name):
     latent_train_mean = encoder.predict(x_train, batch_size = batch_size)
@@ -221,6 +223,7 @@ def plotMVhist(x_train, encoder, batch_size, name):
     plt.ylim(ylim[0], ylim[1])
     print "Creating file " + name
     plt.savefig(name)
+    plt.close()
 
 def plot2Dprojections(dataset, indices, name):
     dims = len(indices)

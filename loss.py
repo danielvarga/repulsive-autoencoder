@@ -1,5 +1,6 @@
 from keras import objectives
 import keras.backend as K
+import tensorflow as tf
 import numpy as np
 
 # loss_features = [z, z_mean, z_log_var, sparse_input, sparse_output]
@@ -35,6 +36,10 @@ def loss_factory(model, encoder, loss_features, args):
         edge_x_decoded = edgeDetect(x_decoded, args.original_shape)
         loss = original_dim * objectives.mean_squared_error(edge_x, edge_x_decoded)
         return K.mean(loss)
+    def sphere_distance(x, x_decoded):
+        z = loss_features[0]
+        squared_distances = K.sum(K.square(z), axis=-1)
+        return K.mean(squared_distances)
     # pushing latent points towards unit sphere surface, both from inside and out.
     def sphere_loss(x, x_decoded):
         z = loss_features[0]
@@ -47,19 +52,19 @@ def loss_factory(model, encoder, loss_features, args):
         return K.mean(loss)
     def repulsive_loss(x, x_decoded): #pushing points away from each other
         z = loss_features[1]
-        z_squared = K.sum(K.square(z))
-        print "z shape: ", K.int_shape(z)
-        print K.int_shape(z_squared)
-        z_squared = K.tile(z_squared,[args.batch_size,1]) # TODO make it KERAS friendly
-        square_sum = "z squared shape: ", z_squared + K.transpose(z_squared)
+        z_squared = K.sum(K.square(z), axis=1)
+        z_squared = tf.tile([z_squared],[args.batch_size,1])
+        square_sum = z_squared + K.transpose(z_squared)
         epsilon = 0.0001
-        distances = (square_sum + epsilon - 2.0 * K.dot(z, K.transpose(z))) ** 0.5
-        loss = -distances
-        return 0.005 * K.mean(loss)
+        distances = (square_sum - 2.0 * K.dot(z, K.transpose(z))) ** 0.5
+        loss = K.mean(-distances)
+        loss = 1e-6 * loss
+        loss = K.clip(K.mean(-distances), 0, 1e-12)
+        return loss
     def phantom_loss(x, x_decoded):
         edge_x = edgeDetect(x, args.original_shape)
         loss = original_dim * objectives.mean_squared_error(edge_x, x_decoded)
-        return K.mean(loss)
+        return 0.01 * K.mean(loss)
     def covariance_loss(x, x_decoded):
         z = loss_features[1]
         z_centered = z - K.mean(z, axis=0)

@@ -221,6 +221,7 @@ if do_tsne:
     plt.figure(figsize=(12,12))
     plt.scatter(reduced[:, 0], reduced[:, 1])
     plt.savefig(prefix + "_tsne.png")
+    plt.close()
 
 # to be deleted eventually...
 

@@ -4,6 +4,7 @@ import numpy as np
 import numpy.linalg
 from sklearn.random_projection import GaussianRandomProjection
 import matplotlib.pyplot as plt
+import os.path
 
 import vis
 import data
@@ -37,54 +38,59 @@ generator = vis.loadModel(prefix + "_generator")
 if do_latent_variances:
     encoder_var = vis.loadModel(prefix + "_encoder_var")
 
-latent_train = encoder.predict(x_train, batch_size = batch_size)
-latent_test = encoder.predict(x_test, batch_size = batch_size)
+latent_train_mean_file = prefix + "_latent_train_mean.npz"
+latent_train_logvar_file = prefix + "_latent_train_logvar.npz"
+latent_train_file = prefix + "_latent_train.npz"
 
+if os.path.isfile(latent_train_file):
+    latent_train_mean = np.load(latent_train_mean_file)
+else:
+    latent_train_mean = encoder.predict(x_train, batch_size = batch_size)
+    np.savez(latent_train_mean_file, latent_train_mean)
+if do_latent_variances:
+    if os.path.isfile(latent_train_logvar_file):
+        latent_train_logvar = np.load(latent_train_logvar_file)
+    else:
+        latent_train_logvar = encoder_var.predict(x_train, batch_size = batch_size)
+        np.savez(latent_train_logvar_file, latent_train_logvar)
+    if os.path.isfile(latent_train_file):
+        latent_train = np.load(latent_train_file)
+    else:
+        latent_train = np.random.normal(size=latent_train_mean.shape) * np.exp(latent_train_logvar/2) + latent_train_mean
+        np.savez(latent_train_file, latent_train)
+else:
+    latent_train = latent_train_mean
+
+origo = np.mean(latent_train, axis=0)
+mean_variances = np.var(latent_train_mean, axis=0)
 
 if do_latent_variances:
-    latent_train_mean = encoder.predict(x_train, batch_size = batch_size)
-    latent_test_mean = encoder.predict(x_test, batch_size = batch_size)
-
-    latent_train_logvar = encoder_var.predict(x_train, batch_size = batch_size)
-    latent_test_logvar = encoder_var.predict(x_test, batch_size = batch_size)
-
-    latent_train = np.random.normal(size=latent_train_mean.shape) * np.exp(latent_train_logvar/2) + latent_train_mean
-    latent_test = np.random.normal(size=latent_test_mean.shape) * np.exp(latent_test_logvar/2) + latent_test_mean
-
-    np.savez(prefix + "_train_latent_mean.npz", latent_train_mean)
-    np.savez(prefix + "_train_latent_logvar.npz", latent_train_logvar)
-    np.savez(prefix + "_train_latent.npz", latent_train)
-    np.savez(prefix + "_test_latent.npz", latent_test)
-
-    mean_variances = np.var(latent_train_mean, axis=0)
     variance_means = np.mean(np.exp(latent_train_logvar), axis=0)
     plt.scatter(mean_variances, variance_means)
     plt.savefig(prefix+"_mvvm.png")
+    plt.close()
     print "Mean variances"
     print np.histogram(mean_variances)    
     variances = np.var(latent_train, axis=0)
 
-# histogram of distances from the origo
-origo = np.mean(latent_train, axis=0)
+# histogram of the origo
 plt.hist(origo, bins = 30)
 plt.savefig(prefix + "_origo.png")
+plt.close()
+
+# histogram of distances from the origo and from zero
 variance = np.sum(np.square(latent_train - origo), axis=1)
 variance2 = np.sum(np.square(latent_train), axis=1)
 plt.hist(variance, bins = 30)
 plt.hist(variance2, bins = 30)
 plt.savefig(prefix+"_variance_hist.png")
-print "Origo histogram:"
-print np.histogram(origo, bins = 30)
-print "Radius histogram:"
-print np.histogram(variance, bins = 30)
-xxx
+plt.close()
 
-# for i in range(10):
-#     indices = np.random.choice(200, 10)
-#     vis.plot2Dprojections(latent_train[:], indices, prefix + "_projections_{}.png".format(i))
-# xxx
-    
-    
+# show mean variances against the location of the origo
+plt.scatter(np.absolute(origo), mean_variances)
+plt.savefig(prefix + "_origo_variance.png")
+plt.close()
+
 variances = np.var(latent_train, axis=0)
 working_mask = (variances > 0.2)
 print "Variances"
@@ -102,59 +108,31 @@ vis.displayRandom(n=20, x_train=x_train, latent_dim=latent_dim, sampler=masked_s
 
 
 
-for focus_index in range(5): # Index of a specific sample
-    focus_latent_mean = latent_train_mean[focus_index]
-    focus_latent_logvar = latent_train_logvar[focus_index]
+if do_latent_variances:
+    for focus_index in range(5): # Index of a specific sample
+        focus_latent_mean = latent_train_mean[focus_index]
+        focus_latent_logvar = latent_train_logvar[focus_index]
 
-    def single_gaussian_sampler(batch_size, latent_dim):
-        shape = [batch_size] + list(focus_latent_mean.shape)
-        return np.random.normal(size=shape) * np.exp(focus_latent_logvar/2) + focus_latent_mean
+        def single_gaussian_sampler(batch_size, latent_dim):
+            shape = [batch_size] + list(focus_latent_mean.shape)
+            return np.random.normal(size=shape) * np.exp(focus_latent_logvar/2) + focus_latent_mean
 
-    vis.displayRandom(n=10, x_train=x_train, latent_dim=latent_dim, sampler=single_gaussian_sampler,
-        generator=generator, name=prefix + "_singlesample%d" % focus_index, batch_size=batch_size)
+            vis.displayRandom(n=10, x_train=x_train, latent_dim=latent_dim, sampler=single_gaussian_sampler,
+                              generator=generator, name=prefix + "_singlesample%d" % focus_index, batch_size=batch_size)
 
 
-# projector = GaussianRandomProjection(n_components=2, random_state=81)
-# projected_train = projector.fit_transform(latent_train)
-# projected_test = projector.fit_transform(latent_test)
-
-projected_train = latent_train[:, [0,1]]
-projected_test = latent_test[:, [0,1]]
-
-mymin = np.min((np.min(projected_train), np.min(projected_test)))
-mymax = np.max((np.max(projected_train), np.max(projected_test)))
-dim = np.max(np.abs((mymin,mymax)))
-
-plt.figure(figsize=(14,6))
-ax1 = plt.subplot(121)
-ax1.hexbin( projected_train[:, 0], projected_train[:, 1])
-plt.xlim(-dim,dim)
-plt.ylim(-dim,dim)
-ax2 = plt.subplot(122)
-ax2.hexbin( projected_test[:, 0], projected_test[:, 1])
-plt.xlim(-dim,dim)
-plt.ylim(-dim,dim)
-plt.savefig(prefix + "_hexbin.png")
-
-corr_train = np.corrcoef(latent_train.T)
-corr_test = np.corrcoef(latent_test.T)
-
-plt.figure(figsize=(12,24))
-ax1 = plt.subplot(211)
-ax1.matshow(np.abs(corr_train), cmap='coolwarm')
-ax2 = plt.subplot(212)
-ax2.matshow(np.abs(corr_test), cmap='coolwarm')
-plt.savefig(prefix + "_corr.png")
 
 cov_train = np.cov(latent_train_mean.T)
 eigvals = list(np.linalg.eigvals(cov_train).real)
 print "cov_train eigvals = ", sorted(eigvals, reverse=True)
 
-for cnt in range(10, 500, 10):
-    latent_sample = latent_train_mean[:cnt]
-    cov_sample = np.cov(latent_sample.T)
-    eigvals_sample = list(np.linalg.eigvals(cov_sample).real)
-    print "cov eigvals using first {} samples:\n".format(cnt), sorted(eigvals_sample, reverse=True)
+
+# the below loop illustrates that taking small subsamples will not alter the eigenvalue structure of the covariance matrix 
+# for cnt in range(10, 500, 10):
+#     latent_sample = latent_train_mean[:cnt]
+#     cov_sample = np.cov(latent_sample.T)
+#     eigvals_sample = list(np.linalg.eigvals(cov_sample).real)
+#     print "cov eigvals using first {} samples:\n".format(cnt), sorted(eigvals_sample, reverse=True)
 
 
 print "CS", cov_train.shape
@@ -166,15 +144,6 @@ N = 100000
 z = np.random.normal(0.0, 1.0, (N, latent_dim))
 sample = cho.dot(z.T).T+mean_train
 print sample.shape
-
-corr_learned = np.corrcoef(sample.T)
-plt.figure(figsize=(12,24))
-ax1 = plt.subplot(211)
-ax1.matshow(np.abs(corr_train), cmap='coolwarm')
-ax2 = plt.subplot(212)
-ax2.matshow(np.abs(corr_learned), cmap='coolwarm')
-plt.savefig(prefix + "_corr_learned.png")
-
 
 vis.displayRandom(n=20, x_train=x_train, latent_dim=latent_dim, sampler=model.gaussian_sampler,
                   generator=generator, name=prefix + "_standard", batch_size=batch_size)
@@ -254,6 +223,64 @@ if do_tsne:
     plt.savefig(prefix + "_tsne.png")
 
 # to be deleted eventually...
+
+# for i in range(10):
+#     indices = np.random.choice(200, 10)
+#     vis.plot2Dprojections(latent_train[:], indices, prefix + "_projections_{}.png".format(i))
+
+
+# projector = GaussianRandomProjection(n_components=2, random_state=81)
+# projected_train = projector.fit_transform(latent_train)
+# projected_test = projector.fit_transform(latent_test)
+
+#projected_train = latent_train[:, [0,1]]
+#projected_test = latent_test[:, [0,1]]
+
+# mymin = np.min((np.min(projected_train), np.min(projected_test)))
+# mymax = np.max((np.max(projected_train), np.max(projected_test)))
+# dim = np.max(np.abs((mymin,mymax)))
+
+# plt.figure(figsize=(14,6))
+# ax1 = plt.subplot(121)
+# ax1.hexbin( projected_train[:, 0], projected_train[:, 1])
+# plt.xlim(-dim,dim)
+# plt.ylim(-dim,dim)
+# ax2 = plt.subplot(122)
+# ax2.hexbin( projected_test[:, 0], projected_test[:, 1])
+# plt.xlim(-dim,dim)
+# plt.ylim(-dim,dim)
+# plt.savefig(prefix + "_hexbin.png")
+
+# corr_train = np.corrcoef(latent_train.T)
+# corr_test = np.corrcoef(latent_test.T)
+
+# plt.figure(figsize=(12,24))
+# ax1 = plt.subplot(211)
+# ax1.matshow(np.abs(corr_train), cmap='coolwarm')
+# ax2 = plt.subplot(212)
+# ax2.matshow(np.abs(corr_test), cmap='coolwarm')
+# plt.savefig(prefix + "_corr.png")
+
+# corr_learned = np.corrcoef(sample.T)
+# plt.figure(figsize=(12,24))
+# ax1 = plt.subplot(211)
+# ax1.matshow(np.abs(corr_train), cmap='coolwarm')
+# ax2 = plt.subplot(212)
+# ax2.matshow(np.abs(corr_learned), cmap='coolwarm')
+# plt.savefig(prefix + "_corr_learned.png")
+
+
+
+# latent_test = encoder.predict(x_test, batch_size = batch_size)
+# latent_test_mean = encoder.predict(x_test, batch_size = batch_size)
+# latent_test_logvar = encoder_var.predict(x_test, batch_size = batch_size)
+#    latent_test = np.random.normal(size=latent_test_mean.shape) * np.exp(latent_test_logvar/2) + latent_test_mean
+
+
+
+
+
+
 # rae, 200 dim hidden space, 200 epoch, bw images,
 """
 modelname = "rae"

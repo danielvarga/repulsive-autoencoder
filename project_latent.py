@@ -33,27 +33,27 @@ color = args.color
 import data
 (x_train, x_test) = data.load("celeba", shape=shape, color=color)
 
-encoder = vis.loadModel(prefix + "_encoder")
 generator = vis.loadModel(prefix + "_generator")
-if do_latent_variances:
-    encoder_var = vis.loadModel(prefix + "_encoder_var")
 
 latent_train_mean_file = prefix + "_latent_train_mean.npy"
 latent_train_logvar_file = prefix + "_latent_train_logvar.npy"
 latent_train_file = prefix + "_latent_train.npy"
 
-if os.path.isfile(latent_train_file):
+useCache = False
+if useCache and os.path.isfile(latent_train_file):
     latent_train_mean = np.load(latent_train_mean_file)
 else:
+    encoder = vis.loadModel(prefix + "_encoder")
     latent_train_mean = encoder.predict(x_train, batch_size = batch_size)
     np.save(latent_train_mean_file, latent_train_mean)
 if do_latent_variances:
-    if os.path.isfile(latent_train_logvar_file):
+    if useCache and os.path.isfile(latent_train_logvar_file):
         latent_train_logvar = np.load(latent_train_logvar_file)
     else:
+        encoder_var = vis.loadModel(prefix + "_encoder_var")
         latent_train_logvar = encoder_var.predict(x_train, batch_size = batch_size)
         np.save(latent_train_logvar_file, latent_train_logvar)
-    if os.path.isfile(latent_train_file):
+    if useCache and os.path.isfile(latent_train_file):
         latent_train = np.load(latent_train_file)
     else:
         latent_train = np.random.normal(size=latent_train_mean.shape) * np.exp(latent_train_logvar/2) + latent_train_mean
@@ -81,9 +81,15 @@ plt.hist(origo_mean, bins = 30)
 plt.savefig(prefix + "_origo.png")
 plt.close()
 
+# show mean variances against the location of the origo
+plt.scatter(np.absolute(origo), mean_variances)
+plt.savefig(prefix + "_origo_variance.png")
+plt.close()
+
+
 # histogram of distances from the origo and from zero
-variance = np.sum(np.square(latent_train - origo), axis=1)
-variance2 = np.sum(np.square(latent_train), axis=1)
+variance = np.mean(np.square(latent_train_mean - origo), axis=1)
+variance2 = np.mean(np.square(latent_train_mean), axis=1)
 plt.hist(variance, bins = 30)
 plt.hist(variance2, bins = 30)
 plt.savefig(prefix+"_variance_hist.png")
@@ -98,42 +104,21 @@ print np.sum(sumSquares)
 x1 = np.argmax(sumSquares)
 x2 = np.argmin(sumSquares)
 plt.figure()
-f, axarr = plt.subplots(3, 2)
-greatest = latent_train[:,x1]
-greatest_mean = latent_train_mean[:, x1]
-smallest = latent_train[:,x2]
-smallest_mean = latent_train_mean[:, x2]
-axarr[0, 0].hist(np.square(greatest), bins=100)
-axarr[0, 0].set_title('Greatest')
-axarr[0, 0].locator_params(nbins=5, axis='x')
-axarr[0, 1].hist(np.square(smallest), bins=100)
-axarr[0, 1].set_title('Smallest')
-axarr[0, 1].locator_params(nbins=5, axis='x')
-axarr[1, 0].hist(np.square(greatest_mean), bins=100)
-axarr[1, 0].set_title('Greatest_mean')
-axarr[1, 0].locator_params(nbins=5, axis='x')
-axarr[1, 1].hist(np.square(smallest_mean), bins=100)
-axarr[1, 1].set_title('Smallest_mean')
-axarr[1, 1].locator_params(nbins=5, axis='x')
-#axarr[2, 0].hist(greatest_mean, bins=100)
-#axarr[2, 0].set_title('Greatest_nosquare')
-#axarr[2, 1].hist(smallest_mean, bins=100)
-#axarr[2, 1].set_title('Smallest_nosquare')
+f, axarr = plt.subplots(2, 2)
+greatest = latent_train_mean[:, x1]
+smallest = latent_train_mean[:, x2]
+data = (greatest, smallest, np.square(greatest), np.square(smallest))
+titles = ('Greatest dim', 'Smallest dim', 'Greatest dim squared', 'Smallest dim squared')
+for i in range(4):
+    x = i / 2
+    y = i % 2
+    axarr[x, y].hist(data[i], bins=100)
+    axarr[x, y].set_title(titles[i])
+    axarr[x, y].locator_params(nbins=5, axis='x')
 plt.savefig(prefix + "_square_contribution.png")
 plt.close()
 
-# histogram of distances from the origo and from zero
-variance_mean = np.sum(np.square(latent_train_mean - origo), axis=1)
-variance2_mean = np.sum(np.square(latent_train_mean), axis=1)
-plt.hist(variance_mean, bins = 30)
-plt.hist(variance2_mean, bins = 30)
-plt.savefig(prefix+"_variance_hist_mean.png")
-plt.close()
 
-# show mean variances against the location of the origo
-plt.scatter(np.absolute(origo), mean_variances)
-plt.savefig(prefix + "_origo_variance.png")
-plt.close()
 
 variances = np.var(latent_train, axis=0)
 working_mask = (variances > 0.2)
@@ -338,193 +323,3 @@ if do_tsne:
 # plt.savefig(prefix + "_corr_learned.png")
 
 
-
-# latent_test = encoder.predict(x_test, batch_size = batch_size)
-# latent_test_mean = encoder.predict(x_test, batch_size = batch_size)
-# latent_test_logvar = encoder_var.predict(x_test, batch_size = batch_size)
-#    latent_test = np.random.normal(size=latent_test_mean.shape) * np.exp(latent_test_logvar/2) + latent_test_mean
-
-
-
-
-
-
-# conv vae, 200 dim hidden space, 200 epoch, color images, xent loss has weight 1
-"""
-modelname = "dense_dim200_sampling0_kl1"
-prefix = "tmp/latent/" + modelname
-encoder = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_encoder")
-encoder_var = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_encoder_var")
-generator = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_generator")
-shape = (72, 64)
-batch_size = 200
-do_latent_variances = True
-color = True
-"""
-
-# rae, 200 dim hidden space, 200 epoch, bw images,
-"""
-modelname = "rae"
-prefix = "tmp/latent/" + modelname
-encoder = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_encoder")
-encoder_var = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_encoder_var")
-generator = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_generator")
-shape = (72, 64)
-batch_size = 200
-do_latent_variances = False
-color = False
-"""
-
-# conv vae, 200 dim hidden space, 200 epoch, color images, xent loss has weight 1
-"""
-modelname = "conv_dim200_sampling0_kl0"
-prefix = "tmp/latent/" + modelname
-encoder = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_encoder")
-encoder_var = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_encoder_var")
-generator = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_generator")
-shape = (72, 64)
-batch_size = 200
-do_latent_variances = True
-color = True
-"""
-
-# vae, 200 dim hidden space, 100 epoch, bw images, xent loss has weight 100
-"""
-modelname = "vae"
-prefix = "/home/zombori/latent/" + modelname
-encoder = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_encoder")
-encoder_var = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_encoder_var")
-generator = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_generator")
-shape = (72, 64)
-batch_size = 200
-do_latent_variances = True
-color = False
-"""
-
-# simple vae with dense encoder/decoder, 3 dim hidden space
-"""
-modelname = "vae_var_3"
-prefix = "/home/zombori/latent/" + modelname
-encoder = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_encoder")
-encoder_var = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_encoder_var")
-generator = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_generator")
-shape = (72, 60)
-batch_size = 1000
-do_latent_variances = True
-"""
-
-# simple vae with dense encoder/decoder, 100 dim hidden space
-"""
-modelname = "vae_var_100"
-prefix = "/home/zombori/latent/" + modelname
-encoder = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_encoder")
-encoder_var = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_encoder_var")
-generator = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_generator")
-shape = (72, 60)
-batch_size = 1000
-do_latent_variances = True
-"""
-# conv vae, 200 dim hidden space, 200 epoch, color images, hidden variables have been sampled
-"""
-modelname = "vae_conv_dim200"
-prefix = "/home/zombori/latent/" + modelname
-encoder = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_encoder")
-encoder_var = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_encoder_var")
-generator = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_generator")
-shape = (72, 60)
-batch_size = 200
-do_latent_variances = True
-color = True
-"""
-
-# dense vae, 600 dim hidden space, 200 epoch, color images, hidden variables have been sampled
-"""
-modelname = "vae_color_dim600"
-prefix = "/home/zombori/latent/" + modelname
-encoder = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_encoder")
-encoder_var = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_encoder_var")
-generator = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_generator")
-shape = (72, 64)
-batch_size = 200
-do_latent_variances = True
-color = True
-"""
-
-# conv vae, 200 dim hidden space, 30 epoch, color images, hidden variables have been sampled, leaky relu
-"""
-modelname = "vae_conv_leaky_dim200"
-prefix = "/home/zombori/latent/" + modelname
-encoder = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_encoder")
-encoder_var = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_encoder_var")
-generator = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_generator")
-shape = (72, 64)
-batch_size = 200
-do_latent_variances = True
-color = True
-"""
-
-# conv vae, 200 dim hidden space, 100 epoch, color images, hidden variables have been sampled, L2 norm after edge detection
-"""
-modelname = "vae_conv_outline_dim200"
-prefix = "/home/zombori/latent/" + modelname
-encoder = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_encoder")
-encoder_var = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_encoder_var")
-generator = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/" + modelname + "_generator")
-shape = (72, 64)
-batch_size = 200
-do_latent_variances = True
-color = True
-"""
-
-#encoder = vis.loadModel("/home/csadrian/repulsive-autoencoder/models/disc_3_1000_d2_vae/disc_3_1000_d2_vae_encoder")
-#generator = vis.loadModel("/home/csadrian/repulsive-autoencoder/models/disc_3_1000_d2_vae/disc_3_1000_d2_vae_generator")
-#shape = (72, 60)
-#batch_size = 250
-#do_latent_variances = False
-
-
-#simple vae trained for 300 epoch, latent representation has zero variance
-#encoder = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/vae_baseline_300_encoder")
-#generator = vis.loadModel("/home/zombori/repulsive-autoencoder/pictures/vae_baseline_300_generator")
-# shape = (72, 60)
-#batch_size = 1000
-#do_latent_variances = False
-
-
-# encoder = vis.loadModel("/home/csadrian/repulsive-autoencoder/models/disc_3_1000_d2_vae/disc_3_1000_d2_vae_encoder")
-# generator = vis.loadModel("/home/csadrian/repulsive-autoencoder/models/disc_3_1000_d2_vae/disc_3_1000_d2_vae_generator")
-# batch_size = 250
-# do_latent_variances = False
-
-# encoder = vis.loadModel("/home/csadrian/repulsive-autoencoder/models/disc_3_1000_d3_vae/disc_3_1000_d3_vae_encoder")
-# generator = vis.loadModel("/home/csadrian/repulsive-autoencoder/models/disc_3_1000_d3_vae/disc_3_1000_d3_vae_generator")
-# batch_size = 250
-# do_latent_variances = False
-
-#encoder = vis.loadModel("/home/csadrian/repulsive-autoencoder/disc_l50_e300_d2_vae_encoder")
-#generator = vis.loadModel("/home/csadrian/repulsive-autoencoder/disc_l50_e300_d2_vae_generator")
-#shape = (72, 64)
-#batch_size = 250
-#do_latent_variances = False
-
-
-# modelname = "disc_l50_e300_d2_nvae"
-# prefix = "/home/csadrian/repulsive-autoencoder/" + modelname
-# encoder = vis.loadModel("/home/csadrian/repulsive-autoencoder/disc_l50_e300_d2_nvae_encoder")
-# encoder_var = vis.loadModel("/home/csadrian/repulsive-autoencoder/disc_l50_e300_d2_nvae_encoder_var")
-# generator = vis.loadModel("/home/csadrian/repulsive-autoencoder/disc_l50_e300_d2_nvae_generator")
-# shape = (72, 60)
-# batch_size = 250
-# do_latent_variances = True
-
-
-"""
-shape = (72, 60)
-modelname = "disc_l50_e300_d2_nvae_cov"
-prefix = "/home/csadrian/repulsive-autoencoder/" + modelname
-encoder = vis.loadModel("/home/csadrian/repulsive-autoencoder/disc_l50_e300_d2_nvae_cov_encoder")
-encoder_var = vis.loadModel("/home/csadrian/repulsive-autoencoder/disc_l50_e300_d2_nvae_cov_encoder_var")
-generator = vis.loadModel("/home/csadrian/repulsive-autoencoder/disc_l50_e300_d2_nvae_cov_generator")
-batch_size = 250
-do_latent_variances = True
-"""

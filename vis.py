@@ -136,6 +136,7 @@ def displayRandom(n, x_train, latent_dim, sampler, generator, name, batch_size=3
 
 def displaySet(imageBatch, n, generator, name):
     batchSize = imageBatch.shape[0]
+    if n > batchSize: n = batchSize
     nsqrt = int(np.ceil(np.sqrt(n)))
     recons = generator.predict(imageBatch, batch_size=batchSize)
 
@@ -151,9 +152,13 @@ def displayInterp(x_train, x_test, batch_size, dim, encoder, generator, gridSize
     test_latent = encoder.predict(x_test[:batch_size], batch_size=batch_size)
     parallelogram_point = test_latent[0] + train_latent[1] - train_latent[0]
     anchors = np.array([train_latent[0], train_latent[1], test_latent[0], parallelogram_point])
-    interpGrid = grid_layout.create_mine_grid(gridSize, gridSize, dim, gridSize-1, anchors, True, False) # TODO different interpolations for different autoencoders!!!
+    interpGrid = grid_layout.create_mine_grid(gridSize, gridSize, dim, gridSize-1, anchors, False, False) # TODO different interpolations for different autoencoders!!!    
     n = interpGrid.shape[0]
-    interpGrid = np.repeat(interpGrid, (batch_size//n) + 1, axis=0)[0:batch_size]
+    if n < batch_size:
+        target_size = batch_size
+    else:
+        target_size = batch_size * ((n // batch_size) + 1)
+    interpGrid = np.tile(interpGrid, [(target_size//n) + 1] + [1] * (interpGrid.ndim-1))[0:target_size]
     predictedGrid = generator.predict(interpGrid, batch_size=batch_size)
     predictedGrid = predictedGrid[0:n]
 
@@ -162,7 +167,7 @@ def displayInterp(x_train, x_test, batch_size, dim, encoder, generator, gridSize
 
     grid = np.concatenate([prologGrid, predictedGrid])
     reshapedGrid = grid.reshape([grid.shape[0]] + list(x_train.shape[1:]))
-    plotImages(reshapedGrid, gridSize, gridSize, name)
+    plotImages(reshapedGrid, gridSize, gridSize+1, name)
 
 def saveModel(model, filePrefix):
     jsonFile = filePrefix + ".json"

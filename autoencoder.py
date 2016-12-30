@@ -44,7 +44,7 @@ cbs.append(callbacks.ImageDisplayCallback(
     args.callback_prefix, args.frequency))
 
 ae.fit(x_train, x_train,
-       verbose=2,
+       verbose=args.verbose,
        shuffle=True,
        nb_epoch=args.nb_epoch,
        batch_size=args.batch_size,

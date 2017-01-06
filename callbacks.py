@@ -52,27 +52,28 @@ class ImageDisplayCallback(Callback):
 
 
 class WeightSchedulerCallback(Callback):
-    # weightPrimary and weightSecondary should be Keras variables
-    def __init__(self, nb_epoch, weightPrimary, weightSecondary, start, stop, **kwargs):
+    # weight should be a Keras variable
+    def __init__(self, nb_epoch, name, startValue, stopValue, start, stop, weight, **kwargs):
         self.nb_epoch = nb_epoch
-        self.weightPrimary = weightPrimary
-        self.weightSecondary = weightSecondary
+        self.name = name
+        self.weight = weight
+        self.startValue = startValue
+        self.stopValue = stopValue
         self.start = start
         self.stop = stop
         super(WeightSchedulerCallback, self).__init__(**kwargs)
 
-    def on_epoch_end(self, epoch, logs):
-        phase = 1.0 * (epoch+1) / self.nb_epoch
-        if phase < self.start:
-            K.set_value(self.weightPrimary, 1)
-            K.set_value(self.weightSecondary, 0)
-        elif phase < self.stop:
-            K.set_value(self.weightSecondary, (phase-self.start) / (self.stop - self.start))
-            K.set_value(self.weightPrimary, (self.stop - phase) / (self.stop - self.start))
+    def on_epoch_end(self, epoch, logs):        
+        phase = 1.0 * (epoch+1) / self.nb_epoch        
+        if phase <= self.start:
+            relative_phase = 0
+        elif phase >= self.stop:
+            relative_phase = 1
         else:
-            K.set_value(self.weightPrimary, 0)
-            K.set_value(self.weightSecondary, 1)
-        print "\n{}: Primary - secondary weights: ({} - {})".format(phase, K.eval(self.weightPrimary), K.eval(self.weightSecondary))
+            relative_phase = (phase - self.start) / (self.stop - self.start)
+
+        K.set_value(self.weight, (1-relative_phase) * self.startValue + relative_phase * self.stopValue)
+        print "\nPhase {}, {} weight: {}".format(phase, self.name, K.eval(self.weight))
 
 
 class FlushCallback(Callback):

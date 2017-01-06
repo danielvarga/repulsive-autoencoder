@@ -22,7 +22,7 @@ if keras.backend._BACKEND == "tensorflow":
     set_session(tf.Session(config=config))
 
 import data
-(x_train, x_test) = data.load(args.dataset, shape=args.shape, color=args.color)
+(x_train, x_test) = data.load(args.dataset, args.trainSize, args.testSize, shape=args.shape, color=args.color)
 args.original_shape = x_train.shape[1:]
 
 import model
@@ -42,6 +42,10 @@ cbs.append(callbacks.ImageDisplayCallback(
     args.latent_dim, args.batch_size,
     encoder, encoder_var, generator, sampler,
     args.callback_prefix, args.frequency))
+for schedule in args.weight_schedules:
+    if schedule[1] != schedule[2]:
+        cbs.append(callbacks.WeightSchedulerCallback(args.nb_epoch, schedule[0], schedule[1], schedule[2], schedule[3], schedule[4], schedule[5]))
+
 
 ae.fit(x_train, x_train,
        verbose=args.verbose,
@@ -61,8 +65,8 @@ vis.saveModel(generator, args.prefix + "_generator")
 # display randomly generated images
 vis.displayRandom(15, x_test, args.latent_dim, sampler, generator, "%s-random" % args.prefix, batch_size=args.batch_size)
 
-vis.displaySet(x_test[:args.batch_size], 100, ae, "%s-test" % args.prefix)
-vis.displaySet(x_train[:args.batch_size], 100, ae, "%s-train" % args.prefix)
+vis.displaySet(x_test[:args.batch_size], args.batch_size, 100, ae, "%s-test" % args.prefix)
+vis.displaySet(x_train[:args.batch_size], args.batch_size, 100, ae, "%s-train" % args.prefix)
 
 # display image interpolation
 vis.displayInterp(x_train, x_test, args.batch_size, args.latent_dim, encoder, generator, 10, "%s-interp" % args.prefix)

@@ -1,5 +1,6 @@
 import argparse
 import exp
+from keras import backend as K
 
 parser = argparse.ArgumentParser()
 
@@ -27,9 +28,13 @@ parser.add_argument('--losses', dest="losses", default="xent_loss", help="list o
 parser.add_argument('--metrics', dest="metrics", default="xent_loss", help="list of metrics")
 parser.add_argument('--activation', dest="activation", default="relu", help="activation function")
 parser.add_argument('--decoder_wd', dest="decoder_wd", type=float, default=0.0, help="Weight decay param for the decoder")
+parser.add_argument('--encoder_wd', dest="encoder_wd", type=float, default=0.0, help="Weight decay param for the encoder")
 parser.add_argument('--decoder_use_bn', dest="decoder_use_bn", type=int, default=0, help="Use batch norm in decoder")
 parser.add_argument('--optimizer', dest="optimizer", type=str, default="adam", help="Optimizer, adam or rmsprop.")
 parser.add_argument('--verbose', dest="verbose", type=int, default=2, help="Logging verbosity: 0-silent, 1-verbose, 2-perEpoch (default)")
+parser.add_argument('--weight_schedules', dest="weight_schedules", default='', help="Comma separated list of loss schedules, ex size_loss|5|1|0.2|0.8 means that size_loss has has initial weight 5, final weight 1 and the weight is adjusted linearly after finishing the first 20% of the training and before finishing the 80% of training")
+parser.add_argument('--trainSize', dest="trainSize", type=int, default=0, help="Train set size (0 means default size)")
+parser.add_argument('--testSize', dest="testSize", type=int, default=0, help="Test set size (0 means default size)")
 
 
 args_param = parser.parse_args()
@@ -63,8 +68,22 @@ def getArgs():
         args.decoder_use_bn = True
     else:
         args.decoder_use_bn = False
-    args.intermediate_dims = map(int, str(args.intermediate_dims).split(","))
+    if len(args.intermediate_dims) > 0:
+        args.intermediate_dims = map(int, str(args.intermediate_dims).split(","))
+    else:
+        args.intermediate_dims = []
+
     args.losses = str(args.losses).split(",")
     args.metrics = str(args.metrics).split(",")
     args.metrics = sorted(set(args.metrics + args.losses))
+
+    weight_schedules = []
+    if len(args.weight_schedules) > 0:
+        for schedule in str(args.weight_schedules).split(","):
+            schedule_list = schedule.split("|")
+            schedule_list[1:5] = map(float,schedule_list[1:5])
+            var = K.variable(value=schedule_list[1])
+            schedule_list.append(var)
+            weight_schedules.append(schedule_list)
+    args.weight_schedules = weight_schedules
     return args

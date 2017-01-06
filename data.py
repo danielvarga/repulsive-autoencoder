@@ -4,7 +4,7 @@ import os.path
 from PIL import Image
 import numpy as np
 
-def load(dataset, shape=None, color=False):
+def load(dataset, trainSize, testSize, shape=None, color=False):
     if dataset == "mnist":
         assert shape is None
         assert color is False
@@ -20,8 +20,11 @@ def load(dataset, shape=None, color=False):
         x_train = np.expand_dims(x_train, 3)
         x_test = np.expand_dims(x_test, 3)
 
-#    x_train = x_train.reshape((len(x_train), np.prod(x_train.shape[1:])))
-#    x_test = x_test.reshape((len(x_test), np.prod(x_test.shape[1:])))
+    if trainSize > 0:
+        x_train = x_train[:trainSize]
+    if testSize > 0:
+        x_test = x_test[:testSize]
+
     return (x_train, x_test)
 
 def load_mnist():

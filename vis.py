@@ -134,9 +134,7 @@ def displayRandom(n, x_train, latent_dim, sampler, generator, name, batch_size=3
             images2.append(nearestTrain[i])
         plotImages(np.array(images2), 2*n, n, name)
 
-def displaySet(imageBatch, n, generator, name):
-    batchSize = imageBatch.shape[0]
-    if n > batchSize: n = batchSize
+def displaySet(imageBatch, batchSize, n, generator, name):
     nsqrt = int(np.ceil(np.sqrt(n)))
     recons = generator.predict(imageBatch, batch_size=batchSize)
 
@@ -150,8 +148,11 @@ def displaySet(imageBatch, n, generator, name):
 def displayInterp(x_train, x_test, batch_size, dim, encoder, generator, gridSize, name):
     train_latent = encoder.predict(x_train[:batch_size], batch_size=batch_size)
     test_latent = encoder.predict(x_test[:batch_size], batch_size=batch_size)
-    parallelogram_point = test_latent[0] + train_latent[1] - train_latent[0]
-    anchors = np.array([train_latent[0], train_latent[1], test_latent[0], parallelogram_point])
+    anchor1 = train_latent[0]
+    anchor2 = train_latent[6]
+    anchor3 = test_latent[0]
+    anchor4 = anchor3 + anchor2 - anchor1
+    anchors = np.array([anchor1, anchor2, anchor3, anchor4])
     interpGrid = grid_layout.create_mine_grid(gridSize, gridSize, dim, gridSize-1, anchors, False, False) # TODO different interpolations for different autoencoders!!!    
     n = interpGrid.shape[0]
     if n < batch_size:
@@ -163,7 +164,7 @@ def displayInterp(x_train, x_test, batch_size, dim, encoder, generator, gridSize
     predictedGrid = predictedGrid[0:n]
 
     prologGrid = np.zeros([gridSize] + list(x_train.shape[1:]))
-    prologGrid[0:3] = [x_train[0],x_train[1], x_test[0]]
+    prologGrid[0:3] = [x_train[0],x_train[6], x_test[0]]
 
     grid = np.concatenate([prologGrid, predictedGrid])
     reshapedGrid = grid.reshape([grid.shape[0]] + list(x_train.shape[1:]))

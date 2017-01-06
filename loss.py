@@ -9,10 +9,10 @@ def loss_factory(model, encoder, loss_features, args):
 
     def xent_loss(x, x_decoded):
         loss = original_dim * objectives.binary_crossentropy(x, x_decoded)
-        return args.xent_weight * K.mean(loss)
+        return K.mean(loss)
     def mse_loss(x, x_decoded):
         loss = original_dim * objectives.mean_squared_error(x, x_decoded)
-        return args.xent_weight * K.mean(loss)
+        return K.mean(loss)
     def hidden_mse_loss(x, x_decoded):
         hidden_x_decoded = encoder(x_decoded)
         x = K.reshape(x, K.shape(x_decoded))
@@ -42,11 +42,11 @@ def loss_factory(model, encoder, loss_features, args):
         average_distances = K.mean(K.square(z_mean), axis=1)
         FUDGE = 0.01
         loss = -1 -K.log(average_distances + FUDGE) + FUDGE + average_distances
-        return 10 * args.latent_dim * K.mean(loss)
+        return args.latent_dim * K.mean(loss)
     def mean_loss(x, x_decoded): # pushing the average of the points to zero
         z_mean = loss_features[1]
         loss = K.abs(K.mean(z_mean, axis = 0))
-        return 10 * args.latent_dim * K.mean(loss)
+        return args.latent_dim * K.mean(loss)
     def repulsive_loss(x, x_decoded): #pushing points away from each other
         z_normed = loss_features[3]
         epsilon = 0.0001
@@ -83,6 +83,8 @@ def loss_factory(model, encoder, loss_features, args):
             current_loss = original_dim * K.mean(K.batch_flatten(K.square(decoder_input - encoder_output)), axis=-1)
             loss += current_loss
         return K.mean(loss)
+    def dummy_loss(x, x_decoded):
+        return K.variable(value=1.0)
 
     metrics = []
     for metric in args.metrics:
@@ -91,10 +93,20 @@ def loss_factory(model, encoder, loss_features, args):
     for loss in args.losses:
         losses.append(locals().get(loss))
 
+    weightDict = {}
+    for schedule in args.weight_schedules:
+        weightDict[schedule[0]] = schedule[5]
+    print weightDict
+
     def lossFun(x, x_decoded):
         lossValue = 0
-        for loss in losses:
-            lossValue += loss(x, x_decoded)
+        for i in range(len(losses)):
+            loss = losses[i]
+            lossName = args.losses[i]
+            currentLoss = loss(x, x_decoded)
+            if weightDict.has_key(lossName):
+                currentLoss *= weightDict[lossName]
+            lossValue += currentLoss
         return lossValue
     return lossFun, metrics
 

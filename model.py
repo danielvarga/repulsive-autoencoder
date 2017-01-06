@@ -11,6 +11,7 @@ from keras.models import Model
 from keras import backend as K
 from keras.datasets import mnist
 from keras.optimizers import *
+from keras.regularizers import l2
 import activations
 from loss import loss_factory
 from arm import ArmLayer
@@ -19,7 +20,7 @@ def build_model(args):
     x = Input(batch_shape=([args.batch_size] + list(args.original_shape)))
 
     if args.encoder == "dense":
-        encoder = dense.DenseEncoder(args.intermediate_dims,args.activation)
+        encoder = dense.DenseEncoder(args.intermediate_dims,args.activation, args.encoder_wd)
     elif args.encoder == "conv":
         encoder = model_conv_discgen.ConvEncoder(
             depth = args.depth,
@@ -30,14 +31,14 @@ def build_model(args):
             base_filter_num = args.base_filter_num)
     hidden = encoder(x)
 
-    z, z_mean, z_log_var = add_sampling(hidden, args.sampling, args.batch_size, args.latent_dim)
+    z, z_mean, z_log_var = add_sampling(hidden, args.sampling, args.batch_size, args.latent_dim, args.encoder_wd)
 
     z_normed = Lambda(lambda z_unnormed: K.l2_normalize(z_unnormed, axis=-1))([z])
     if args.spherical:
         z = z_normed
 
     if args.decoder == "dense":
-        decoder = dense.DenseDecoder(args.latent_dim, args.intermediate_dims, args.original_shape, args.activation)
+        decoder = dense.DenseDecoder(args.latent_dim, args.intermediate_dims, args.original_shape, args.activation, args.decoder_wd)
     elif args.decoder == "conv":
         decoder = model_conv_discgen.ConvDecoder(
             depth = args.depth,
@@ -77,13 +78,13 @@ def build_model(args):
     return ae, encoder, encoder_var, generator
 
 
-def add_sampling(hidden, sampling, batch_size, latent_dim):
-    z_mean = Dense(latent_dim)(hidden)
+def add_sampling(hidden, sampling, batch_size, latent_dim, wd):
+    z_mean = Dense(latent_dim, W_regularizer=l2(wd))(hidden)
     if not sampling:
         z_log_var = Lambda(lambda x: 0*x, output_shape=[latent_dim])((z_mean))
         return z_mean, z_mean, z_log_var
     else:
-        z_log_var = Dense(latent_dim)(hidden)
+        z_log_var = Dense(latent_dim, W_regularizer=l2(wd))(hidden)
         def sampling(inputs):
             z_mean, z_log_var = inputs
             epsilon = K.random_normal(shape=(batch_size, latent_dim), mean=0.)

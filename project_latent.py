@@ -31,7 +31,7 @@ do_latent_variances = args.sampling
 color = args.color
 
 import data
-(x_train, x_test) = data.load("celeba", shape=shape, color=color)
+(x_train, x_test) = data.load("celeba", 0, 0, shape=shape, color=color)
 
 generator = vis.loadModel(prefix + "_generator")
 
@@ -60,6 +60,21 @@ if do_latent_variances:
         np.save(latent_train_file, latent_train)
 else:
     latent_train = latent_train_mean
+
+if do_latent_variances:
+    x = np.mean(latent_train_logvar, axis=1)
+    plt.hist(x, bins = 30)
+    plt.savefig(prefix + "_logvar_hist.png")
+    plt.close()
+    x_indices = np.argsort(x)
+#    top10 = x_train[x_indices[:100]]
+#    bottom10 = x_train[x_indices[-100:]]
+#    xs = np.append(top10, bottom10, axis=0)
+    xs = x_train[x_indices[::250]]
+    ae = vis.loadModel(prefix + "_model")
+    vis.displaySet(xs, batch_size, xs.shape[0], ae, prefix + "_logvar")
+                    
+    
 
 print latent_train.shape
 origo = np.mean(latent_train, axis=0)
@@ -90,8 +105,12 @@ plt.close()
 # histogram of distances from the origo and from zero
 variance = np.mean(np.square(latent_train_mean - origo), axis=1)
 variance2 = np.mean(np.square(latent_train_mean), axis=1)
-plt.hist(variance, bins = 30)
-plt.hist(variance2, bins = 30)
+plt.hist(variance, bins = 30, label="Squared istance from mean")
+plt.hist(variance2, bins = 30, label="Squared distance from origo")
+target = np.random.normal(0.0, 1.0, latent_train_mean.shape)
+variance_target = np.mean(np.square(target), axis=1)
+plt.hist(variance_target, bins = 30, label="Target squared distance")
+plt.legend()
 plt.savefig(prefix+"_variance_hist.png")
 plt.close()
 

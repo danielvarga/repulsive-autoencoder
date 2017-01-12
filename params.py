@@ -1,6 +1,6 @@
 import argparse
 import exp
-from keras import backend as K
+
 
 parser = argparse.ArgumentParser()
 
@@ -79,6 +79,7 @@ def getArgs():
 
     weight_schedules = []
     if len(args.weight_schedules) > 0:
+        import keras.backend as K
         for schedule in str(args.weight_schedules).split(","):
             schedule_list = schedule.split("|")
             schedule_list[1:5] = map(float,schedule_list[1:5])

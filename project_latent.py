@@ -169,8 +169,8 @@ if do_latent_variances:
 
 
 cov_train = np.cov(latent_train_mean.T)
-eigvals = list(np.linalg.eigvals(cov_train).real)
-print "cov_train eigvals = ", sorted(eigvals, reverse=True)
+eigVals, eigVects = np.linalg.eig(cov_train)
+print "cov_train eigvals = ", sorted(eigVals, reverse=True)
 
 
 # the below loop illustrates that taking small subsamples will not alter the eigenvalue structure of the covariance matrix 
@@ -182,26 +182,25 @@ print "cov_train eigvals = ", sorted(eigvals, reverse=True)
 
 
 print "CS", cov_train.shape
-mean_train = np.mean(latent_train_mean, axis=0)
 std_train = np.std(latent_train_mean)
-print "MS", mean_train.shape
+print "MS", origo_mean.shape
 cho = np.linalg.cholesky(cov_train)
 print "CHOS", cho.shape
 N = 100000
 z = np.random.normal(0.0, 1.0, (N, latent_dim))
-sample = cho.dot(z.T).T+mean_train
+sample = cho.dot(z.T).T+origo_mean
 print sample.shape
 
 
 def oval_sampler(batch_size, latent_dim):
     z = np.random.normal(size=(batch_size, latent_dim))
-    z = cho.dot(z.T).T+mean_train
+    z = cho.dot(z.T).T+origo_mean
 #    z /= np.linalg.norm(z)
     return z
 
 def diagonal_oval_sampler(batch_size, latent_dim):
     z = np.random.normal(size=(batch_size, latent_dim))
-    z = std_train * z + mean_train
+    z = std_train * z + origo_mean
     return z
 
 def diagonal_oval_sampler_nomean(batch_size, latent_dim):
@@ -209,30 +208,28 @@ def diagonal_oval_sampler_nomean(batch_size, latent_dim):
     z = std_train * z
     return z
 
-eigVals, eigVects = np.linalg.eig(cov_train)
-
 def eigval1d_grid(grid_size, latent_dim):
     x = np.linspace(-2.0, 2.0, num=grid_size)
     xs = []
     for i in range(grid_size):
-        xi = x[i] * eigVects[0] * np.sqrt(eigVals[0]) + mean_train
+        xi = x[i] * eigVects[0] * np.sqrt(eigVals[0]) + origo_mean
         xs.append(xi)
     return np.array(xs)
 
 
 # elliptic==True samples from the Cholesky projected to the eigenvectors' plane.
 # elliptic==False samples from the same thing stretched to a circle.
-def eigval2d_grid(grid_size, latent_dim, eigIndex1=0, eigIndex2=1, radius=2.0, elliptic=True):
+def eigval2d_grid(grid_size, latent_dim, eigVect1, eigVal1, eigVect2, eigVal2, radius=2.0, elliptic=True):
     x = np.linspace(-radius, radius, num=grid_size)
     xs = []
     for i in range(grid_size):
         for j in range(grid_size):
-            d1 = eigVects[eigIndex1] * np.sqrt(eigVals[eigIndex1]) * x[i]
+            d1 = eigVect1 * np.sqrt(eigVal1) * x[i]
             if elliptic:
-                d2 = eigVects[eigIndex2] * np.sqrt(eigVals[eigIndex2]) * x[j]
+                d2 = eigVect2 * np.sqrt(eigVal2) * x[j]
             else:
-                d2 = eigVects[eigIndex2] * np.sqrt(eigVals[eigIndex1]) * x[j] # eigIndex1!                
-            xi = mean_train + d1 + d2
+                d2 = eigVect2 * np.sqrt(eigVal1) * x[j] # eigVal1!                
+            xi = origo_mean + d1 + d2
             xs.append(xi)
     return np.array(xs).reshape((grid_size, grid_size, latent_dim))
 
@@ -247,12 +244,19 @@ for i in reversed(range(len(eigpairs))):
     
 for eigIndex1, eigIndex2 in eigpairs:
     print "eigenplane grid", eigIndex1, eigIndex2
-    plane = eigval2d_grid(grid_size, latent_dim, eigIndex1=eigIndex1, eigIndex2=eigIndex2, radius=4.0, elliptic=True)
+    plane = eigval2d_grid(grid_size, latent_dim, eigVects[eigIndex1], eigVals[eigIndex1], eigVects[eigIndex2], eigVals[eigIndex2], radius=4.0, elliptic=True)
     vis.displayPlane(x_train=x_train, latent_dim=latent_dim, plane=plane,
         generator=generator, name=prefix + "_eigs%d-%d" % (eigIndex1, eigIndex2), batch_size=batch_size)
-    plane = eigval2d_grid(grid_size, latent_dim, eigIndex1=eigIndex1, eigIndex2=eigIndex2, radius=4.0, elliptic=False)
+    plane = eigval2d_grid(grid_size, latent_dim, eigVects[eigIndex1], eigVals[eigIndex1], eigVects[eigIndex2], eigVals[eigIndex2], radius=4.0, elliptic=False)
     vis.displayPlane(x_train=x_train, latent_dim=latent_dim, plane=plane,
         generator=generator, name=prefix + "_eigs-nonell%d-%d" % (eigIndex1, eigIndex2), batch_size=batch_size)
+
+# visualise the plane specified by the two largest eigenvalues intersected with the standard normal sphere
+# compare this with _eigs0-1.png
+saturn_plane = eigval2d_grid(grid_size, latent_dim, eigVects[0], 1.0, eigVects[1], 1.0, radius=4.0, elliptic=True)
+vis.displayPlane(x_train=x_train, latent_dim=latent_dim, plane=saturn_plane, generator=generator, name=prefix + "_saturn0-1", batch_size=batch_size)
+saturn_plane_scaled = eigval2d_grid(grid_size, latent_dim, std_train * eigVects[0], 1.0, std_train * eigVects[1], 1.0, radius=4.0, elliptic=True)
+vis.displayPlane(x_train=x_train, latent_dim=latent_dim, plane=saturn_plane_scaled, generator=generator, name=prefix + "_saturn_scaled0-1", batch_size=batch_size)
 
 np.random.seed(10)
 vis.displayRandom(n=20, x_train=x_train, latent_dim=latent_dim, sampler=masked_sampler,

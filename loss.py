@@ -3,6 +3,8 @@ import keras.backend as K
 import tensorflow as tf
 import numpy as np
 
+import eigen
+
 # loss_features = [z, z_mean, z_log_var, sparse_input, sparse_output]
 def loss_factory(model, encoder, loss_features, args):
     original_dim = np.float32(np.prod(args.original_shape))
@@ -10,32 +12,40 @@ def loss_factory(model, encoder, loss_features, args):
     def xent_loss(x, x_decoded):
         loss = original_dim * objectives.binary_crossentropy(x, x_decoded)
         return K.mean(loss)
+
     def mse_loss(x, x_decoded):
         loss = original_dim * objectives.mean_squared_error(x, x_decoded)
         return K.mean(loss)
+
     def hidden_mse_loss(x, x_decoded):
         hidden_x_decoded = encoder(x_decoded)
         x = K.reshape(x, K.shape(x_decoded))
         hidden_x = encoder(x)
         loss= original_dim * objectives.mean_squared_error(hidden_x, hidden_x_decoded)
         return K.mean(loss)        
+
     def mae_loss(x, x_decoded):
         loss = original_dim * objectives.mean_absolute_error(x, x_decoded)
         return K.mean(loss)
+
     def arm_loss(x, x_decoded):
         loss = original_dim * objectives.mean_absolute_error(loss_features[4], loss_features[4])
         return K.mean(loss)
+
     def size_loss(x, x_decoded): # pushing the means towards the origo
         loss = 0.5 * K.sum(K.square(loss_features[1]), axis=-1)
         return K.mean(loss)
+
     def variance_loss(x, x_decoded): # pushing the variance towards 1
         loss = 0.5 * K.sum(-1 - loss_features[2] + K.exp(loss_features[2]), axis=-1)
         return K.mean(loss)
+
     def edge_loss(x, x_decoded):
         edge_x = edgeDetect(x, args.original_shape)
         edge_x_decoded = edgeDetect(x_decoded, args.original_shape)
         loss = original_dim * objectives.mean_squared_error(edge_x, edge_x_decoded)
         return K.mean(loss)
+
     # pushing latent points towards unit sphere surface, both from inside and out.
     def sphere_loss(x, x_decoded):
         z_mean = loss_features[1]
@@ -43,25 +53,41 @@ def loss_factory(model, encoder, loss_features, args):
         FUDGE = 0.01
         loss = -1 -K.log(average_distances + FUDGE) + FUDGE + average_distances
         return args.latent_dim * K.mean(loss)
+
     def mean_loss(x, x_decoded): # pushing the average of the points to zero
         z_mean = loss_features[1]
         loss = K.abs(K.mean(z_mean, axis = 0))
         return args.latent_dim * K.mean(loss)
-    def repulsive_loss(x, x_decoded): #pushing points away from each other
+
+    def repulsive_loss(x, x_decoded): # pushing points away from each other
         z_normed = loss_features[3]
         epsilon = 0.0001
         distances = (2 + epsilon - 2.0 * K.dot(z_normed, K.transpose(z_normed))) ** 0.5
         loss = K.mean(-distances)
         return args.latent_dim * loss
+
     def phantom_loss(x, x_decoded):
         edge_x = edgeDetect(x, args.original_shape)
         loss = original_dim * objectives.mean_squared_error(edge_x, x_decoded)
         return 0.01 * K.mean(loss)
+
     def covariance_loss(x, x_decoded):
         z = loss_features[1]
         z_centered = z - K.mean(z, axis=0)
         loss = K.sum(K.square(K.eye(K.int_shape(z_centered)[1]) - K.dot(K.transpose(z_centered), z_centered)))
         return loss
+
+    # Pushes latent datapoints in the direction of the hyperplane that is
+    # orthogonal to the dominant eigenvector of the covariance matrix of the minibatch.
+    # Note: the eigenvector calculation assumes that the latent minibatch is zero-centered.
+    # We do not do this zero-centering.
+    def dominant_eigenvector_loss(x, x_decoded):
+        z = loss_features[1]
+        batch_size = K.int_shape(x_decoded)[0]
+        domineigvec, domineigval = eigen.eigvec(z, batch_size, latent_dim=args.latent_dim, iterations=3, inner_normalization=False)
+        loss = K.square(K.dot(z, domineigvec))
+        return K.mean(loss)
+
     def layerwise_loss(x, x_decoded):
         model_nodes = model.nodes_by_depth
         encOutputs = []

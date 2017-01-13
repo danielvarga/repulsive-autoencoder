@@ -83,8 +83,29 @@ def loss_factory(model, encoder, loss_features, args):
             current_loss = original_dim * K.mean(K.batch_flatten(K.square(decoder_input - encoder_output)), axis=-1)
             loss += current_loss
         return K.mean(loss)
+    def random_mse_loss(x, x_decoded):
+        loss = K.square(x - x_decoded)
+        loss = original_dim * K.mean(loss, axis=0)
+        loss = K.reshape(loss, [np.prod(K.int_shape(loss))])
+        indices = np.random.choice(K.int_shape(loss)[0], 1000).astype('int32')
+        loss = K.gather(loss, indices)
+        return K.mean(loss)
+    def threshold_loss(x, x_decoded):
+        loss = K.square(x - x_decoded)
+        loss = K.maximum(loss - 0.1, 0)
+        loss = K.mean(loss, axis=-1)
+        return original_dim * K.mean(loss)
+    def min_loss(x, x_decoded):
+        z = loss_features[1]
+        loss = 0.5 * K.sum(K.square(z), axis=-1)
+        return K.min(loss)
+    def max_loss(x, x_decoded):
+        z = loss_features[1]
+        return K.max(z)
     def dummy_loss(x, x_decoded):
-        return K.variable(value=1.0)
+        z = loss_features[1]
+        loss = K.mean(z, axis=1)
+        return K.mean(loss)
 
     metrics = []
     for metric in args.metrics:

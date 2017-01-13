@@ -35,6 +35,7 @@ parser.add_argument('--verbose', dest="verbose", type=int, default=2, help="Logg
 parser.add_argument('--weight_schedules', dest="weight_schedules", default='', help="Comma separated list of loss schedules, ex size_loss|5|1|0.2|0.8 means that size_loss has has initial weight 5, final weight 1 and the weight is adjusted linearly after finishing the first 20% of the training and before finishing the 80% of training")
 parser.add_argument('--trainSize', dest="trainSize", type=int, default=0, help="Train set size (0 means default size)")
 parser.add_argument('--testSize', dest="testSize", type=int, default=0, help="Test set size (0 means default size)")
+parser.add_argument('--gaussianParams', dest="gaussianParams", default="30,1", help="main_channel,dots")
 
 
 args_param = parser.parse_args()
@@ -44,7 +45,6 @@ exp.dumpParams(args, ini_file)
 
 def getArgs():
     assert args.encoder in ("dense", "conv")
-    assert args.decoder in ("dense", "conv")
 
     if args.callback_prefix == "same":
         args.callback_prefix = args.prefix
@@ -68,11 +68,14 @@ def getArgs():
         args.decoder_use_bn = True
     else:
         args.decoder_use_bn = False
-    if len(args.intermediate_dims) > 0:
+    if type(args.intermediate_dims) is int:
+        args.intermediate_dims = [args.intermediate_dims]
+    elif len(args.intermediate_dims) > 0:
         args.intermediate_dims = map(int, str(args.intermediate_dims).split(","))
     else:
         args.intermediate_dims = []
 
+    args.gaussianParams = map(int, str(args.gaussianParams).split(","))
     args.losses = str(args.losses).split(",")
     args.metrics = str(args.metrics).split(",")
     args.metrics = sorted(set(args.metrics + args.losses))

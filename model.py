@@ -5,6 +5,7 @@ import numpy as np
 
 import dense
 import model_conv_discgen
+import model_gaussian
 
 from keras.layers import Input, Dense, Lambda, Reshape, Flatten, Activation
 from keras.models import Model
@@ -49,6 +50,9 @@ def build_model(args):
             base_filter_num = args.base_filter_num,
             wd = args.decoder_wd,
             use_bn = args.decoder_use_bn)
+    elif args.decoder == "gaussian":
+        (mixtureX, mixtureY, mixtureChannel) = args.original_shape
+        decoder = model_gaussian.GaussianDecoder(args)
     generator_input, recons_output, generator_output = decoder(z)
 
     encoder = Model(x, z_mean)
@@ -65,11 +69,11 @@ def build_model(args):
     loss, metrics = loss_factory(ae, encoder, loss_features, args)
 
     if args.optimizer == "rmsprop":
-        optimizer = RMSprop(lr=args.lr)
+        optimizer = RMSprop(lr=args.lr, clipvalue=1.0)
     elif args.optimizer == "adam":
-        optimizer = Adam(lr=args.lr)
+        optimizer = Adam(lr=args.lr, clipvalue=1.0)
     elif args.optimizer == "sgd":
-        optimizer = SGD(lr = args.lr)
+        optimizer = SGD(lr = args.lr, clipvalue=1.0)
     else:
         assert False, "Unknown optimizer %s" % args.optimizer
 

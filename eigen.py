@@ -19,7 +19,7 @@ def eigvec(W, n, latent_dim, iterations=9, inner_normalization=False):
     return domineigvec, domineigval
 
 
-def main():
+def test_eigenvec():
     bs = 200
     latent_dim = 20
 
@@ -57,4 +57,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    test_eigenvec()

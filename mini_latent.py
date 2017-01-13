@@ -1,3 +1,4 @@
+import sys
 import matplotlib
 matplotlib.use('Agg')
 import numpy as np
@@ -23,19 +24,30 @@ latent_train_mean_file = prefix + "_latent_train_mean.npy"
 latent_train_logvar_file = prefix + "_latent_train_logvar.npy"
 latent_train_file = prefix + "_latent_train.npy"
 
-assert os.path.isfile(latent_train_file)
+
 latent_train_mean = np.load(latent_train_mean_file)
 
 if do_latent_variances:
     assert os.path.isfile(latent_train_logvar_file)
     latent_train_logvar = np.load(latent_train_logvar_file)
     if os.path.isfile(latent_train_file):
+        print "reading post-sampling latent cloud from cache", latent_train_file
         latent_train = np.load(latent_train_file)
     else:
+        print "calculating post-sampling latent cloud, saving to", latent_train_file
         latent_train = np.random.normal(size=latent_train_mean.shape) * np.exp(latent_train_logvar/2) + latent_train_mean
         np.save(latent_train_file, latent_train)
 else:
     latent_train = latent_train_mean
+
+
+truncate = None
+if truncate is not None:
+    print "truncating dataset from %d to %d points" % (len(latent_train_mean), truncate)
+    latent_train_mean = latent_train_mean[:truncate]
+    latent_train_logvar = latent_train_logvar[:truncate]
+    latent_train = latent_train[:truncate]
+
 
 if do_latent_variances:
     x = np.mean(latent_train_logvar, axis=1)
@@ -68,7 +80,7 @@ if do_latent_variances:
     print "employed_dims_per_sample histogram"
     print np.histogram(employed_dims_per_sample)
 
-    focuses = [4, 11, 5, 12]
+    focuses = [] # [4, 11, 5, 12]
     print mean_variances[focuses]
     print variance_means[focuses]
     for focus in focuses:
@@ -79,9 +91,36 @@ if do_latent_variances:
         print "variance"
         print np.histogram(np.exp(latent_train_logvar[:, focus]))
 
+
+cov_train = np.cov(latent_train_mean.T)
+eigVals, eigVects = np.linalg.eig(cov_train)
+print "cov_train eigvals = ", sorted(eigVals, reverse=True)
+
+cov_train_sampled = np.cov(latent_train.T)
+eigVals_sampled, eigVects_sampled = np.linalg.eig(cov_train_sampled)
+print "cov_train_sampled eigvals = ", sorted(eigVals_sampled, reverse=True)
+
+
+
+plt.figure()
+f, axarr = plt.subplots(4, 4)
+focuses = range(16) # [4, 11, 5, 12]
+
+for i in range(16):
+    x = i / 4
+    y = i % 4
+    focus = focuses[i]
+    data  = latent_train_mean[focus]
+    axarr[x, y].hist(data, bins=100)
+    axarr[x, y].set_title("dim %d" % focus)
+    axarr[x, y].locator_params(nbins=5, axis='x')
+plt.savefig(prefix + "_some_dims.png")
+plt.close()
+
+
 print "premature exit"
-import sys
 sys.exit()
+
 
 # histogram of the origo
 plt.hist(origo, bins = 30)
@@ -139,10 +178,6 @@ print np.sum(working_mask), "/", working_mask.shape
 print np.histogram(variances, 100)
 
 latent_dim = latent_train.shape[1]
-
-cov_train = np.cov(latent_train_mean.T)
-eigVals, eigVects = np.linalg.eig(cov_train)
-print "cov_train eigvals = ", sorted(eigVals, reverse=True)
 
 
 # the below loop illustrates that taking small subsamples will not alter the eigenvalue structure of the covariance matrix 

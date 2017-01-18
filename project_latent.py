@@ -16,6 +16,7 @@ print(args)
 
 # limit memory usage
 import keras
+print "Keras version: ", keras.__version__
 if keras.backend._BACKEND == "tensorflow":
     import tensorflow as tf
     from keras.backend.tensorflow_backend import set_session
@@ -59,9 +60,10 @@ if do_latent_variances:
         latent_train = np.random.normal(size=latent_train_mean.shape) * np.exp(latent_train_logvar/2) + latent_train_mean
         np.save(latent_train_file, latent_train)
 else:
+    encoder_var =encoder
     latent_train = latent_train_mean
 
-if do_latent_variances:
+if False: #do_latent_variances:
     x = np.mean(latent_train_logvar, axis=1)
     plt.hist(x, bins = 30)
     plt.savefig(prefix + "_logvar_hist.png")
@@ -81,11 +83,30 @@ origo = np.mean(latent_train, axis=0)
 origo_mean = np.mean(latent_train_mean, axis=0)
 mean_variances = np.var(latent_train_mean, axis=0)
 variances = np.var(latent_train, axis=0)
+working_mask = (mean_variances > 0.1)
+print "Variances: ", np.sum(working_mask), "/", working_mask.shape
+print np.histogram(mean_variances, 100)
+
+latent_dim = latent_train.shape[1]
+
+vis.displayNearest(latent_train, generator, batch_size, name=prefix+"-nearest", origo = latent_train[6])
+vis.displayNearest(latent_train, generator, batch_size, name=prefix+"-nearest-masked", origo = latent_train[6], working_mask=working_mask)
+vis.displayNearest(latent_train_mean, generator, batch_size, name=prefix+"-nearest-mean", origo = latent_train[6])
+
+np.random.seed(100)
+vis.displayMarkov(30, 30, latent_dim, model.gaussian_sampler, generator, encoder, encoder_var, do_latent_variances, name=prefix+"-markov", batch_size=batch_size, x_train_latent=latent_train)
+np.random.seed(100)
+# vis.displayMarkov(60, 10, latent_dim, model.gaussian_sampler, generator, encoder, encoder_var, do_latent_variances, name=prefix+"-markov-nosampling", batch_size=batch_size, variance_alpha=0.0)
+np.random.seed(100)
+# vis.displayMarkov(60, 10, latent_dim, model.gaussian_sampler, generator, encoder, encoder_var, do_latent_variances, name=prefix+"-markov-noise", batch_size=batch_size, noise_alpha=0.1)
+np.random.seed(100)
+# vis.displayMarkov(60, 10, latent_dim, model.gaussian_sampler, generator, encoder, encoder_var, do_latent_variances, name=prefix+"-markov-nosampling-noise", batch_size=batch_size, variance_alpha=0.0, noise_alpha=0.1)
+
 
 if do_latent_variances:
     variance_means = np.mean(np.exp(latent_train_logvar), axis=0)
     plt.scatter(mean_variances, variance_means)
-    plt.savefig(prefix+"_mvvm.png")
+    plt.savefig(prefix+"-mvvm.png")
     plt.close()
     print "Mean variances"
     print np.histogram(mean_variances)    
@@ -137,15 +158,6 @@ for i in range(4):
 plt.savefig(prefix + "_square_contribution.png")
 plt.close()
 
-
-
-variances = np.var(latent_train, axis=0)
-working_mask = (variances > 0.2)
-print "Variances"
-print np.sum(working_mask), "/", working_mask.shape
-print np.histogram(variances, 100)
-
-latent_dim = latent_train.shape[1]
 
 def masked_sampler(batch_size, latent_dim):
     z = np.random.normal(size=(batch_size, latent_dim))
@@ -257,6 +269,7 @@ saturn_plane = eigval2d_grid(grid_size, latent_dim, eigVects[0], 1.0, eigVects[1
 vis.displayPlane(x_train=x_train, latent_dim=latent_dim, plane=saturn_plane, generator=generator, name=prefix + "_saturn0-1", batch_size=batch_size)
 saturn_plane_scaled = eigval2d_grid(grid_size, latent_dim, std_train * eigVects[0], 1.0, std_train * eigVects[1], 1.0, radius=4.0, elliptic=True)
 vis.displayPlane(x_train=x_train, latent_dim=latent_dim, plane=saturn_plane_scaled, generator=generator, name=prefix + "_saturn_scaled0-1", batch_size=batch_size)
+
 
 np.random.seed(10)
 vis.displayRandom(n=20, x_train=x_train, latent_dim=latent_dim, sampler=masked_sampler,

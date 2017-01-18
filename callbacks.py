@@ -22,7 +22,7 @@ class ImageDisplayCallback(Callback):
     def __init__(self, 
                  x_train, x_test, 
                  latent_dim, batch_size,
-                 encoder, encoder_var, generator, sampler, 
+                 encoder, encoder_var, is_sampling, generator, sampler, 
                  name,
                  frequency,
                  **kwargs):
@@ -32,6 +32,7 @@ class ImageDisplayCallback(Callback):
         self.batch_size = batch_size
         self.encoder = encoder
         self.encoder_var = encoder_var
+        self.is_sampling = is_sampling
         self.generator = generator
         self.sampler = sampler
         self.name = name
@@ -45,7 +46,7 @@ class ImageDisplayCallback(Callback):
         vis.displayRandom(15, self.x_train, self.latent_dim, self.sampler, self.generator, "%s-random-%i" % (self.name, epoch+1), batch_size=self.batch_size)
         vis.displaySet(self.x_test[:self.batch_size], self.batch_size, self.batch_size, self.model, "%s-test-%i" % (self.name,epoch+1))
         vis.displaySet(self.x_train[:self.batch_size], self.batch_size, self.batch_size, self.model, "%s-train-%i" % (self.name,epoch+1))
-        vis.displayInterp(self.x_train, self.x_test, self.batch_size, self.latent_dim, self.encoder, self.generator, 10, "%s-interp-%i" % (self.name,epoch+1))
+        vis.displayInterp(self.x_train, self.x_test, self.batch_size, self.latent_dim, self.encoder, self.encoder_var, self.is_sampling, self.generator, 10, "%s-interp-%i" % (self.name,epoch+1))
         if self.encoder != self.encoder_var:
             vis.plotMVVM(self.x_train, self.encoder, self.encoder_var, self.batch_size, "{}-mvvm-{}.png".format(self.name, epoch+1))
         vis.plotMVhist(self.x_train, self.encoder, self.batch_size, "{}-mvhist-{}.png".format(self.name, epoch+1))

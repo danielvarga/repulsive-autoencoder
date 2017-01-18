@@ -107,7 +107,7 @@ def displayPlane(x_train, latent_dim, plane, generator, name, batch_size=32, sho
         plotImages(np.array(images2), 2*width, height, name)
 
 
-def displayRandom(n, x_train, latent_dim, sampler, generator, name, batch_size=32, showNearest=False):
+def displayRandom(n, x_train, latent_dim, sampler, generator, name, batch_size=32, showNearest=False, x_train_latent=None):
     images = []
     cnt = n * n
     cnt_aligned = (cnt // batch_size + 1) * batch_size
@@ -125,14 +125,113 @@ def displayRandom(n, x_train, latent_dim, sampler, generator, name, batch_size=3
     if not showNearest:
         plotImages(np.array(images), n, n, name)
     else:
-        distToTrain = distanceMatrix(images.reshape([images.shape[0],-1]), x_train.reshape([x_train.shape[0],-1]))
-        distIndices = distToTrain.argmin(axis=0)
-        nearestTrain = x_train[distIndices]
-        images2 = []
-        for i in range(images.shape[0]):
-            images2.append(images[i])
-            images2.append(nearestTrain[i])
-        plotImages(np.array(images2), 2*n, n, name)
+        nearestTrain = getNearest(images, x_train)
+        if x_train_latent is not None:
+            nearestTrain_latent = getNearest(z_sample, x_train_latent)
+            nearestTrain2 = generator.predict(nearestTrain_latent, batch_size=batch_size)
+            nearestTrain2 = nearestTrain2[:cnt]
+            result = mergeSets((images, nearestTrain, nearestTrain2))
+            plotImages(result, 3*n, n, name)
+        else:
+            result = mergeSets((images, nearestTrain))
+            plotImages(result, 2*n, n, name)
+
+def getNearest(images, x_train):
+    distToTrain = distanceMatrix(images.reshape([images.shape[0],-1]), x_train.reshape([x_train.shape[0],-1]))
+    distIndices = distToTrain.argmin(axis=0)
+    nearestTrain = x_train[distIndices]
+    return nearestTrain
+            
+
+def mergeSets(arrays):
+    size = arrays[0].shape[0]
+    result = []
+    for i in range(size):
+        for array in arrays:
+            assert array.shape[0] == size, "Incorrect length {} in the {}th array".format(array.shape[0], i)
+            result.append(array[i])
+    return np.array(result)
+
+def displayMarkov(n, iterations, latent_dim, sampler, generator, encoder, encoder_var, do_latent_variances, name, batch_size, x_train=None, x_train_latent=None, variance_alpha=1.0, noise_alpha=0.0):
+    cnt= (n // batch_size + 1) * batch_size
+    z_sample = sampler(cnt, latent_dim)
+    if x_train is None:
+        x_decoded = generator.predict(z_sample, batch_size=batch_size)
+    else:
+        x_decoded = x_train[:cnt]
+
+    if x_train_latent is not None:
+        result = np.zeros(shape=[2 * n * (iterations+1)] + list(x_decoded.shape[1:]))
+        nearestTrain = getNearest(z_sample, x_train_latent)
+        nearestTrain = generator.predict(nearestTrain, batch_size=batch_size)
+        result[:2*n] = mergeSets((x_decoded[:n], nearestTrain[:n]))
+    else:
+        result = np.zeros(shape=[n * (iterations+1)] + list(x_decoded.shape[1:]))
+        result[:n] = x_decoded[:n]
+    
+    x_previous = x_decoded
+    for i in range(iterations):
+        index = i + 1
+        z_current_mean = encoder.predict(x_previous, batch_size=batch_size)
+        if not do_latent_variances:
+            z_current = z_current_mean
+        else:
+            z_current_logvar = encoder_var.predict(x_previous, batch_size=batch_size)
+            z_current = variance_alpha * np.random.normal(size=z_current_mean.shape) * np.exp(z_current_logvar/2) + z_current_mean
+        z_current += noise_alpha * np.random.normal(size=z_current.shape)
+        x_current = generator.predict(z_current, batch_size=batch_size)
+
+        if x_train_latent is not None:
+            nearestTrain_current = getNearest(z_current, x_train_latent)
+            nearestTrain_current = generator.predict(nearestTrain_current, batch_size=batch_size)
+            result[index * 2*n: (index + 1) * 2*n] = mergeSets((x_current[:n], nearestTrain_current[:n]))
+        else:
+            result[index * n: (index + 1) * n] = x_current[:n]
+        x_previous = x_current
+
+    if x_train_latent is not None:
+        plotImages(result, 2*n, iterations+1, name)
+    else:
+        plotImages(result, n, iterations+1, name)
+
+def displayOneMarkov(n, iterations, latent_dim, sampler, generator, encoder, encoder_var, do_latent_variances, name, batch_size, x_train=None):
+    if not do_latent_variances: return
+
+    z_sample = sampler(batch_size, latent_dim)
+    if x_train is None:
+        x_decoded = generator.predict(z_sample, batch_size=batch_size)
+    else:
+        x_decoded = x_train[:batch_size]
+
+    x_previous = x_decoded
+    z_current_mean = encoder.predict(x_previous, batch_size=batch_size)
+    result = np.zeros(shape=[n * (iterations+1)] + list(x_decoded.shape[1:]))
+    result[:n] = x_decoded[:n]
+
+    z_current_logvar =  encoder_var.predict(x_previous, batch_size=batch_size)
+    for j in range(iterations):
+        index = j+1
+        alpha = 1.0 * j / iterations
+        z_current = np.random.normal(size=z_current_mean.shape) * alpha * np.exp(z_current_logvar/2) + z_current_mean
+        x_current = generator.predict(z_current, batch_size=batch_size)
+        result[index * n:(index+1) *n] = x_current[:n]
+    plotImages(result, n, iterations+1, name)
+
+def displayNearest(x_train_latent, generator, batch_size, name, origo="default", nx=40, ny=20, working_mask=None):
+    if origo is "default":
+        origo = np.zeros(shape=x_train_latent.shape[1:])
+    distances = np.square(x_train_latent - origo)
+    if working_mask is not None:
+        distances *= working_mask
+    distances = np.sum(distances, axis=1)
+    indices = np.argsort(distances)
+    x_train_latent = x_train_latent[indices]
+    cnt = nx * ny
+    cnt_aligned = (cnt // batch_size + 1) * batch_size
+    x_train_latent = x_train_latent[:cnt_aligned]
+    x_decoded = generator.predict(x_train_latent, batch_size=batch_size)
+    plotImages(x_decoded[:cnt], nx, ny, name)
+    
 
 def displaySet(imageBatch, batchSize, n, generator, name):
     nsqrt = int(np.ceil(np.sqrt(n)))
@@ -145,10 +244,19 @@ def displaySet(imageBatch, batchSize, n, generator, name):
     result = mergedSet.reshape([2*n] + list(imageBatch.shape[1:]))
     plotImages(result, 2*nsqrt, nsqrt, name)
 
-def displayInterp(x_train, x_test, batch_size, dim, encoder, generator, gridSize, name):
-    train_latent = encoder.predict(x_train[:batch_size], batch_size=batch_size)
-    test_latent = encoder.predict(x_test[:batch_size], batch_size=batch_size)
-    anchor1 = train_latent[0]
+def displayInterp(x_train, x_test, batch_size, dim, encoder, encoder_var, do_latent_variances, generator, gridSize, name):
+    train_latent_mean = encoder.predict(x_train[:batch_size], batch_size=batch_size)
+    test_latent_mean = encoder.predict(x_test[:batch_size], batch_size=batch_size)
+    if not do_latent_variances:
+        train_latent = train_latent_mean
+        test_latent = test_latent_mean
+    else:
+        train_latent_logvar = encoder_var.predict(x_train[:batch_size], batch_size=batch_size)
+        test_latent_logvar = encoder_var.predict(x_test[:batch_size], batch_size=batch_size)
+        train_latent = np.random.normal(size=train_latent_mean.shape) * np.exp(train_latent_logvar/2) + train_latent_mean
+        test_latent = np.random.normal(size=test_latent_mean.shape) * np.exp(test_latent_logvar/2) + test_latent_mean
+        
+    anchor1 = train_latent[14]
     anchor2 = train_latent[6]
     anchor3 = test_latent[0]
     anchor4 = anchor3 + anchor2 - anchor1
@@ -164,7 +272,7 @@ def displayInterp(x_train, x_test, batch_size, dim, encoder, generator, gridSize
     predictedGrid = predictedGrid[0:n]
 
     prologGrid = np.zeros([gridSize] + list(x_train.shape[1:]))
-    prologGrid[0:3] = [x_train[0],x_train[6], x_test[0]]
+    prologGrid[0:3] = [x_train[14],x_train[6], x_test[0]]
 
     grid = np.concatenate([prologGrid, predictedGrid])
     reshapedGrid = grid.reshape([grid.shape[0]] + list(x_train.shape[1:]))

@@ -6,8 +6,8 @@ from keras.regularizers import l1, l2
 import keras
 keras.layers.MixtureLayer = mixture.MixtureLayer
 
-learn_variance=True # TODO
-variance = 0.1
+learn_variance=False # TODO
+variance = 0.001
 maxpooling = False
 upscale = False
 
@@ -44,7 +44,7 @@ class GaussianDecoder(Decoder):
     def __call__(self, recons_input):
         args = self.args
 
-        generator_input = Input(shape=(args.latent_dim,))
+        generator_input = Input(shape=(args.latent_dim,), name="generator_input")
         generator_output = generator_input
         recons_output = recons_input
 
@@ -60,7 +60,7 @@ class GaussianDecoder(Decoder):
                 generator_main = layer(generator_main)
                 recons_main = layer(recons_main)
 
-            args.mixture_output = K.sum(K.abs(generator_main), axis=3)
+            args.mixture_output = recons_main # Lambda(lambda x: K.sum(K.abs(x), axis=3), output_shape=(self.ys[args.depth], self.xs[args.depth],1))(recons_main)
             
         def sideFun(x):
             x = x[:,self.main_params:]

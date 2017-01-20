@@ -60,6 +60,8 @@ class GaussianDecoder(Decoder):
                 generator_main = layer(generator_main)
                 recons_main = layer(recons_main)
 
+            args.mixture_output = K.sum(K.abs(generator_main), axis=3)
+            
         def sideFun(x):
             x = x[:,self.main_params:]
             x = K.expand_dims(x, dim=1)
@@ -103,4 +105,4 @@ class GaussianDecoder(Decoder):
         output_shape = K.int_shape(recons_output)[1:]
         assert output_shape == self.args.original_shape, "Expected shape {}, got shape {}".format(self.args.original_shape, output_shape)
 
-        return generator_input, recons_output, generator_output 
+        return generator_input, recons_output, generator_output

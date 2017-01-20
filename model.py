@@ -53,7 +53,10 @@ def build_model(args):
     elif args.decoder == "gaussian":
         (mixtureX, mixtureY, mixtureChannel) = args.original_shape
         decoder = model_gaussian.GaussianDecoder(args)
+        args.mixture_model = Model(x, args.mixture_output)
+        args.mixture_model.compile(optimizer="sgd", loss="mse")
     generator_input, recons_output, generator_output = decoder(z)
+
 
     encoder = Model(x, z_mean)
     encoder_var = Model(x, z_log_var)

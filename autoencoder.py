@@ -56,6 +56,12 @@ ae.fit(x_train, x_train,
        callbacks = cbs,
        validation_data=(x_test, x_test))
 
+mixture_output = args.mixture_model.predict(x_train, batch_size=args.batch_size)
+data_output = ae.predict(x_train, batch_size=args.batch_size)
+third_channel = np.zeros(data_output.shape)
+output = np.concatenate([mixture_output, data_output, third_channel], axis=3)
+vis.plotImages(output[:100], 10, 10, "%s-mnist" % args.prefix)
+
 
 import vis
 vis.saveModel(ae, args.prefix + "_model")

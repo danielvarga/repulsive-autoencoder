@@ -1,6 +1,6 @@
 import mixture
 import numpy as np
-from keras.layers import Dense, Reshape, Input, Lambda, Convolution2D, Flatten, merge, Deconvolution2D, Activation
+from keras.layers import Dense, Reshape, Input, Lambda, Convolution2D, Flatten, merge, Deconvolution2D, Activation, BatchNormalization
 import keras.backend as K
 from keras.regularizers import l1, l2
 import keras
@@ -90,6 +90,7 @@ class GaussianDecoder(Decoder):
         for i in reversed(range(args.depth)):
             layers.append(Convolution2D(self.channel, 3, 3, subsample=(1,1), border_mode="same"))
             layers.append(Activation(args.activation))
+            layers.append(BatchNormalization())
             if upscale:
                 layers.append(Deconvolution2D(self.channel, 2, 2, output_shape=(args.batch_size, self.ys[i], self.xs[i], self.channel), border_mode='same', subsample=(2,2), W_regularizer=l2(args.decoder_wd)))
                 layers.append(Activation(args.activation))

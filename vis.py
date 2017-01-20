@@ -182,7 +182,7 @@ def displayMarkov(n, iterations, latent_dim, sampler, generator, encoder, encode
         x_current = generator.predict(z_current, batch_size=batch_size)
 
         if x_train_latent is not None:
-            nearestTrain_current = getNearest(z_current, x_train_latent)
+            nearestTrain_current = getNearest(z_current_mean, x_train_latent)
             nearestTrain_current = generator.predict(nearestTrain_current, batch_size=batch_size)
             result[index * 2*n: (index + 1) * 2*n] = mergeSets((x_current[:n], nearestTrain_current[:n]))
         else:

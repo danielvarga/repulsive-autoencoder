@@ -89,19 +89,19 @@ print np.histogram(mean_variances, 100)
 
 latent_dim = latent_train.shape[1]
 
+
 vis.displayNearest(latent_train, generator, batch_size, name=prefix+"-nearest", origo = latent_train[6])
 vis.displayNearest(latent_train, generator, batch_size, name=prefix+"-nearest-masked", origo = latent_train[6], working_mask=working_mask)
 vis.displayNearest(latent_train_mean, generator, batch_size, name=prefix+"-nearest-mean", origo = latent_train[6])
 
 np.random.seed(100)
-vis.displayMarkov(30, 30, latent_dim, model.gaussian_sampler, generator, encoder, encoder_var, do_latent_variances, name=prefix+"-markov", batch_size=batch_size, x_train_latent=latent_train)
+vis.displayMarkov(30, 30, latent_dim, model.gaussian_sampler, generator, encoder, encoder_var, do_latent_variances, name=prefix+"-markov", batch_size=batch_size, x_train_latent=latent_train_mean)
 np.random.seed(100)
-# vis.displayMarkov(60, 10, latent_dim, model.gaussian_sampler, generator, encoder, encoder_var, do_latent_variances, name=prefix+"-markov-nosampling", batch_size=batch_size, variance_alpha=0.0)
+vis.displayMarkov(30, 30, latent_dim, model.gaussian_sampler, generator, encoder, encoder_var, do_latent_variances, name=prefix+"-markov-nosampling", batch_size=batch_size, variance_alpha=0.0)
 np.random.seed(100)
-# vis.displayMarkov(60, 10, latent_dim, model.gaussian_sampler, generator, encoder, encoder_var, do_latent_variances, name=prefix+"-markov-noise", batch_size=batch_size, noise_alpha=0.1)
+vis.displayMarkov(30, 30, latent_dim, model.gaussian_sampler, generator, encoder, encoder_var, do_latent_variances, name=prefix+"-markov-noise", batch_size=batch_size, noise_alpha=0.1)
 np.random.seed(100)
-# vis.displayMarkov(60, 10, latent_dim, model.gaussian_sampler, generator, encoder, encoder_var, do_latent_variances, name=prefix+"-markov-nosampling-noise", batch_size=batch_size, variance_alpha=0.0, noise_alpha=0.1)
-
+vis.displayMarkov(30, 30, latent_dim, model.gaussian_sampler, generator, encoder, encoder_var, do_latent_variances, name=prefix+"-markov-nosampling-noise", batch_size=batch_size, x_train_latent=latent_train_mean, variance_alpha=0.0, noise_alpha=0.3)
 
 if do_latent_variances:
     variance_means = np.mean(np.exp(latent_train_logvar), axis=0)

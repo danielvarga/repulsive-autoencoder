@@ -54,11 +54,14 @@ def cholesky(d):
 
     print "means =", mean
     print "deviations = ", np.std(d, axis=0)
-    print d[:10]
+    print "data sample = "
+    print d[:5]
 
     eigVals, eigVects = np.linalg.eigh(cov)
-    print "eigvals =", list(reversed(eigVals))
+    print "sqrt eigvals =", list(reversed(np.sqrt(eigVals)))
     print "dominant eigvect =", eigVects[:, -1]
+
+    return
 
     cho = np.linalg.cholesky(cov)
     print "cholesky =", cho
@@ -130,22 +133,38 @@ def test_loss2():
     net = inputs
     net = Dense(intermediate_dim, activation="relu")(net)
     net = Dense(intermediate_dim, activation="relu")(net)
+    net = Dense(intermediate_dim, activation="relu")(net)
     z = Dense(latent_dim, activation="tanh", name="z")(net)
     eigvec = Lambda(lambda z: dominant_eigvect_layer(z), name="eigvec")([z])
     net = z
     net = Dense(intermediate_dim, activation="relu")(net)
-    net = Dense(latent_dim, activation="relu")(net)
-    output = net
+    net = Dense(intermediate_dim, activation="relu")(net)
+    net = Dense(intermediate_dim, activation="relu")(net)
+    output = Dense(latent_dim, activation="relu")(net)
+
+    def eigenvalue_gap_loss(x, x_pred):
+        EIGENVALUE_GAP_LOSS_WEIGHT = 0.01
+        WW = K.dot(K.transpose(z), z)
+        mineigval, maxeigval = eigen.extreme_eigvals(WW, batch_size, latent_dim=latent_dim, iterations=3, inner_normalization=False)
+        loss = maxeigval / mineigval # K.square(maxeigval-1) + K.square(mineigval-1)
+        loss *= EIGENVALUE_GAP_LOSS_WEIGHT
+        return loss
+
+    def total_loss(x, x_pred):
+        recons = K.mean(K.square(x-x_pred))
+        shape = K.mean(K.square(z))
+        # shape = eigenvalue_gap_loss(x, x_pred)
+        return recons + shape
 
     model = Model(input=inputs, output=output)
     optimizer = Adam(lr=0.001, clipvalue=1.0)
-    model.compile(optimizer=optimizer, loss="mse")
+    model.compile(optimizer=optimizer, loss=total_loss, metrics=["mse", eigenvalue_gap_loss])
 
     encoder = Model(input=inputs, output=z)
     encoder.compile(optimizer=optimizer, loss="mse")
 
-    N = 1000 // batch_size * batch_size
-    megaepoch_count = 10
+    N = 10000 // batch_size * batch_size
+    megaepoch_count = 1
 
     model.summary()
 
@@ -157,8 +176,17 @@ def test_loss2():
         z = encoder.predict(data, batch_size=batch_size)
         cholesky(z)
 
+    import matplotlib.pyplot as plt
+    from mpl_toolkits.mplot3d import Axes3D
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    z = z[:1000, :]
+    # TODO color according to reconstruction loss.
+    ax.scatter(z[:, 0], z[:, 1], z[:, 2])
+    plt.show()
 
 if __name__ == "__main__":
+    # test_eigen()
     # test_loss()
     test_loss2()
-    # test_eigen()

@@ -6,7 +6,8 @@ from keras.regularizers import l1, l2
 import keras
 keras.layers.MixtureLayer = mixture.MixtureLayer
 
-learn_variance=False # TODO
+learn_variance=False
+learn_density=False
 variance = 0.001
 maxpooling = False
 upscale = False
@@ -19,12 +20,13 @@ class GaussianDecoder(Decoder):
         self.args = args
         self.main_channel = args.gaussianParams[0]
         self.dots = args.gaussianParams[1]
-        print "dots: ", self.dots
 
-        self.gaussian_params = mixture.GAUSS_PARAM_COUNT
+        self.gaussian_params = mixture.get_param_count(learn_variance, learn_density)
         self.main_params = self.main_channel * self.dots * self.gaussian_params
         assert self.main_params <= args.latent_dim
         self.side_params = args.latent_dim - self.main_params
+
+        print "Main params: {}, Side params: {}".format(self.main_params, self.side_params)
 
         self.side_channel = args.latent_dim
         self.channel = self.main_channel + self.side_channel
@@ -44,14 +46,15 @@ class GaussianDecoder(Decoder):
     def __call__(self, recons_input):
         args = self.args
 
-        generator_input = Input(shape=(args.latent_dim,), name="generator_input")
+        generator_input = Input(batch_shape=(args.batch_size, args.latent_dim), name="generator_input")
         generator_output = generator_input
         recons_output = recons_input
 
         if self.main_params > 0:
             mainSplitter = Lambda(lambda x: x[:,:self.main_params], output_shape=(self.main_params,), name="mainSplitter")
-            generator_main = mainSplitter(generator_output)
             recons_main = mainSplitter(recons_output)
+#            generator_main = mainSplitter(generator_output)
+            generator_main = add_noise(recons_main, 0.1, args.batch_size)
             mainLayers = []
             mainLayers.append(Reshape([self.main_channel, self.dots, self.gaussian_params]))
             mainLayers.append(Activation("sigmoid"))
@@ -72,8 +75,9 @@ class GaussianDecoder(Decoder):
 
         if self.side_params > 0:
             sideSplitter = Lambda(sideFun, output_shape=(self.ys[args.depth], self.xs[args.depth], self.side_params), name="sideSplitter")
-            generator_side = sideSplitter(generator_output)
             recons_side = sideSplitter(recons_output)
+#            generator_side = sideSplitter(generator_output)
+            generator_side = recons_side
 
         if self.side_params == 0:
             assert self.main_params > 0
@@ -106,3 +110,9 @@ class GaussianDecoder(Decoder):
         assert output_shape == self.args.original_shape, "Expected shape {}, got shape {}".format(self.args.original_shape, output_shape)
 
         return generator_input, recons_output, generator_output
+
+def add_noise(x, magnitude, batch_size):
+    shape = [batch_size] + list(K.int_shape(x)[1:])
+    noise = magnitude # K.random_normal(shape=shape, mean=0., std=magnitude)
+    return Lambda(lambda x: noise + x)((x))
+    

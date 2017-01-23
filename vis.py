@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 
 import numpy as np
 import math
+import model
 
 import grid_layout
 from keras.models import model_from_json
@@ -112,7 +113,10 @@ def displayRandom(n, x_train, latent_dim, sampler, generator, name, batch_size=3
     cnt = n * n
     cnt_aligned = (cnt // batch_size + 1) * batch_size
     z_sample = sampler(cnt_aligned, latent_dim)
-    x_decoded = generator.predict(z_sample, batch_size=batch_size)
+    if len(generator.inputs) == 2:
+        x_decoded = generator.predict([x_train[:cnt_aligned], z_sample], batch_size=batch_size)
+    else:
+        x_decoded = generator.predict(z_sample, batch_size=batch_size)
     x_decoded = x_decoded[:cnt]
     indx = 0
     for i in range(n):
@@ -217,7 +221,7 @@ def displayOneMarkov(n, iterations, latent_dim, sampler, generator, encoder, enc
         result[index * n:(index+1) *n] = x_current[:n]
     plotImages(result, n, iterations+1, name)
 
-def displayNearest(x_train_latent, generator, batch_size, name, origo="default", nx=40, ny=20, working_mask=None):
+def displayNearest(x_train, x_train_latent, generator, batch_size, name, origo="default", nx=40, ny=20, working_mask=None):
     if origo is "default":
         origo = np.zeros(shape=x_train_latent.shape[1:])
     distances = np.square(x_train_latent - origo)
@@ -228,8 +232,12 @@ def displayNearest(x_train_latent, generator, batch_size, name, origo="default",
     x_train_latent = x_train_latent[indices]
     cnt = nx * ny
     cnt_aligned = (cnt // batch_size + 1) * batch_size
+    x_train = x_train[:cnt_aligned]
     x_train_latent = x_train_latent[:cnt_aligned]
-    x_decoded = generator.predict(x_train_latent, batch_size=batch_size)
+    if len(generator.inputs) == 2:
+        x_decoded = generator.predict([x_train, x_train_latent], batch_size=batch_size)
+    else:
+        x_decoded = generator.predict(x_train_latent, batch_size=batch_size)
     plotImages(x_decoded[:cnt], nx, ny, name)
     
 
@@ -277,25 +285,6 @@ def displayInterp(x_train, x_test, batch_size, dim, encoder, encoder_var, do_lat
     grid = np.concatenate([prologGrid, predictedGrid])
     reshapedGrid = grid.reshape([grid.shape[0]] + list(x_train.shape[1:]))
     plotImages(reshapedGrid, gridSize, gridSize+1, name)
-
-def saveModel(model, filePrefix):
-    jsonFile = filePrefix + ".json"
-    weightFile = filePrefix + ".h5"
-    with open(filePrefix + ".json", "w") as json_file:
-        json_file.write(model.to_json())
-    model.save_weights(weightFile)
-    print "Saved model to files {}, {}".format(jsonFile, weightFile)
-
-def loadModel(filePrefix):
-    jsonFile = filePrefix + ".json"
-    weightFile = filePrefix + ".h5"
-    jFile = open(jsonFile, 'r')
-    loaded_model_json = jFile.read()
-    jFile.close()
-    model = model_from_json(loaded_model_json)
-    model.load_weights(weightFile)
-    print "Loaded model from files {}, {}".format(jsonFile, weightFile)
-    return model
     
 
 # returns matrix M, such that M[i][j] is the distance between the j-th row in x and the i-th row in y
@@ -365,3 +354,42 @@ def edgeDetect(images):
     edges = horizontalEdges + verticalEdges + diagonalEdges
     return edges
 """
+
+
+
+# return (autoencoder, encoder, encoder_var, generator)
+def rebuild_models(args):
+    models = model.build_model(args)
+    model_names = "model", "encoder", "encoder_var", "generator"
+
+    for i in range(len(models)):
+        curr_model = models[i]
+        curr_model_name = model_names[i]
+        weightFile = args.prefix + "_" + curr_model_name + ".h5"
+        curr_model.summary()
+        print "Loading weights from file: ", weightFile
+        curr_model.load_weights(weightFile)
+    return models
+
+def saveModel(mod, filePrefix):
+    weightFile = filePrefix + ".h5"
+    mod.save_weights(weightFile)
+    jsonFile = filePrefix + ".json"
+    with open(filePrefix + ".json", "w") as json_file:
+        try:
+            json_file.write(mod.to_json())
+        except:
+            print "Failed saving json file {}.json, you have to load this file using vis.rebuild_models(args)".format(filePrefix)
+        else:
+            print "Saved model to files {}, {}".format(jsonFile, weightFile)
+
+def loadModel(filePrefix):
+    jsonFile = filePrefix + ".json"
+    weightFile = filePrefix + ".h5"
+    jFile = open(jsonFile, 'r')
+    loaded_model_json = jFile.read()
+    jFile.close()
+    mod = model_from_json(loaded_model_json)
+    mod.load_weights(weightFile)
+    print "Loaded model from files {}, {}".format(jsonFile, weightFile)
+    return mod

@@ -70,16 +70,16 @@ import vis
 vis.plotImages(output[:100], 10, 10, "%s-mnist" % args.prefix)
 vis.plotImages(output2[:100], 10, 10, "%s-mnist2" % args.prefix)
 
-xxx
 
+# display randomly generated images
+vis.displayRandom(10, x_train, args.latent_dim, sampler, generator, "%s-random" % args.prefix, batch_size=args.batch_size, useInput = (args.decoder=="gaussian"))
 
 vis.saveModel(ae, args.prefix + "_model")
 vis.saveModel(encoder, args.prefix + "_encoder")
 vis.saveModel(encoder_var, args.prefix + "_encoder_var")
 vis.saveModel(generator, args.prefix + "_generator")
 
-# display randomly generated images
-vis.displayRandom(15, x_train, args.latent_dim, sampler, generator, "%s-random" % args.prefix, batch_size=args.batch_size)
+xxx
 
 vis.displaySet(x_test[:args.batch_size], args.batch_size, 100, ae, "%s-test" % args.prefix)
 vis.displaySet(x_train[:args.batch_size], args.batch_size, 100, ae, "%s-train" % args.prefix)
@@ -91,6 +91,7 @@ vis.plotMVhist(x_train, encoder, args.batch_size, "{}-mvhist.png".format(args.pr
 vis.plotMVVM(x_train, encoder, encoder_var, args.batch_size, "{}-mvvm.png".format(args.prefix))
 
 
+
 # # display a 2D plot of the validation set in the latent space
 # vis.latentScatter(encoder, x_test, batch_size, args.prefix+"-fig1")
 
@@ -99,3 +100,4 @@ vis.plotMVVM(x_train, encoder, encoder_var, args.batch_size, "{}-mvvm.png".forma
 # if show_manifolds:
 #     for y in range(1, args.latent_dim-1):
 #         vis.displayImageManifold(30, args.latent_dim, generator, height, width, 0, y, y+1, "%s-manifold%d" % (args.prefix, y), batch_size=batch_size)
+

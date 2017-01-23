@@ -13,26 +13,41 @@ import tensorflow as tf
 
 from PIL import Image
 
+def get_param_count(learn_variance, learn_density):
+    GAUSS_PARAM_COUNT = 5
+    if not learn_variance: GAUSS_PARAM_COUNT -= 2
+    if not learn_density: GAUSS_PARAM_COUNT -= 1
+    return GAUSS_PARAM_COUNT
 
-GAUSS_PARAM_COUNT = 5
 
 class MixtureLayer(Layer):
-    def __init__(self, sizeX, sizeY, channel=1, learn_variance=True, variance=1.0/200, maxpooling=True, **kwargs):
+    def __init__(self, sizeX, sizeY, channel=1, learn_variance=True, learn_density=False, variance=1.0/200, maxpooling=True, **kwargs):
         self.output_dim = 2
         self.sizeX = sizeX
         self.sizeY = sizeY
-        self.channel = channel
         self.learn_variance = learn_variance
+        self.learn_density = learn_density
         self.variance = variance
         self.maxpooling = maxpooling
+
+        self.xs_index = 0
+        self.ys_index = 1
+        if learn_variance:
+            self.xv_index = 2
+            self.yv_index = 3
+            if learn_density:
+                self.densities_index = 4
+        else:
+            if learn_density:
+                self.densities_index = 2
+
         super(MixtureLayer, self).__init__(**kwargs)
 
 
     # input_shape = (batch, channels, dots, GAUSS_PARAM_COUNT)
     def build(self, input_shape):
         assert len(input_shape) == 4
-        assert input_shape[3] == GAUSS_PARAM_COUNT # x, y, xv, yv, density
-        assert input_shape[1] == self.channel
+#        assert input_shape[3] == self.GAUSS_PARAM_COUNT # x, y, xv, yv, density but the last three could be missing!!!
         self.k = input_shape[2] # number of dots to place
         super(MixtureLayer, self).build(input_shape)  # Be sure to call this somewhere!
 
@@ -40,13 +55,24 @@ class MixtureLayer(Layer):
         k = self.k
         sizeX = self.sizeX
         sizeY = self.sizeY
-        channel = self.channel
-        assert GAUSS_PARAM_COUNT == 5
-        xs = inp[:, :, :, 0]
-        ys = inp[:, :, :, 1]
-        xv = inp[:, :, :, 2]
-        yv = inp[:, :, :, 3]
-        densities = inp[:, :, :, 4]
+
+        def add_two_dims(t):
+            return K.expand_dims(K.expand_dims(t))
+
+        xs = inp[:, :, :, self.xs_index]
+        ys = inp[:, :, :, self.ys_index]
+        xse = add_two_dims(xs)
+        yse = add_two_dims(ys)
+        if self.learn_variance:
+            xv = inp[:, :, :, self.xv_index]
+            yv = inp[:, :, :, self.yv_index]
+            xve = add_two_dims(xv)
+            yve = add_two_dims(yv)
+        if self.learn_density:
+            densities = inp[:, :, :, self.xv_index]
+            de  = add_two_dims(densities)
+        else:
+            de = 1.0
 
         xi = tf.linspace(0.0, 1.0, sizeX)
         xi = tf.reshape(xi, [1, 1, 1, -1, 1])
@@ -56,13 +82,6 @@ class MixtureLayer(Layer):
         yi = tf.reshape(yi, [1, 1, 1, 1, -1])
         yi = tf.tile(yi, [1, 1, k, sizeX, 1])
         
-        def add_two_dims(t):
-            return K.expand_dims(K.expand_dims(t))
-        xse = add_two_dims(xs)
-        yse = add_two_dims(ys)
-        xve = add_two_dims(xv)
-        yve = add_two_dims(yv)
-        de  = add_two_dims(densities)
 
         if self.learn_variance:
             error = (xi - xse) ** 2 / (xve * self.variance) + (yi - yse) ** 2 / (yve * self.variance)
@@ -79,12 +98,12 @@ class MixtureLayer(Layer):
             out = K.max(de * K.exp(-error), axis=2)
         else:
             out = K.sum((2 * de - 1) * K.exp(-error), axis=2)
-#            out = K.mean(de * K.exp(-error), axis=2)
         out = tf.transpose(out, [0, 2, 3, 1])
         return out
 
     def get_output_shape_for(self, input_shape):
-        return (input_shape[0], self.sizeX, self.sizeY, self.channel)
+        return (input_shape[0], self.sizeX, self.sizeY, input_shape[1])
+
 
 
 def test_forward():

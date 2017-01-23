@@ -26,15 +26,20 @@ if keras.backend._BACKEND == "tensorflow":
 
 
 prefix = args.prefix
-shape = args.shape
 batch_size = args.batch_size
 do_latent_variances = args.sampling
-color = args.color
 
 import data
-(x_train, x_test) = data.load("celeba", 0, 0, shape=shape, color=color)
+(x_train, x_test) = data.load(args.dataset, args.trainSize, args.testSize, color=args.color, shape=args.shape)
+args.original_shape = x_train.shape[1:]
 
-generator = vis.loadModel(prefix + "_generator")
+try:
+    generator = vis.loadModel(prefix + "_generator")
+    encoder = vis.loadModel(prefix + "_encoder")
+    encoder_var = vis.loadModel(prefix + "_encoder_var")
+    ae = vis.loadModel(prefix + "_model")
+except:
+    ae, encoder, encoder_var, generator = vis.rebuild_models(args)
 
 latent_train_mean_file = prefix + "_latent_train_mean.npy"
 latent_train_logvar_file = prefix + "_latent_train_logvar.npy"
@@ -43,15 +48,13 @@ latent_train_file = prefix + "_latent_train.npy"
 useCache = False
 if useCache and os.path.isfile(latent_train_file):
     latent_train_mean = np.load(latent_train_mean_file)
-else:
-    encoder = vis.loadModel(prefix + "_encoder")
+else:    
     latent_train_mean = encoder.predict(x_train, batch_size = batch_size)
     np.save(latent_train_mean_file, latent_train_mean)
 if do_latent_variances:
     if useCache and os.path.isfile(latent_train_logvar_file):
         latent_train_logvar = np.load(latent_train_logvar_file)
     else:
-        encoder_var = vis.loadModel(prefix + "_encoder_var")
         latent_train_logvar = encoder_var.predict(x_train, batch_size = batch_size)
         np.save(latent_train_logvar_file, latent_train_logvar)
     if useCache and os.path.isfile(latent_train_file):
@@ -73,7 +76,6 @@ if False: #do_latent_variances:
 #    bottom10 = x_train[x_indices[-100:]]
 #    xs = np.append(top10, bottom10, axis=0)
     xs = x_train[x_indices[::250]]
-    ae = vis.loadModel(prefix + "_model")
     vis.displaySet(xs, batch_size, xs.shape[0], ae, prefix + "_logvar")
                     
     
@@ -90,9 +92,9 @@ print np.histogram(mean_variances, 100)
 latent_dim = latent_train.shape[1]
 
 
-vis.displayNearest(latent_train, generator, batch_size, name=prefix+"-nearest", origo = latent_train[6])
-vis.displayNearest(latent_train, generator, batch_size, name=prefix+"-nearest-masked", origo = latent_train[6], working_mask=working_mask)
-vis.displayNearest(latent_train_mean, generator, batch_size, name=prefix+"-nearest-mean", origo = latent_train[6])
+vis.displayNearest(x_train, latent_train, generator, batch_size, name=prefix+"-nearest", origo = latent_train[6])
+vis.displayNearest(x_train, latent_train, generator, batch_size, name=prefix+"-nearest-masked", origo = latent_train[6], working_mask=working_mask)
+vis.displayNearest(x_train, latent_train_mean, generator, batch_size, name=prefix+"-nearest-mean", origo = latent_train[6])
 
 np.random.seed(100)
 vis.displayMarkov(30, 30, latent_dim, model.gaussian_sampler, generator, encoder, encoder_var, do_latent_variances, name=prefix+"-markov", batch_size=batch_size, x_train_latent=latent_train_mean)

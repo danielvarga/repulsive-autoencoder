@@ -4,11 +4,11 @@ import os.path
 from PIL import Image
 import numpy as np
 
-def load(dataset, trainSize, testSize, shape=None, color=False):
+def load(dataset, trainSize, testSize, shape=None, color=False, digit=None):
     if dataset == "mnist":
         assert shape is None
         assert color is False
-        (x_train, x_test) = load_mnist()
+        (x_train, x_test) = load_mnist(digit)
     elif dataset == "celeba":
         # What's the pythonic way of doing this?
         (x_train, x_test) = load_celeba(shape=shape, color=color)  if shape is not None else load_celeba(color=color)
@@ -27,10 +27,15 @@ def load(dataset, trainSize, testSize, shape=None, color=False):
 
     return (x_train, x_test)
 
-def load_mnist():
+def load_mnist(digit=None):
     (x_train, y_train), (x_test, y_test) = mnist.load_data()
     x_train = x_train.astype('float32') / 255.
     x_test = x_test.astype('float32') / 255.
+    if digit is not None:
+        mask_train = (y_train == digit)
+        mask_test = (y_test == digit)
+        x_train = x_train[mask_train]
+        x_test = x_test[mask_test]
     return (x_train, x_test)
 
 def load_celeba(shape=(72, 60),color=False):

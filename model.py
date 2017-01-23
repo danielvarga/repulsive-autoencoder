@@ -58,11 +58,14 @@ def build_model(args):
     if args.decoder == "gaussian":
         args.mixture_model = Model(x, args.mixture_output)
         args.mixture_model.compile(optimizer="sgd", loss="mse")
+        generator = Model([x, generator_input], generator_output)
+    else:
+        generator = Model(generator_input, generator_output)
+
 
     encoder = Model(x, z_mean)
     encoder_var = Model(x, z_log_var)
     ae = Model(x, recons_output)
-    generator = Model(generator_input, generator_output)
 
     armLayer = ArmLayer(dict_size=1000, iteration=5, threshold=0.01, reconsCoef=1)
     sparse_input = Flatten()(x)
@@ -109,4 +112,6 @@ def spherical_sampler(batch_size, latent_dim):
     z_sample /= np.linalg.norm(z_sample)
     return z_sample
 
+def uniform_sampler(batch_size, latent_dim):
+    return np.random.uniform(0.0, 1.0, size=(batch_size, latent_dim))
 

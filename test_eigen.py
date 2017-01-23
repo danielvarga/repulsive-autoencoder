@@ -10,7 +10,11 @@ import eigen
 
 
 batch_size = 256
+
+input_dim = 3
 latent_dim = 3
+intermediate_dim = 100
+
 L2_REG_WEIGHT = 0.02
 
 # Pushes latent datapoints in the direction of a randomly chosen hyperplane.
@@ -85,6 +89,7 @@ def test_eigen():
     print eigvects_per_minibatch
 
 
+# You probably want to edit test_loss2()
 def test_loss():
     inputs = Input(shape=(latent_dim,))
     net = Dense(latent_dim)(inputs) # linear activation
@@ -119,6 +124,41 @@ def test_loss():
         cholesky(output)
 
 
+# Attempt 2, test_loss() didn't work. Autoencoder that maps uniform -> gaussian -> uniform.
+def test_loss2():
+    inputs = Input(shape=(input_dim,))
+    net = inputs
+    net = Dense(intermediate_dim, activation="relu")(net)
+    net = Dense(intermediate_dim, activation="relu")(net)
+    z = Dense(latent_dim, activation="tanh", name="z")(net)
+    eigvec = Lambda(lambda z: dominant_eigvect_layer(z), name="eigvec")([z])
+    net = z
+    net = Dense(intermediate_dim, activation="relu")(net)
+    net = Dense(latent_dim, activation="relu")(net)
+    output = net
+
+    model = Model(input=inputs, output=output)
+    optimizer = Adam(lr=0.001, clipvalue=1.0)
+    model.compile(optimizer=optimizer, loss="mse")
+
+    encoder = Model(input=inputs, output=z)
+    encoder.compile(optimizer=optimizer, loss="mse")
+
+    N = 1000 // batch_size * batch_size
+    megaepoch_count = 10
+
+    model.summary()
+
+    for i in range(megaepoch_count):
+        print "================"
+        data = np.random.uniform(size=(N, input_dim)) * 2 - 1
+        model.fit(data, data, batch_size=batch_size, verbose=2)
+        data = np.random.uniform(size=(N, input_dim)) * 2 - 1
+        z = encoder.predict(data, batch_size=batch_size)
+        cholesky(z)
+
+
 if __name__ == "__main__":
-    test_loss()
+    # test_loss()
+    test_loss2()
     # test_eigen()

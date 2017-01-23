@@ -82,11 +82,19 @@ def loss_factory(model, encoder, loss_features, args):
     # Note: the eigenvector calculation assumes that the latent minibatch is zero-centered.
     # We do not do this zero-centering.
     def dominant_eigenvector_loss(x, x_decoded):
-        z = loss_features[1]
-        batch_size = K.int_shape(x_decoded)[0]
-        domineigvec, domineigval = eigen.eigvec_of_cov(z, batch_size, latent_dim=args.latent_dim, iterations=3, inner_normalization=False)
+        z = loss_features[0] # after sampling, if there was one
+        domineigvec, domineigval = eigen.eigvec_of_cov(z, args.batch_size, latent_dim=args.latent_dim, iterations=3, inner_normalization=False)
         loss = K.square(K.dot(z, domineigvec))
         return K.mean(loss)
+
+    def eigenvalue_gap_loss(x, x_decoded):
+        EIGENVALUE_GAP_LOSS_WEIGHT = 100.0
+        z = loss_features[0] # after sampling, if there was one
+        WW = K.dot(K.transpose(z), z)
+        mineigval, maxeigval = eigen.extreme_eigvals(WW, args.batch_size, latent_dim=args.latent_dim, iterations=3, inner_normalization=False)
+        loss = K.square(maxeigval-1) + K.square(mineigval-1)
+        loss *= EIGENVALUE_GAP_LOSS_WEIGHT
+        return loss
 
     def layerwise_loss(x, x_decoded):
         model_nodes = model.nodes_by_depth

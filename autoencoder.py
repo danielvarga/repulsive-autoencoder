@@ -60,7 +60,6 @@ ae.fit(x_train, x_train,
        callbacks = cbs,
        validation_data=(x_test, x_test))
 
-
 if args.decoder=="gaussian":
     mixture_output = args.mixture_model.predict(x_train, batch_size=args.batch_size)
     mixture_output = np.expand_dims(np.sum(mixture_output, axis=3),3)
@@ -91,7 +90,6 @@ vis.displayInterp(x_train, x_test, args.batch_size, args.latent_dim, encoder, en
 
 vis.plotMVhist(x_train, encoder, args.batch_size, "{}-mvhist.png".format(args.prefix))
 vis.plotMVVM(x_train, encoder, encoder_var, args.batch_size, "{}-mvvm.png".format(args.prefix))
-
 
 
 # # display a 2D plot of the validation set in the latent space

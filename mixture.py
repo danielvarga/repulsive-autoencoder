@@ -91,6 +91,13 @@ class MixtureLayer(Layer):
         error = tf.minimum(error, 1)
         error = tf.maximum(error, -1)
 
+        for i in range(5):
+            print "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+        print "FIXED DENSITY FOR MIXTURE GAUSSIANS!"
+        for i in range(5):
+            print "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+        de = 1.0
+
         # avgpooling is better for reconstruction (if negative ds are allowed),
         # val_loss: 0.0068, but way-way worse for interpolation, it looks like a smoke monster.
         # Note that fixed variance maxpooling will never generalize beyond MNIST.

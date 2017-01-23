@@ -2,10 +2,22 @@ import numpy as np
 import keras
 import keras.backend as K
 
-
-# POWER METHOD FOR APPROXIMATING THE DOMINANT EIGENVECTOR:
-def eigvec(W, n, latent_dim, iterations=9, inner_normalization=False):
+def eigvec_of_cov(W, n, latent_dim, iterations=9, inner_normalization=False):
     WW = K.dot(K.transpose(W), W)
+    return eigvec(WW, n, latent_dim=latent_dim, iterations=iterations, inner_normalization=inner_normalization)
+
+
+def extreme_eigvals(WW, n, latent_dim, iterations=9, inner_normalization=False):
+    domineigvec, domineigval = eigvec(WW, n, latent_dim=latent_dim, iterations=iterations, inner_normalization=inner_normalization)
+    WW_shifted = K.eye(latent_dim) * domineigval - WW
+    domineigvec2, domineigval2 = eigvec(WW_shifted, n, latent_dim=latent_dim, iterations=iterations, inner_normalization=inner_normalization)
+    domineigval2 += domineigval
+    return domineigval2, domineigval
+
+
+# POWER METHOD FOR APPROXIMATING THE DOMINANT EIGENVECTOR OF SYMMETRIC POSITIVE DEFINITE MATRIX:
+# TODO The dependence on n is ridiculous, get rid of it.
+def eigvec(WW, n, latent_dim, iterations=9, inner_normalization=False):
     o = K.ones([latent_dim, 1]) # initial values for the dominant eigenvector
     domineigvec = o
     for i in range(iterations):
@@ -49,11 +61,23 @@ def test_eigenvec():
 
     print "======="
 
-    f = K.function([input], list(eigvec(input, bs, latent_dim, iterations=3)))
+    f = K.function([input], list(eigvec_of_cov(input, bs, latent_dim, iterations=3)))
     domEigVect, domEigVal = f([data])
     print domEigVect.shape, domEigVal.shape
     print "iterative keras-based dominant eigenvalue", domEigVal[0][0]
     print "iterative keras-based dominant eigenvector", domEigVect[:, 0]
+
+    print "======="
+
+    WW = K.dot(K.transpose(input), input)
+    f = K.function([input], list(extreme_eigvals(WW, bs, latent_dim, iterations=3)))
+    mineigval, maxeigval = f([data])
+    print "iterative keras-based extreme eigenvalues", mineigval, maxeigval
+
+    theo_cov_shifted = np.eye(latent_dim) * theo_eigVals[0] - theo_cov
+    eigVals, eigVects = np.linalg.eigh(theo_cov_shifted)
+    # print "eigvals shifted", eigVals
+    # print "smallest theoretical eigval = ", eigVals[-1] + theo_eigVals[0]
 
 
 if __name__ == "__main__":

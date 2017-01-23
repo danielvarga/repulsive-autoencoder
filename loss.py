@@ -84,7 +84,7 @@ def loss_factory(model, encoder, loss_features, args):
     def dominant_eigenvector_loss(x, x_decoded):
         z = loss_features[1]
         batch_size = K.int_shape(x_decoded)[0]
-        domineigvec, domineigval = eigen.eigvec(z, batch_size, latent_dim=args.latent_dim, iterations=3, inner_normalization=False)
+        domineigvec, domineigval = eigen.eigvec_of_cov(z, batch_size, latent_dim=args.latent_dim, iterations=3, inner_normalization=False)
         loss = K.square(K.dot(z, domineigvec))
         return K.mean(loss)
 

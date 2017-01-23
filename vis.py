@@ -244,7 +244,12 @@ def displaySet(imageBatch, batchSize, n, generator, name):
     result = mergedSet.reshape([2*n] + list(imageBatch.shape[1:]))
     plotImages(result, 2*nsqrt, nsqrt, name)
 
-def displayInterp(x_train, x_test, batch_size, dim, encoder, encoder_var, do_latent_variances, generator, gridSize, name):
+def displayInterp(x_train, x_test, batch_size, dim,
+        encoder, encoder_var, do_latent_variances, generator, gridSize, name,
+        anchor_indices=None):
+    if anchor_indices is None:
+        anchor_indices = [15, 7, 1]
+    assert len(anchor_indices)==3, "Three anchors are expected for interpolation"
     train_latent_mean = encoder.predict(x_train[:batch_size], batch_size=batch_size)
     test_latent_mean = encoder.predict(x_test[:batch_size], batch_size=batch_size)
     if not do_latent_variances:
@@ -256,9 +261,7 @@ def displayInterp(x_train, x_test, batch_size, dim, encoder, encoder_var, do_lat
         train_latent = np.random.normal(size=train_latent_mean.shape) * np.exp(train_latent_logvar/2) + train_latent_mean
         test_latent = np.random.normal(size=test_latent_mean.shape) * np.exp(test_latent_logvar/2) + test_latent_mean
         
-    anchor1 = train_latent[14]
-    anchor2 = train_latent[6]
-    anchor3 = test_latent[0]
+    anchor1, anchor2, anchor3 = train_latent[anchor_indices]
     anchor4 = anchor3 + anchor2 - anchor1
     anchors = np.array([anchor1, anchor2, anchor3, anchor4])
     interpGrid = grid_layout.create_mine_grid(gridSize, gridSize, dim, gridSize-1, anchors, False, False) # TODO different interpolations for different autoencoders!!!    
@@ -272,7 +275,7 @@ def displayInterp(x_train, x_test, batch_size, dim, encoder, encoder_var, do_lat
     predictedGrid = predictedGrid[0:n]
 
     prologGrid = np.zeros([gridSize] + list(x_train.shape[1:]))
-    prologGrid[0:3] = [x_train[14],x_train[6], x_test[0]]
+    prologGrid[0:3] = x_train[anchor_indices] # [x_train[anchors[0]],x_train[anchors[1]], x_test[anchors[2]]]
 
     grid = np.concatenate([prologGrid, predictedGrid])
     reshapedGrid = grid.reshape([grid.shape[0]] + list(x_train.shape[1:]))

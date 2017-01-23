@@ -10,6 +10,9 @@ in the following ways:
 
 import numpy as np
 import params
+import vis
+
+
 args = params.getArgs()
 print(args)
 
@@ -57,29 +60,28 @@ ae.fit(x_train, x_train,
        callbacks = cbs,
        validation_data=(x_test, x_test))
 
-mixture_output = args.mixture_model.predict(x_train, batch_size=args.batch_size)
-mixture_output = np.expand_dims(np.sum(mixture_output, axis=3),3)
-mixture_output -= np.min(mixture_output)
-mixture_output /= np.max(mixture_output)
-data_output = ae.predict(x_train, batch_size=args.batch_size)
-third_channel = np.zeros(data_output.shape)
-print mixture_output.shape, data_output.shape, third_channel.shape
-output = np.concatenate([mixture_output, data_output, third_channel], axis=3)
-output2 = np.concatenate([mixture_output, third_channel, third_channel], axis=3)
-import vis
-vis.plotImages(output[:100], 10, 10, "%s-mnist" % args.prefix)
-vis.plotImages(output2[:100], 10, 10, "%s-mnist2" % args.prefix)
+
+if args.decoder=="gaussian":
+    mixture_output = args.mixture_model.predict(x_train, batch_size=args.batch_size)
+    mixture_output = np.expand_dims(np.sum(mixture_output, axis=3),3)
+    mixture_output -= np.min(mixture_output)
+    mixture_output /= np.max(mixture_output)
+    data_output = ae.predict(x_train, batch_size=args.batch_size)
+    third_channel = np.zeros(data_output.shape)
+    print mixture_output.shape, data_output.shape, third_channel.shape
+    output = np.concatenate([mixture_output, data_output, third_channel], axis=3)
+    output2 = np.concatenate([mixture_output, third_channel, third_channel], axis=3)
+    vis.plotImages(output[:100], 10, 10, "%s-mnist" % args.prefix)
+    vis.plotImages(output2[:100], 10, 10, "%s-mnist2" % args.prefix)
 
 
 # display randomly generated images
-vis.displayRandom(10, x_train, args.latent_dim, sampler, generator, "%s-random" % args.prefix, batch_size=args.batch_size, useInput = (args.decoder=="gaussian"))
+vis.displayRandom(10, x_train, args.latent_dim, sampler, generator, "%s-random" % args.prefix, batch_size=args.batch_size)
 
 vis.saveModel(ae, args.prefix + "_model")
 vis.saveModel(encoder, args.prefix + "_encoder")
 vis.saveModel(encoder_var, args.prefix + "_encoder_var")
 vis.saveModel(generator, args.prefix + "_generator")
-
-xxx
 
 vis.displaySet(x_test[:args.batch_size], args.batch_size, 100, ae, "%s-test" % args.prefix)
 vis.displaySet(x_train[:args.batch_size], args.batch_size, 100, ae, "%s-train" % args.prefix)

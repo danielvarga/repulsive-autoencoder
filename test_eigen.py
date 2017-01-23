@@ -27,7 +27,7 @@ def random_vect_loss(z):
 # Note: the eigenvector calculation assumes that the latent minibatch is zero-centered.
 # We do not do this zero-centering.
 def dominant_eigvect_loss(z):
-    domineigvec, domineigval = eigen.eigvec(z, batch_size, latent_dim=latent_dim, iterations=3, inner_normalization=False)
+    domineigvec, domineigval = eigen.eigvec_of_cov(z, batch_size, latent_dim=latent_dim, iterations=3, inner_normalization=False)
     loss = K.square(K.dot(z, domineigvec))
     loss = K.mean(loss)
     return loss
@@ -38,7 +38,7 @@ def l2_loss(z):
 
 
 def dominant_eigvect_layer(z):
-    domineigvec, domineigval = eigen.eigvec(z, batch_size, latent_dim=latent_dim, iterations=3, inner_normalization=False)
+    domineigvec, domineigval = eigen.eigvec_of_cov(z, batch_size, latent_dim=latent_dim, iterations=3, inner_normalization=False)
     domineigvec_stacked = K.repeat_elements(K.reshape(domineigvec, (1, latent_dim)), batch_size, axis=0)
     # print tuple(map(int, domineigvec_stacked.get_shape()))
     return domineigvec_stacked

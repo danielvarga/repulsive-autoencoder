@@ -7,6 +7,9 @@ from keras.layers import Input, Dense, Reshape, Activation, Lambda
 from keras.layers.normalization import BatchNormalization
 from keras.optimizers import Adam
 
+from sklearn.random_projection import GaussianRandomProjection
+from scipy.stats import kstest
+
 import eigen
 
 
@@ -36,6 +39,20 @@ def dominant_eigvect_loss(z):
     loss = K.square(K.dot(z, domineigvec))
     loss = K.mean(loss)
     return loss
+
+
+# input: 1d tensor. output: ks test statistic.
+def kstest_tf(p):
+    import tensorflow
+    values, indices = tf.nn.top_k(p, k=0, sorted=True)
+    return K.mean(K.square(values))
+
+
+def kstest_loss(z):
+    v = K.random_normal_variable((latent_dim, 1), 0, 1)
+    v = v / K.sqrt(K.dot(K.transpose(v), v))
+    p = K.dot(z, v)
+    return kstest_tf(p)
 
 
 def l2_loss(z):
@@ -94,43 +111,8 @@ def test_eigen():
     print eigvects_per_minibatch
 
 
-# You probably want to edit test_loss2()
+# Autoencoder that maps uniform -> gaussian -> uniform.
 def test_loss():
-    inputs = Input(shape=(latent_dim,))
-    net = Dense(latent_dim)(inputs) # linear activation
-    z = BatchNormalization(name="batchnorm")(net) # enforces a per-coordinate standard normal, to avoid collapsing into zero.
-
-    # loss_fn = dominant_eigvect_loss
-    # loss_fn = random_vect_loss
-    loss_fn = l2_loss
-    loss = lambda x, x_pred: loss_fn(z)
-
-    eigvec = Lambda(lambda z: dominant_eigvect_layer(z), name="eigvec")([z])
-
-    model = Model(input=inputs, output=[z, eigvec])
-    optimizer = Adam(lr=0.001, clipvalue=1.0)
-    model.compile(optimizer=optimizer, loss=loss)
-
-    N = 1000 // batch_size * batch_size
-    megaepoch_count = 20
-
-    for i in range(megaepoch_count):
-        data = np.random.normal(size=(N, latent_dim))
-        data[:, 0] += data[:, 1]
-
-        print "================"
-        output, eigvec = model.predict(data, batch_size=batch_size)
-        print "neural eigvec pre =", eigvec[0]
-
-        model.fit(data, [data, data], batch_size=batch_size, verbose=2)
-
-        output, eigvec = model.predict(data, batch_size=batch_size)
-        print "neural eigvec post =", eigvec[0]
-        cholesky(output)
-
-
-# Attempt 2, test_loss() didn't work. Autoencoder that maps uniform -> gaussian -> uniform.
-def test_loss2():
     inputs = Input(shape=(input_dim,))
     net = inputs
     net = Dense(intermediate_dim, activation="relu")(net)
@@ -158,8 +140,8 @@ def test_loss2():
 
     def total_loss(x, x_pred):
         recons = K.mean(K.square(x-x_pred))
-        shape = K.mean(K.square(z))
-        EIGENVALUE_GAP_LOSS_WEIGHT = 0.1 ; shape += eigenvalue_gap_loss(x, x_pred) * EIGENVALUE_GAP_LOSS_WEIGHT
+        shape = K.mean(K.square(z)) / 10
+        # EIGENVALUE_GAP_LOSS_WEIGHT = 0.1 ; shape += eigenvalue_gap_loss(x, x_pred) * EIGENVALUE_GAP_LOSS_WEIGHT
         # RANDOM_VECT_LOSS_WEIGHT = 10 ; shape += random_vect_loss(z) * RANDOM_VECT_LOSS_WEIGHT
         return recons + shape
 
@@ -171,8 +153,8 @@ def test_loss2():
     encoder = Model(input=inputs, output=z)
     encoder.compile(optimizer=optimizer, loss="mse")
 
-    N = 10000 // batch_size * batch_size
-    megaepoch_count = 10
+    N = 1000 // batch_size * batch_size
+    megaepoch_count = 1
 
     for i in range(megaepoch_count):
         print "================"
@@ -180,19 +162,56 @@ def test_loss2():
         model.fit(data, data, batch_size=batch_size, verbose=2)
         data = np.random.uniform(size=(N, input_dim)) * 2 - 1
         z = encoder.predict(data, batch_size=batch_size)
-        cholesky(z)
+        # cholesky(z)
+
+    projector = GaussianRandomProjection(n_components=1)
+
+    for i in range(latent_dim):
+        print "KS for dim", i, "=", kstest(z[:, i], 'norm')
+    for i in range(latent_dim):
+        print "KS for random projection", i, "=", kstest(projector.fit_transform(z), 'norm')
 
     import matplotlib.pyplot as plt
+    import matplotlib
     from mpl_toolkits.mplot3d import Axes3D
 
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-    z = z[:1000, :]
-    # TODO color according to reconstruction loss.
-    ax.scatter(z[:, 0], z[:, 1], z[:, 2])
+    if latent_dim==1:
+        plt.hist(z, bins=20)
+    elif latent_dim==2:
+        plt.scatter(z[:, 0], z[:, 1])
+    else:
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+        z = z[:1000, :]
+        # TODO color according to reconstruction loss.
+        ax.scatter(z[:, 0], z[:, 1], z[:, 2])
     plt.show()
+
+    def cumulative_view(projected_z, title):
+        fig, ax = plt.subplots(figsize=(8, 4))
+        n, bins, patches = ax.hist(projected_z, bins=20, cumulative=True,
+                                    normed=1, histtype='step', label='Empirical')
+        from scipy.stats import norm
+        mu = np.mean(projected_z)
+        sigma = np.std(projected_z)
+        y = norm.cdf(bins, mu, sigma)
+        ax.plot(bins, y, 'k--', linewidth=1.5, label='Fitted normal')
+        y = norm.cdf(bins, 0.0, 1.0)
+        ax.plot(bins, y, 'r--', linewidth=1.5, label='Standard normal')
+        ax.grid(True)
+        ax.legend(loc='right')
+        ax.set_title(title)
+        plt.show()
+
+    cumulative_view(projector.fit_transform(z), "CDF of randomly projected latent cloud")
+    cumulative_view(z[:, 0], "CDF of first coordinate of latent cloud")
+
+
+def test_kstest():
+    pass
+
 
 if __name__ == "__main__":
     # test_eigen()
-    # test_loss()
-    test_loss2()
+    test_loss()
+    # test_kstest()

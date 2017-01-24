@@ -13,7 +13,7 @@ from keras.layers.normalization import BatchNormalization
 from keras.optimizers import Adam
 
 from sklearn.random_projection import GaussianRandomProjection
-from scipy.stats import kstest
+from scipy.stats import kstest, norm
 
 import eigen
 
@@ -22,7 +22,7 @@ batch_size = 256
 
 input_dim = 50
 latent_dim = 50
-intermediate_dim = 100
+intermediate_dim = 200
 
 L2_REG_WEIGHT = 0.02
 
@@ -50,8 +50,8 @@ def dominant_eigvect_loss(z):
 def kstest_tf(p):
     values, indices = tf.nn.top_k(p, k=batch_size, sorted=True)
     normal = tf.contrib.distributions.Normal(0.0, 1.0)
-    cdf = normal.cdf(values)
-    return K.sum(K.square(cdf - tf.linspace(0.0, 1.0, batch_size)))
+    reverted_cdf = normal.cdf(values) # reverted because values are sorted descending!
+    return K.max(K.abs(reverted_cdf - tf.linspace(1.0, 0.0, batch_size)))
 
 
 # KS test statistic for random 1D projection of point cloud
@@ -61,6 +61,22 @@ def kstest_loss(z):
     p = K.dot(z, v)
     p = K.reshape(p, (batch_size, ))
     return kstest_tf(p)
+
+
+def minieval(func, data):
+    input = K.placeholder(shape=data.shape)
+    f = K.function([input], [func(input)])
+    return f([data])[0]
+
+
+def test_kstest_tf():
+    # Tests the hacked kstest_tf() that returns reversed_cdf.
+    data = np.random.normal(size=(batch_size,))
+    out = minieval(kstest_tf, data)
+    top = np.sort(data)[::-1][:20]
+    print top
+    print norm.cdf(top, 0.0, 1.0)
+    print out[:20]
 
 
 def l2_loss(z):
@@ -129,7 +145,8 @@ def test_loss():
     net = BatchNormalization()(net)
     net = Dense(intermediate_dim, activation="relu")(net)
     net = BatchNormalization()(net)
-    z = Dense(latent_dim, activation="tanh", name="z")(net)
+    z = Dense(latent_dim, activation="tanh", name="half_z")(net)
+    z = Lambda(lambda z: 2*z, name="z")(z) # increase the support to [-2,+2].
     eigvec = Lambda(lambda z: dominant_eigvect_layer(z), name="eigvec")([z])
     net = z
     net = Dense(intermediate_dim, activation="relu")(net)
@@ -155,9 +172,9 @@ def test_loss():
         return recons + shape
 
     model = Model(input=inputs, output=output)
-    optimizer = Adam(lr=0.001, clipvalue=1.0)
+    optimizer = Adam(lr=0.001)
     model.compile(optimizer=optimizer, loss=total_loss,
-        metrics=["mse", eigenvalue_gap_loss, lambda _1, _2: random_vect_loss(z)])
+        metrics=["mse", lambda _1, _2: kstest_loss(z)])
 
     encoder = Model(input=inputs, output=z)
     encoder.compile(optimizer=optimizer, loss="mse")
@@ -178,7 +195,9 @@ def test_loss():
     for i in range(min((latent_dim, 10))):
         print "KS for dim", i, "=", kstest(z[:, i], 'norm')
     for i in range(min((latent_dim, 10))):
-        print "KS for random projection", i, "=", kstest(projector.fit_transform(z), 'norm')
+        projected_z = projector.fit_transform(z)
+        print np.histogram(projected_z, 20)
+        print "KS for random projection", i, "=", kstest(projected_z, 'norm')
 
     import matplotlib.pyplot as plt
     import matplotlib
@@ -200,7 +219,6 @@ def test_loss():
         fig, ax = plt.subplots(figsize=(10, 8))
         n, bins, patches = ax.hist(projected_z, bins=20, cumulative=True,
                                     normed=1, histtype='step', label='Empirical')
-        from scipy.stats import norm
         mu = np.mean(projected_z)
         sigma = np.std(projected_z)
         y = norm.cdf(bins, mu, sigma)

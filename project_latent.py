@@ -251,10 +251,11 @@ grid_size=25
 
 eigpairs =  [(0, 1), (0, 2), (99, 100), (0, 101)]
 eigpairs += [(2, 3), (0, 4), (110, 111), (0, 102)]
-for i in reversed(range(len(eigpairs))):
-    dim1, dim2 = eigpairs[i]
-    if (dim1 >= latent_dim) or (dim2 >= latent_dim):
-        del eigpairs[i]
+eigpairs = latent_dim - 1 - np.array(eigpairs)
+# for i in reversed(range(len(eigpairs))):
+#     dim1, dim2 = eigpairs[i]
+#     if (dim1 >= latent_dim) or (dim2 >= latent_dim):
+#         del eigpairs[i]
     
 for eigIndex1, eigIndex2 in eigpairs:
     print "eigenplane grid", eigIndex1, eigIndex2

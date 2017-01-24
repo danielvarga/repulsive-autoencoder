@@ -2,6 +2,11 @@ import numpy as np
 import math
 import keras
 import keras.backend as K
+
+# Sorry, this is tensorflow-specific, Theano and Keras
+# does not even support differentiable sorting and normal.cdf
+import tensorflow as tf
+
 from keras.models import Model
 from keras.layers import Input, Dense, Reshape, Activation, Lambda
 from keras.layers.normalization import BatchNormalization
@@ -15,8 +20,8 @@ import eigen
 
 batch_size = 256
 
-input_dim = 3
-latent_dim = 3
+input_dim = 50
+latent_dim = 50
 intermediate_dim = 100
 
 L2_REG_WEIGHT = 0.02
@@ -41,17 +46,20 @@ def dominant_eigvect_loss(z):
     return loss
 
 
-# input: 1d tensor. output: ks test statistic.
+# input: 1D tensor. output: Kolmogorov-Smirnov test statistic.
 def kstest_tf(p):
-    import tensorflow
-    values, indices = tf.nn.top_k(p, k=0, sorted=True)
-    return K.mean(K.square(values))
+    values, indices = tf.nn.top_k(p, k=batch_size, sorted=True)
+    normal = tf.contrib.distributions.Normal(0.0, 1.0)
+    cdf = normal.cdf(values)
+    return K.sum(K.square(cdf - tf.linspace(0.0, 1.0, batch_size)))
 
 
+# KS test statistic for random 1D projection of point cloud
 def kstest_loss(z):
     v = K.random_normal_variable((latent_dim, 1), 0, 1)
     v = v / K.sqrt(K.dot(K.transpose(v), v))
     p = K.dot(z, v)
+    p = K.reshape(p, (batch_size, ))
     return kstest_tf(p)
 
 
@@ -140,9 +148,10 @@ def test_loss():
 
     def total_loss(x, x_pred):
         recons = K.mean(K.square(x-x_pred))
-        shape = K.mean(K.square(z)) / 10
+        # shape = K.mean(K.square(z)) / 10
         # EIGENVALUE_GAP_LOSS_WEIGHT = 0.1 ; shape += eigenvalue_gap_loss(x, x_pred) * EIGENVALUE_GAP_LOSS_WEIGHT
         # RANDOM_VECT_LOSS_WEIGHT = 10 ; shape += random_vect_loss(z) * RANDOM_VECT_LOSS_WEIGHT
+        KSTEST_LOSS_WEIGHT = 1 ; shape = kstest_loss(z) * KSTEST_LOSS_WEIGHT
         return recons + shape
 
     model = Model(input=inputs, output=output)
@@ -153,7 +162,7 @@ def test_loss():
     encoder = Model(input=inputs, output=z)
     encoder.compile(optimizer=optimizer, loss="mse")
 
-    N = 1000 // batch_size * batch_size
+    N = 10000 // batch_size * batch_size
     megaepoch_count = 1
 
     for i in range(megaepoch_count):
@@ -166,9 +175,9 @@ def test_loss():
 
     projector = GaussianRandomProjection(n_components=1)
 
-    for i in range(latent_dim):
+    for i in range(min((latent_dim, 10))):
         print "KS for dim", i, "=", kstest(z[:, i], 'norm')
-    for i in range(latent_dim):
+    for i in range(min((latent_dim, 10))):
         print "KS for random projection", i, "=", kstest(projector.fit_transform(z), 'norm')
 
     import matplotlib.pyplot as plt
@@ -188,7 +197,7 @@ def test_loss():
     plt.show()
 
     def cumulative_view(projected_z, title):
-        fig, ax = plt.subplots(figsize=(8, 4))
+        fig, ax = plt.subplots(figsize=(10, 8))
         n, bins, patches = ax.hist(projected_z, bins=20, cumulative=True,
                                     normed=1, histtype='step', label='Empirical')
         from scipy.stats import norm
@@ -199,7 +208,7 @@ def test_loss():
         y = norm.cdf(bins, 0.0, 1.0)
         ax.plot(bins, y, 'r--', linewidth=1.5, label='Standard normal')
         ax.grid(True)
-        ax.legend(loc='right')
+        ax.legend(loc='lower right')
         ax.set_title(title)
         plt.show()
 

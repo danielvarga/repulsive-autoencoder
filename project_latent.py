@@ -183,8 +183,8 @@ if do_latent_variances:
 
 
 cov_train = np.cov(latent_train_mean.T)
-eigVals, eigVects = np.linalg.eig(cov_train)
-print "cov_train eigvals = ", sorted(eigVals, reverse=True)
+eigVals, eigVects = np.linalg.eigh(cov_train)
+print "cov_train eigvals = ", list(reversed(eigVals))
 
 
 # the below loop illustrates that taking small subsamples will not alter the eigenvalue structure of the covariance matrix 
@@ -226,7 +226,7 @@ def eigval1d_grid(grid_size, latent_dim):
     x = np.linspace(-2.0, 2.0, num=grid_size)
     xs = []
     for i in range(grid_size):
-        xi = x[i] * eigVects[0] * np.sqrt(eigVals[0]) + origo_mean
+        xi = x[i] * eigVects[:, 0] * np.sqrt(eigVals[0]) + origo_mean
         xs.append(xi)
     return np.array(xs)
 
@@ -258,18 +258,18 @@ for i in reversed(range(len(eigpairs))):
     
 for eigIndex1, eigIndex2 in eigpairs:
     print "eigenplane grid", eigIndex1, eigIndex2
-    plane = eigval2d_grid(grid_size, latent_dim, eigVects[eigIndex1], eigVals[eigIndex1], eigVects[eigIndex2], eigVals[eigIndex2], radius=4.0, elliptic=True)
+    plane = eigval2d_grid(grid_size, latent_dim, eigVects[:, eigIndex1], eigVals[eigIndex1], eigVects[:, eigIndex2], eigVals[eigIndex2], radius=4.0, elliptic=True)
     vis.displayPlane(x_train=x_train, latent_dim=latent_dim, plane=plane,
         generator=generator, name=prefix + "_eigs%d-%d" % (eigIndex1, eigIndex2), batch_size=batch_size)
-    plane = eigval2d_grid(grid_size, latent_dim, eigVects[eigIndex1], eigVals[eigIndex1], eigVects[eigIndex2], eigVals[eigIndex2], radius=4.0, elliptic=False)
+    plane = eigval2d_grid(grid_size, latent_dim, eigVects[:, eigIndex1], eigVals[eigIndex1], eigVects[:, eigIndex2], eigVals[eigIndex2], radius=4.0, elliptic=False)
     vis.displayPlane(x_train=x_train, latent_dim=latent_dim, plane=plane,
         generator=generator, name=prefix + "_eigs-nonell%d-%d" % (eigIndex1, eigIndex2), batch_size=batch_size)
 
 # visualise the plane specified by the two largest eigenvalues intersected with the standard normal sphere
 # compare this with _eigs0-1.png
-saturn_plane = eigval2d_grid(grid_size, latent_dim, eigVects[0], 1.0, eigVects[1], 1.0, radius=4.0, elliptic=True)
+saturn_plane = eigval2d_grid(grid_size, latent_dim, eigVects[:, -1], 1.0, eigVects[:, -2], 1.0, radius=4.0, elliptic=True)
 vis.displayPlane(x_train=x_train, latent_dim=latent_dim, plane=saturn_plane, generator=generator, name=prefix + "_saturn0-1", batch_size=batch_size)
-saturn_plane_scaled = eigval2d_grid(grid_size, latent_dim, std_train * eigVects[0], 1.0, std_train * eigVects[1], 1.0, radius=4.0, elliptic=True)
+saturn_plane_scaled = eigval2d_grid(grid_size, latent_dim, std_train * eigVects[:, -1], 1.0, std_train * eigVects[:, -2], 1.0, radius=4.0, elliptic=True)
 vis.displayPlane(x_train=x_train, latent_dim=latent_dim, plane=saturn_plane_scaled, generator=generator, name=prefix + "_saturn_scaled0-1", batch_size=batch_size)
 
 

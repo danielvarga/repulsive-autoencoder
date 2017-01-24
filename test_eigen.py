@@ -1,4 +1,5 @@
 import numpy as np
+import math
 import keras
 import keras.backend as K
 from keras.models import Model
@@ -59,6 +60,7 @@ def cholesky(d):
 
     eigVals, eigVects = np.linalg.eigh(cov)
     print "sqrt eigvals =", list(reversed(np.sqrt(eigVals)))
+    print "sqrt of max/min eigval ratio =", math.sqrt(eigVals[-1]/eigVals[0])
     print "dominant eigvect =", eigVects[:, -1]
 
     return
@@ -132,41 +134,45 @@ def test_loss2():
     inputs = Input(shape=(input_dim,))
     net = inputs
     net = Dense(intermediate_dim, activation="relu")(net)
+    net = BatchNormalization()(net)
     net = Dense(intermediate_dim, activation="relu")(net)
+    net = BatchNormalization()(net)
     net = Dense(intermediate_dim, activation="relu")(net)
+    net = BatchNormalization()(net)
     z = Dense(latent_dim, activation="tanh", name="z")(net)
     eigvec = Lambda(lambda z: dominant_eigvect_layer(z), name="eigvec")([z])
     net = z
     net = Dense(intermediate_dim, activation="relu")(net)
+    net = BatchNormalization()(net)
     net = Dense(intermediate_dim, activation="relu")(net)
+    net = BatchNormalization()(net)
     net = Dense(intermediate_dim, activation="relu")(net)
-    output = Dense(latent_dim, activation="relu")(net)
+    net = BatchNormalization()(net)
+    output = Dense(latent_dim, activation="sigmoid")(net)
 
     def eigenvalue_gap_loss(x, x_pred):
-        EIGENVALUE_GAP_LOSS_WEIGHT = 0.01
         WW = K.dot(K.transpose(z), z)
         mineigval, maxeigval = eigen.extreme_eigvals(WW, batch_size, latent_dim=latent_dim, iterations=3, inner_normalization=False)
-        loss = maxeigval / mineigval # K.square(maxeigval-1) + K.square(mineigval-1)
-        loss *= EIGENVALUE_GAP_LOSS_WEIGHT
+        loss = K.sqrt(maxeigval / mineigval) # K.square(maxeigval-1) + K.square(mineigval-1)
         return loss
 
     def total_loss(x, x_pred):
         recons = K.mean(K.square(x-x_pred))
         shape = K.mean(K.square(z))
-        # shape = eigenvalue_gap_loss(x, x_pred)
+        EIGENVALUE_GAP_LOSS_WEIGHT = 0.1 ; shape += eigenvalue_gap_loss(x, x_pred) * EIGENVALUE_GAP_LOSS_WEIGHT
+        # RANDOM_VECT_LOSS_WEIGHT = 10 ; shape += random_vect_loss(z) * RANDOM_VECT_LOSS_WEIGHT
         return recons + shape
 
     model = Model(input=inputs, output=output)
     optimizer = Adam(lr=0.001, clipvalue=1.0)
-    model.compile(optimizer=optimizer, loss=total_loss, metrics=["mse", eigenvalue_gap_loss])
+    model.compile(optimizer=optimizer, loss=total_loss,
+        metrics=["mse", eigenvalue_gap_loss, lambda _1, _2: random_vect_loss(z)])
 
     encoder = Model(input=inputs, output=z)
     encoder.compile(optimizer=optimizer, loss="mse")
 
     N = 10000 // batch_size * batch_size
-    megaepoch_count = 1
-
-    model.summary()
+    megaepoch_count = 10
 
     for i in range(megaepoch_count):
         print "================"

@@ -1,4 +1,5 @@
 import numpy as np
+import math
 import keras
 import keras.backend as K
 
@@ -70,9 +71,10 @@ def test_eigenvec():
     print "======="
 
     WW = K.dot(K.transpose(input), input)
-    f = K.function([input], list(extreme_eigvals(WW, bs, latent_dim, iterations=3)))
+    f = K.function([input], list(extreme_eigvals(WW, bs, latent_dim, iterations=3, inner_normalization=True)))
     mineigval, maxeigval = f([data])
     print "iterative keras-based extreme eigenvalues", mineigval, maxeigval
+    print "numpy extreme eigenvalues", eigVals[0], eigVals[-1]
 
     theo_cov_shifted = np.eye(latent_dim) * theo_eigVals[0] - theo_cov
     eigVals, eigVects = np.linalg.eigh(theo_cov_shifted)

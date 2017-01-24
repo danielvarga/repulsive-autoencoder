@@ -1,3 +1,4 @@
+from keras.models import Model
 import mixture
 import numpy as np
 from keras.layers import Dense, Reshape, Input, Lambda, Convolution2D, Flatten, merge, Deconvolution2D, Activation, BatchNormalization
@@ -12,19 +13,30 @@ variance = 0.001
 maxpooling = False
 upscale = False
 
+def get_latent_dim(gaussianParams):
+    main_channel = gaussianParams[0]
+    dots = gaussianParams[1]
+    gaussian_params = mixture.get_param_count(learn_variance, learn_density)
+    main_params = main_channel * dots * gaussian_params
+    side_params = gaussianParams[2]
+    latent_dim = main_params + side_params
+    return latent_dim
+
+
 class Decoder(object):
     pass
 
 class GaussianDecoder(Decoder):
-    def __init__(self, args):
+    def __init__(self, args, generator_input):
+        self.generator_input = generator_input
         self.args = args
         self.main_channel = args.gaussianParams[0]
         self.dots = args.gaussianParams[1]
 
         self.gaussian_params = mixture.get_param_count(learn_variance, learn_density)
         self.main_params = self.main_channel * self.dots * self.gaussian_params
-        assert self.main_params <= args.latent_dim
-        self.side_params = args.latent_dim - self.main_params
+        self.side_params = args.gaussianParams[2]
+        assert self.main_params + self.side_params == args.latent_dim
 
         print "Main params: {}, Side params: {}".format(self.main_params, self.side_params)
 
@@ -45,25 +57,21 @@ class GaussianDecoder(Decoder):
 
     def __call__(self, recons_input):
         args = self.args
-
-        generator_input = Input(batch_shape=(args.batch_size, args.latent_dim), name="generator_input")
-        generator_output = generator_input
         recons_output = recons_input
 
         if self.main_params > 0:
             mainSplitter = Lambda(lambda x: x[:,:self.main_params], output_shape=(self.main_params,), name="mainSplitter")
             recons_main = mainSplitter(recons_output)
-#            generator_main = mainSplitter(generator_output)
-            generator_main = add_noise(recons_main, 0.1, args.batch_size)
+
+            generator_main = add_noise(recons_main, 0.0, args.batch_size) # TODO
+
             mainLayers = []
             mainLayers.append(Reshape([self.main_channel, self.dots, self.gaussian_params]))
             mainLayers.append(Activation("sigmoid"))
             mainLayers.append(mixture.MixtureLayer(self.ys[args.depth], self.xs[args.depth], self.main_channel, learn_variance=learn_variance, variance=variance, maxpooling=maxpooling, name="mixtureLayer"))
             for layer in mainLayers:
                 generator_main = layer(generator_main)
-                recons_main = layer(recons_main)
-
-            args.mixture_output = recons_main # Lambda(lambda x: K.sum(K.abs(x), axis=3), output_shape=(self.ys[args.depth], self.xs[args.depth],1))(recons_main)
+                recons_main = layer(recons_main)            
             
         def sideFun(x):
             x = x[:,self.main_params:]
@@ -76,8 +84,9 @@ class GaussianDecoder(Decoder):
         if self.side_params > 0:
             sideSplitter = Lambda(sideFun, output_shape=(self.ys[args.depth], self.xs[args.depth], self.side_params), name="sideSplitter")
             recons_side = sideSplitter(recons_output)
-#            generator_side = sideSplitter(generator_output)
-            generator_side = recons_side
+
+#            generator_side = recons_side # TODO
+            generator_side = add_noise(recons_side, 0.1, args.batch_size) # TODO
 
         if self.side_params == 0:
             assert self.main_params > 0
@@ -109,10 +118,14 @@ class GaussianDecoder(Decoder):
         output_shape = K.int_shape(recons_output)[1:]
         assert output_shape == self.args.original_shape, "Expected shape {}, got shape {}".format(self.args.original_shape, output_shape)
 
-        return generator_input, recons_output, generator_output
+        # create a separate model that returns the output of the main channels
+        args.mixture_model = Model(self.generator_input, recons_main)
+        args.mixture_model.compile(optimizer="sgd", loss="mse")
+
+        return self.generator_input, recons_output, generator_output
 
 def add_noise(x, magnitude, batch_size):
     shape = [batch_size] + list(K.int_shape(x)[1:])
-    noise = magnitude # K.random_normal(shape=shape, mean=0., std=magnitude)
+    noise = K.random_normal(shape=shape, mean=0., std=magnitude)
     return Lambda(lambda x: noise + x)((x))
     

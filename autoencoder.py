@@ -34,19 +34,14 @@ import model
 ae, encoder, encoder_var, generator = model.build_model(args)
 ae.summary()
 
-if args.spherical:
-    sampler = model.spherical_sampler
-else:
-    sampler = model.gaussian_sampler
+sampler = model.sampler_factory(args, x_train)
 
 import callbacks
 cbs = [callbacks.FlushCallback()]
 cbs.append(callbacks.get_lr_scheduler(args.nb_epoch, args.lr))
 cbs.append(callbacks.ImageDisplayCallback(
-    x_train, x_test,
-    args.latent_dim, args.batch_size,
-    encoder, encoder_var, args.sampling, generator, sampler,
-    args.callback_prefix, args.frequency))
+    x_train, x_test, args,
+    ae, encoder, encoder_var, generator, sampler))
 for schedule in args.weight_schedules:
     if schedule[1] != schedule[2]:
         cbs.append(callbacks.WeightSchedulerCallback(args.nb_epoch, schedule[0], schedule[1], schedule[2], schedule[3], schedule[4], schedule[5]))
@@ -60,33 +55,23 @@ ae.fit(x_train, x_train,
        callbacks = cbs,
        validation_data=(x_test, x_test))
 
-if args.decoder=="gaussian":
-    mixture_output = args.mixture_model.predict(x_train, batch_size=args.batch_size)
-    mixture_output = np.expand_dims(np.sum(mixture_output, axis=3),3)
-    mixture_output -= np.min(mixture_output)
-    mixture_output /= np.max(mixture_output)
-    data_output = ae.predict(x_train, batch_size=args.batch_size)
-    third_channel = np.zeros(data_output.shape)
-    print mixture_output.shape, data_output.shape, third_channel.shape
-    output = np.concatenate([mixture_output, data_output, third_channel], axis=3)
-    output2 = np.concatenate([mixture_output, third_channel, third_channel], axis=3)
-    vis.plotImages(output[:100], 10, 10, "%s-mnist" % args.prefix)
-    vis.plotImages(output2[:100], 10, 10, "%s-mnist2" % args.prefix)
-
-
-# display randomly generated images
-vis.displayRandom(10, x_train, args.latent_dim, sampler, generator, "%s-random" % args.prefix, batch_size=args.batch_size)
-
 vis.saveModel(ae, args.prefix + "_model")
 vis.saveModel(encoder, args.prefix + "_encoder")
 vis.saveModel(encoder_var, args.prefix + "_encoder_var")
 vis.saveModel(generator, args.prefix + "_generator")
 
+vis.displayGaussian(args, ae, x_train, args.prefix + "-dots")
+
+# display randomly generated images
+vis.displayRandom(10, x_train, args.latent_dim, sampler, generator, "%s-random" % args.prefix, batch_size=args.batch_size)
+
+
 vis.displaySet(x_test[:args.batch_size], args.batch_size, 100, ae, "%s-test" % args.prefix)
 vis.displaySet(x_train[:args.batch_size], args.batch_size, 100, ae, "%s-train" % args.prefix)
 
 # display image interpolation
-vis.displayInterp(x_train, x_test, args.batch_size, args.latent_dim, encoder, encoder_var, args.sampling, generator, 10, "%s-interp" % args.prefix)
+if args.decoder != "gaussian":
+    vis.displayInterp(x_train, x_test, args.batch_size, args.latent_dim, encoder, encoder_var, args.sampling, generator, 10, "%s-interp" % args.prefix)
 
 vis.plotMVhist(x_train, encoder, args.batch_size, "{}-mvhist.png".format(args.prefix))
 vis.plotMVVM(x_train, encoder, encoder_var, args.batch_size, "{}-mvvm.png".format(args.prefix))

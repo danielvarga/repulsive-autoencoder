@@ -1,6 +1,6 @@
 import argparse
 import exp
-
+from model_gaussian import get_latent_dim
 
 parser = argparse.ArgumentParser()
 
@@ -35,7 +35,7 @@ parser.add_argument('--verbose', dest="verbose", type=int, default=2, help="Logg
 parser.add_argument('--weight_schedules', dest="weight_schedules", default='', help="Comma separated list of loss schedules, ex size_loss|5|1|0.2|0.8 means that size_loss has has initial weight 5, final weight 1 and the weight is adjusted linearly after finishing the first 20% of the training and before finishing the 80% of training")
 parser.add_argument('--trainSize', dest="trainSize", type=int, default=0, help="Train set size (0 means default size)")
 parser.add_argument('--testSize', dest="testSize", type=int, default=0, help="Test set size (0 means default size)")
-parser.add_argument('--gaussianParams', dest="gaussianParams", default="30,1", help="main_channel,dots")
+parser.add_argument('--gaussianParams', dest="gaussianParams", default="10,1,10", help="main_channel,dots,side_channel - this overrides latent_dim param")
 
 
 args_param = parser.parse_args()
@@ -75,7 +75,6 @@ def getArgs():
     else:
         args.intermediate_dims = []
 
-    args.gaussianParams = map(int, str(args.gaussianParams).split(","))
     args.losses = str(args.losses).split(",")
     args.metrics = str(args.metrics).split(",")
     args.metrics = sorted(set(args.metrics + args.losses))
@@ -90,4 +89,11 @@ def getArgs():
             schedule_list.append(var)
             weight_schedules.append(schedule_list)
     args.weight_schedules = weight_schedules
+
+    # if the decoder is gaussian, update latent_dim
+    args.gaussianParams = map(int, str(args.gaussianParams).split(","))
+    assert len(args.gaussianParams) == 3
+    if args.decoder == "gaussian":
+        args.latent_dim = get_latent_dim(args.gaussianParams)
+    else: print "!!!!!!!!!!!!!!!!!!!!!!!!"
     return args

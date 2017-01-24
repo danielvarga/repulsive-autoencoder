@@ -20,33 +20,35 @@ def get_lr_scheduler(nb_epoch, base_lr):
 
 class ImageDisplayCallback(Callback):
     def __init__(self, 
-                 x_train, x_test, 
-                 latent_dim, batch_size,
-                 encoder, encoder_var, is_sampling, generator, sampler, 
-                 name,
-                 frequency,
+                 x_train, x_test, args,
+                 ae, encoder, encoder_var, generator, sampler,
                  **kwargs):
         self.x_train = x_train
         self.x_test = x_test
-        self.latent_dim = latent_dim
-        self.batch_size = batch_size
+        self.args = args
+
+        self.latent_dim = args.latent_dim
+        self.batch_size = args.batch_size
+        self.ae = ae
         self.encoder = encoder
         self.encoder_var = encoder_var
-        self.is_sampling = is_sampling
+        self.is_sampling = args.sampling
         self.generator = generator
         self.sampler = sampler
-        self.name = name
-        self.frequency = frequency
+        self.name = args.callback_prefix
+        self.frequency = args.frequency
         super(ImageDisplayCallback, self).__init__(**kwargs)
 
     def on_epoch_end(self, epoch, logs):
         if (epoch+1) % self.frequency != 0:
             return
 
+        vis.displayGaussian(self.args, self.ae, self.x_train, "%s-dots-%i" % (self.name, epoch+1))
         vis.displayRandom(10, self.x_train, self.latent_dim, self.sampler, self.generator, "%s-random-%i" % (self.name, epoch+1), batch_size=self.batch_size)
         vis.displaySet(self.x_test[:self.batch_size], self.batch_size, self.batch_size, self.model, "%s-test-%i" % (self.name,epoch+1))
         vis.displaySet(self.x_train[:self.batch_size], self.batch_size, self.batch_size, self.model, "%s-train-%i" % (self.name,epoch+1))
-        vis.displayInterp(self.x_train, self.x_test, self.batch_size, self.latent_dim, self.encoder, self.encoder_var, self.is_sampling, self.generator, 10, "%s-interp-%i" % (self.name,epoch+1))
+        if self.args.decoder != "gaussian":
+            vis.displayInterp(self.x_train, self.x_test, self.batch_size, self.latent_dim, self.encoder, self.encoder_var, self.is_sampling, self.generator, 10, "%s-interp-%i" % (self.name,epoch+1))
         if self.encoder != self.encoder_var:
             vis.plotMVVM(self.x_train, self.encoder, self.encoder_var, self.batch_size, "{}-mvvm-{}.png".format(self.name, epoch+1))
         vis.plotMVhist(self.x_train, self.encoder, self.batch_size, "{}-mvhist-{}.png".format(self.name, epoch+1))

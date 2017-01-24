@@ -51,21 +51,13 @@ def build_model(args):
             wd = args.decoder_wd,
             use_bn = args.decoder_use_bn)
     elif args.decoder == "gaussian":
-        (mixtureX, mixtureY, mixtureChannel) = args.original_shape
-        decoder = model_gaussian.GaussianDecoder(args)
+        decoder = model_gaussian.GaussianDecoder(args, x)
     generator_input, recons_output, generator_output = decoder(z)
-
-    if args.decoder == "gaussian":
-        args.mixture_model = Model(x, args.mixture_output)
-        args.mixture_model.compile(optimizer="sgd", loss="mse")
-        generator = Model([x, generator_input], generator_output)
-    else:
-        generator = Model(generator_input, generator_output)
-
 
     encoder = Model(x, z_mean)
     encoder_var = Model(x, z_log_var)
     ae = Model(x, recons_output)
+    generator = Model(generator_input, generator_output)
 
     armLayer = ArmLayer(dict_size=1000, iteration=5, threshold=0.01, reconsCoef=1)
     sparse_input = Flatten()(x)
@@ -104,14 +96,19 @@ def add_sampling(hidden, sampling, batch_size, latent_dim, wd):
         return z, z_mean, z_log_var
 
 
-def gaussian_sampler(batch_size, latent_dim):
-    return np.random.normal(size=(batch_size, latent_dim))
 
-def spherical_sampler(batch_size, latent_dim):
-    z_sample = np.random.normal(size=(batch_size, latent_dim))
-    z_sample /= np.linalg.norm(z_sample)
-    return z_sample
-
-def uniform_sampler(batch_size, latent_dim):
-    return np.random.uniform(0.0, 1.0, size=(batch_size, latent_dim))
-
+def sampler_factory(args, x_train):
+    def gaussian_sampler(batch_size, latent_dim):
+        return np.random.normal(size=(batch_size, latent_dim))
+    def spherical_sampler(batch_size, latent_dim):
+        z_sample = np.random.normal(size=(batch_size, latent_dim))
+        z_sample /= np.linalg.norm(z_sample)
+        return z_sample
+    def train_sampler(batch_size, latent_dim):
+        return x_train[:batch_size]
+    if args.decoder == "gaussian":
+        return train_sampler
+    elif args.spherical:
+        return spherical_sampler
+    else:
+        return gaussian_sampler

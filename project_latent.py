@@ -33,6 +33,8 @@ import data
 (x_train, x_test) = data.load(args.dataset, args.trainSize, args.testSize, color=args.color, shape=args.shape)
 args.original_shape = x_train.shape[1:]
 
+sampler = model.sampler_factory(args, x_train)
+
 try:
     generator = vis.loadModel(prefix + "_generator")
     encoder = vis.loadModel(prefix + "_encoder")
@@ -97,13 +99,13 @@ vis.displayNearest(x_train, latent_train, generator, batch_size, name=prefix+"-n
 vis.displayNearest(x_train, latent_train_mean, generator, batch_size, name=prefix+"-nearest-mean", origo = latent_train[6])
 
 np.random.seed(100)
-vis.displayMarkov(30, 30, latent_dim, model.gaussian_sampler, generator, encoder, encoder_var, do_latent_variances, name=prefix+"-markov", batch_size=batch_size, x_train_latent=latent_train_mean)
+vis.displayMarkov(30, 30, latent_dim, sampler, generator, encoder, encoder_var, do_latent_variances, name=prefix+"-markov", batch_size=batch_size, x_train_latent=latent_train_mean)
 np.random.seed(100)
-vis.displayMarkov(30, 30, latent_dim, model.gaussian_sampler, generator, encoder, encoder_var, do_latent_variances, name=prefix+"-markov-nosampling", batch_size=batch_size, variance_alpha=0.0)
+vis.displayMarkov(30, 30, latent_dim, sampler, generator, encoder, encoder_var, do_latent_variances, name=prefix+"-markov-nosampling", batch_size=batch_size, variance_alpha=0.0)
 np.random.seed(100)
-vis.displayMarkov(30, 30, latent_dim, model.gaussian_sampler, generator, encoder, encoder_var, do_latent_variances, name=prefix+"-markov-noise", batch_size=batch_size, noise_alpha=0.1)
+vis.displayMarkov(30, 30, latent_dim, sampler, generator, encoder, encoder_var, do_latent_variances, name=prefix+"-markov-noise", batch_size=batch_size, noise_alpha=0.1)
 np.random.seed(100)
-vis.displayMarkov(30, 30, latent_dim, model.gaussian_sampler, generator, encoder, encoder_var, do_latent_variances, name=prefix+"-markov-nosampling-noise", batch_size=batch_size, x_train_latent=latent_train_mean, variance_alpha=0.0, noise_alpha=0.3)
+vis.displayMarkov(30, 30, latent_dim, sampler, generator, encoder, encoder_var, do_latent_variances, name=prefix+"-markov-nosampling-noise", batch_size=batch_size, x_train_latent=latent_train_mean, variance_alpha=0.0, noise_alpha=0.3)
 
 if do_latent_variances:
     variance_means = np.mean(np.exp(latent_train_logvar), axis=0)
@@ -279,7 +281,7 @@ vis.displayRandom(n=20, x_train=x_train, latent_dim=latent_dim, sampler=masked_s
         generator=generator, name=prefix + "_masked", batch_size=batch_size)
 
 np.random.seed(10)
-vis.displayRandom(n=20, x_train=x_train, latent_dim=latent_dim, sampler=model.gaussian_sampler,
+vis.displayRandom(n=20, x_train=x_train, latent_dim=latent_dim, sampler=sampler,
                   generator=generator, name=prefix + "_standard", batch_size=batch_size)
 
 np.random.seed(10)

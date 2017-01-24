@@ -113,10 +113,7 @@ def displayRandom(n, x_train, latent_dim, sampler, generator, name, batch_size=3
     cnt = n * n
     cnt_aligned = (cnt // batch_size + 1) * batch_size
     z_sample = sampler(cnt_aligned, latent_dim)
-    if len(generator.inputs) == 2:
-        x_decoded = generator.predict([x_train[:cnt_aligned], z_sample], batch_size=batch_size)
-    else:
-        x_decoded = generator.predict(z_sample, batch_size=batch_size)
+    x_decoded = generator.predict(z_sample, batch_size=batch_size)
     x_decoded = x_decoded[:cnt]
     indx = 0
     for i in range(n):
@@ -222,7 +219,7 @@ def displayOneMarkov(n, iterations, latent_dim, sampler, generator, encoder, enc
     plotImages(result, n, iterations+1, name)
 
 def displayNearest(x_train, x_train_latent, generator, batch_size, name, origo="default", nx=40, ny=20, working_mask=None):
-    if origo is "default":
+    if origo == "default":
         origo = np.zeros(shape=x_train_latent.shape[1:])
     distances = np.square(x_train_latent - origo)
     if working_mask is not None:
@@ -234,10 +231,7 @@ def displayNearest(x_train, x_train_latent, generator, batch_size, name, origo="
     cnt_aligned = (cnt // batch_size + 1) * batch_size
     x_train = x_train[:cnt_aligned]
     x_train_latent = x_train_latent[:cnt_aligned]
-    if len(generator.inputs) == 2:
-        x_decoded = generator.predict([x_train, x_train_latent], batch_size=batch_size)
-    else:
-        x_decoded = generator.predict(x_train_latent, batch_size=batch_size)
+    x_decoded = generator.predict(x_train_latent, batch_size=batch_size)
     plotImages(x_decoded[:cnt], nx, ny, name)
     
 
@@ -344,6 +338,21 @@ def plot2Dprojections(dataset, indices, name):
     print "Creating file " + name
     plt.savefig(name)
     plt.close()
+
+def displayGaussian(args, ae, x_train, name):
+    if args.decoder != "gaussian": return
+    if args.dataset != "mnist": return
+    mixture_output = args.mixture_model.predict(x_train, batch_size=args.batch_size)
+    mixture_output = np.expand_dims(np.sum(mixture_output, axis=3),3)
+    mixture_output -= np.min(mixture_output)
+    mixture_output /= np.max(mixture_output)
+    data_output = ae.predict(x_train, batch_size=args.batch_size)
+    output = np.concatenate([mixture_output, mixture_output, data_output], axis=3)
+    plotImages(output[:100], 10, 10, name)
+#    empty_channel = np.zeros(mixture_output.shape)
+#    output2 = np.concatenate([mixture_output, mixture_output, empty_channel], axis=3)
+#    plotImages(output2[:100], 10, 10, "%s-mnist2" % args.prefix)
+
 
 """
 def edgeDetect(images):

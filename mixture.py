@@ -19,7 +19,6 @@ def get_param_count(learn_variance, learn_density):
     if not learn_density: GAUSS_PARAM_COUNT -= 1
     return GAUSS_PARAM_COUNT
 
-
 class MixtureLayer(Layer):
     def __init__(self, sizeX, sizeY, channel=1, learn_variance=True, learn_density=False, variance=1.0/200, maxpooling=True, **kwargs):
         self.output_dim = 2
@@ -72,6 +71,7 @@ class MixtureLayer(Layer):
             densities = inp[:, :, :, self.xv_index]
             de  = add_two_dims(densities)
         else:
+            print "FIXED DENSITY FOR MIXTURE GAUSSIANS!"
             de = 1.0
 
         xi = tf.linspace(0.0, 1.0, sizeX)
@@ -90,13 +90,6 @@ class MixtureLayer(Layer):
         error /= 2
         error = tf.minimum(error, 1)
         error = tf.maximum(error, -1)
-
-        for i in range(5):
-            print "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-        print "FIXED DENSITY FOR MIXTURE GAUSSIANS!"
-        for i in range(5):
-            print "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-        de = 1.0
 
         # avgpooling is better for reconstruction (if negative ds are allowed),
         # val_loss: 0.0068, but way-way worse for interpolation, it looks like a smoke monster.

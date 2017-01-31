@@ -10,7 +10,7 @@ import tensorflow as tf
 from keras.models import Model
 from keras.layers import Input, Dense, Reshape, Activation, Lambda
 from keras.layers.normalization import BatchNormalization
-from keras.optimizers import Adam
+from keras.optimizers import Adam, RMSprop
 
 from sklearn.random_projection import GaussianRandomProjection
 from scipy.stats import kstest, norm
@@ -51,7 +51,8 @@ def kstest_tf(p):
     values, indices = tf.nn.top_k(p, k=batch_size, sorted=True)
     normal = tf.contrib.distributions.Normal(0.0, 1.0)
     reverted_cdf = normal.cdf(values) # reverted because values are sorted descending!
-    return K.max(K.abs(reverted_cdf - tf.linspace(1.0, 0.0, batch_size)))
+    diff = reverted_cdf - tf.linspace(1.0, 0.0, batch_size)
+    return K.max(K.abs(diff))
 
 
 # KS test statistic for random 1D projection of point cloud
@@ -59,6 +60,9 @@ def kstest_loss(z):
     v = K.random_normal_variable((latent_dim, 1), 0, 1)
     v = v / K.sqrt(K.dot(K.transpose(v), v))
     p = K.dot(z, v)
+    print "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n" * 3
+    print "NONSENSE, using projection to first dim instead of random projection!"
+    p = z[:, 0]
     p = K.reshape(p, (batch_size, ))
     return kstest_tf(p)
 
@@ -172,7 +176,7 @@ def test_loss():
         return recons + shape
 
     model = Model(input=inputs, output=output)
-    optimizer = Adam(lr=0.001)
+    optimizer = RMSprop()
     model.compile(optimizer=optimizer, loss=total_loss,
         metrics=["mse", lambda _1, _2: kstest_loss(z)])
 
@@ -180,22 +184,29 @@ def test_loss():
     encoder.compile(optimizer=optimizer, loss="mse")
 
     N = 10000 // batch_size * batch_size
+    epoch_count = 50
     megaepoch_count = 1
 
     for i in range(megaepoch_count):
         print "================"
         data = np.random.uniform(size=(N, input_dim)) * 2 - 1
-        model.fit(data, data, batch_size=batch_size, verbose=2)
+        model.fit(data, data, nb_epoch=epoch_count, batch_size=batch_size, verbose=2)
         data = np.random.uniform(size=(N, input_dim)) * 2 - 1
         z = encoder.predict(data, batch_size=batch_size)
         # cholesky(z)
 
-    projector = GaussianRandomProjection(n_components=1)
 
     for i in range(min((latent_dim, 10))):
         print "KS for dim", i, "=", kstest(z[:, i], 'norm')
+    print "histogram for standard normal"
+    print np.histogram(np.random.normal(size=N), 20)
     for i in range(min((latent_dim, 10))):
-        projected_z = projector.fit_transform(z)
+        print "---"
+        projector = np.random.normal(size=(latent_dim,))
+        projector /= np.linalg.norm(projector)
+        projected_z = z.dot(projector)
+        print projected_z.shape
+        projected_z = projected_z.flatten()
         print np.histogram(projected_z, 20)
         print "KS for random projection", i, "=", kstest(projected_z, 'norm')
 
@@ -230,8 +241,9 @@ def test_loss():
         ax.set_title(title)
         plt.show()
 
-    cumulative_view(projector.fit_transform(z), "CDF of randomly projected latent cloud")
+    cumulative_view(projected_z, "CDF of randomly projected latent cloud")
     cumulative_view(z[:, 0], "CDF of first coordinate of latent cloud")
+    cumulative_view(z[:, 1], "CDF of second coordinate of latent cloud")
 
 
 def test_kstest():

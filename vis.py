@@ -7,6 +7,7 @@ import numpy as np
 import math
 import model
 
+from scipy.stats import norm
 import grid_layout
 from keras.models import model_from_json
 
@@ -341,13 +342,16 @@ def plot2Dprojections(dataset, indices, name):
 
 def displayGaussian(args, ae, x_train, name):
     if args.decoder != "gaussian": return
-    if args.dataset != "mnist": return
     mixture_output = args.mixture_model.predict(x_train, batch_size=args.batch_size)
     mixture_output = np.expand_dims(np.sum(mixture_output, axis=3),3)
     mixture_output -= np.min(mixture_output)
     mixture_output /= np.max(mixture_output)
-    data_output = ae.predict(x_train, batch_size=args.batch_size)
-    output = np.concatenate([mixture_output, mixture_output, data_output], axis=3)
+
+    if args.original_shape[2] == 1:
+        data_output = ae.predict(x_train, batch_size=args.batch_size)
+        output = np.concatenate([mixture_output, mixture_output, data_output], axis=3)
+    else:
+        output = np.concatenate([mixture_output, mixture_output, mixture_output], axis=3)
     plotImages(output[:100], 10, 10, name)
 #    empty_channel = np.zeros(mixture_output.shape)
 #    output2 = np.concatenate([mixture_output, mixture_output, empty_channel], axis=3)
@@ -405,3 +409,22 @@ def loadModel(filePrefix):
     mod.load_weights(weightFile)
     print "Loaded model from files {}, {}".format(jsonFile, weightFile)
     return mod
+
+
+def cumulative_view(projected_z, title, name):
+    fig, ax = plt.subplots(figsize=(10, 8))
+    n, bins, patches = ax.hist(projected_z, bins=50, cumulative=True,
+                               normed=1, histtype='step', label='Empirical')
+    mu = np.mean(projected_z)
+    sigma = np.std(projected_z)
+    y = norm.cdf(bins, mu, sigma)
+    ax.plot(bins, y, 'k--', linewidth=1.5, label='Fitted normal')
+    y = norm.cdf(bins, 0.0, 1.0)
+    ax.plot(bins, y, 'r--', linewidth=1.5, label='Standard normal')
+    ax.grid(True)
+    ax.legend(loc='lower right')
+    ax.set_title(title)
+    plt.savefig(name)
+    plt.close()
+#    plt.show()
+    

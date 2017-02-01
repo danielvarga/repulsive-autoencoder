@@ -6,8 +6,6 @@ import numpy as np
 
 def load(dataset, trainSize, testSize, shape=None, color=False, digit=None):
     if dataset == "mnist":
-        assert shape is None
-        assert color is False
         (x_train, x_test) = load_mnist(digit)
     elif dataset == "celeba":
         # What's the pythonic way of doing this?

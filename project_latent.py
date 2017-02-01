@@ -68,6 +68,14 @@ else:
     encoder_var =encoder
     latent_train = latent_train_mean
 
+
+projector = np.random.normal(size=(args.latent_dim,))
+projector /= np.linalg.norm(projector)
+projected_z = latent_train.dot(projector)
+projected_z = projected_z.flatten()
+vis.cumulative_view(projected_z, "CDF of randomly projected latent cloud", prefix + "_cdf.png")
+
+
 if False: #do_latent_variances:
     x = np.mean(latent_train_logvar, axis=1)
     plt.hist(x, bins = 30)

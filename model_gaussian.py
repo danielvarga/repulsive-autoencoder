@@ -7,9 +7,9 @@ from keras.regularizers import l1, l2
 import keras
 keras.layers.MixtureLayer = mixture.MixtureLayer
 
-learn_variance=False
-learn_density=False
-variance = 0.001
+learn_variance=True
+learn_density=True
+variance = 0.1
 maxpooling = False
 upscale = False
 
@@ -40,7 +40,7 @@ class GaussianDecoder(Decoder):
 
         print "Main params: {}, Side params: {}".format(self.main_params, self.side_params)
 
-        self.side_channel = args.latent_dim
+        self.side_channel = self.side_params
         self.channel = self.main_channel + self.side_channel
         self.depth = args.depth
         if upscale:
@@ -68,7 +68,7 @@ class GaussianDecoder(Decoder):
             mainLayers = []
             mainLayers.append(Reshape([self.main_channel, self.dots, self.gaussian_params]))
             mainLayers.append(Activation("sigmoid"))
-            mainLayers.append(mixture.MixtureLayer(self.ys[args.depth], self.xs[args.depth], self.main_channel, learn_variance=learn_variance, variance=variance, maxpooling=maxpooling, name="mixtureLayer"))
+            mainLayers.append(mixture.MixtureLayer(self.ys[args.depth], self.xs[args.depth], self.main_channel, learn_variance=learn_variance, learn_density=learn_density, variance=variance, maxpooling=maxpooling, name="mixtureLayer"))
             for layer in mainLayers:
                 generator_main = layer(generator_main)
                 recons_main = layer(recons_main)            

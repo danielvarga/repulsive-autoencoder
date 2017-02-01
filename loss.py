@@ -36,6 +36,10 @@ def loss_factory(model, encoder, loss_features, args):
         loss = 0.5 * K.sum(K.square(loss_features[1]), axis=-1)
         return K.mean(loss)
 
+    def sampled_size_loss(x, x_decoded): # pushing the samples towards the origo
+        loss = 0.5 * K.sum(K.square(loss_features[0]), axis=-1)
+        return K.mean(loss)
+
     def variance_loss(x, x_decoded): # pushing the variance towards 1
         loss = 0.5 * K.sum(-1 - loss_features[2] + K.exp(loss_features[2]), axis=-1)
         return K.mean(loss)
@@ -77,6 +81,15 @@ def loss_factory(model, encoder, loss_features, args):
         loss = K.sum(K.square(K.eye(K.int_shape(z_centered)[1]) - K.dot(K.transpose(z_centered), z_centered)))
         return loss
 
+    def intermediary_loss(x, x_decoded):
+        assert len(loss_features) >= 8
+        intermediary_outputs = loss_features[7]
+        loss = 0
+        for intermediary_output in intermediary_outputs:
+            loss += mse_loss(x, intermediary_output)
+        loss /= len(intermediary_outputs)
+        return loss
+
     # Pushes latent datapoints in the direction of the hyperplane that is
     # orthogonal to the dominant eigenvector of the covariance matrix of the minibatch.
     # Note: the eigenvector calculation assumes that the latent minibatch is zero-centered.
@@ -95,6 +108,12 @@ def loss_factory(model, encoder, loss_features, args):
         loss = K.square(maxeigval-1) + K.square(mineigval-1)
         loss *= EIGENVALUE_GAP_LOSS_WEIGHT
         return loss
+
+    def kstest_loss(x, x_decoded):
+#        z_projected = loss_features[6]
+#        return eigen.kstest_tf(z_projected, args.batch_size)
+        z = loss_features[0]
+        return eigen.kstest_loss(z, args.latent_dim, args.batch_size)
 
     def layerwise_loss(x, x_decoded):
         model_nodes = model.nodes_by_depth

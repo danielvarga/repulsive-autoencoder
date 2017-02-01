@@ -6,6 +6,7 @@ import numpy as np
 import dense
 import model_conv_discgen
 import model_gaussian
+import model_resnet
 
 from keras.layers import Input, Dense, Lambda, Reshape, Flatten, Activation
 from keras.models import Model
@@ -37,6 +38,7 @@ def build_model(args):
     z_normed = Lambda(lambda z_unnormed: K.l2_normalize(z_unnormed, axis=-1))([z])
     if args.spherical:
         z = z_normed
+    z_projected = Lambda(lambda z: K.reshape( K.dot(z, K.l2_normalize(K.random_normal_variable((args.latent_dim, 1), 0, 1), axis=-1)), (args.batch_size,)))([z])
 
     if args.decoder == "dense":
         decoder = dense.DenseDecoder(args.latent_dim, args.intermediate_dims, args.original_shape, args.activation, args.decoder_wd)
@@ -52,7 +54,10 @@ def build_model(args):
             use_bn = args.decoder_use_bn)
     elif args.decoder == "gaussian":
         decoder = model_gaussian.GaussianDecoder(args, x)
-    generator_input, recons_output, generator_output = decoder(z)
+    elif args.decoder == "resnet":
+        decoder = model_resnet.ResnetDecoder(args)
+    decoder_fun_output = decoder(z)
+    generator_input, recons_output, generator_output = decoder_fun_output[:3]
 
     encoder = Model(x, z_mean)
     encoder_var = Model(x, z_log_var)
@@ -64,7 +69,9 @@ def build_model(args):
     sparse_input = armLayer(sparse_input)
     sparse_output = Flatten()(recons_output)
     sparse_output = armLayer(sparse_output)
-    loss_features = (z, z_mean, z_log_var, z_normed, sparse_input, sparse_output)
+    loss_features = [z, z_mean, z_log_var, z_normed, sparse_input, sparse_output, z_projected]
+    if args.decoder == "resnet":
+        loss_features.append(decoder_fun_output[3]) # intermediary outputs
     loss, metrics = loss_factory(ae, encoder, loss_features, args)
 
     if args.optimizer == "rmsprop":
@@ -82,7 +89,7 @@ def build_model(args):
 
 
 def add_sampling(hidden, sampling, batch_size, latent_dim, wd):
-    z_mean = Dense(latent_dim, W_regularizer=l2(wd))(hidden)
+    z_mean = Dense(latent_dim, W_regularizer=l2(wd), name="latent_mean")(hidden)
     if not sampling:
         z_log_var = Lambda(lambda x: 0*x, output_shape=[latent_dim])((z_mean))
         return z_mean, z_mean, z_log_var
@@ -92,7 +99,7 @@ def add_sampling(hidden, sampling, batch_size, latent_dim, wd):
             z_mean, z_log_var = inputs
             epsilon = K.random_normal(shape=(batch_size, latent_dim), mean=0.)
             return z_mean + K.exp(z_log_var / 2) * epsilon
-        z = Lambda(sampling, output_shape=(latent_dim,))([z_mean, z_log_var])
+        z = Lambda(sampling, output_shape=(latent_dim,), name="latent")([z_mean, z_log_var])
         return z, z_mean, z_log_var
 
 

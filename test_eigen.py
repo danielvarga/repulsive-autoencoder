@@ -46,27 +46,6 @@ def dominant_eigvect_loss(z):
     return loss
 
 
-# input: 1D tensor. output: Kolmogorov-Smirnov test statistic.
-def kstest_tf(p):
-    values, indices = tf.nn.top_k(p, k=batch_size, sorted=True)
-    normal = tf.contrib.distributions.Normal(0.0, 1.0)
-    reverted_cdf = normal.cdf(values) # reverted because values are sorted descending!
-    diff = reverted_cdf - tf.linspace(1.0, 0.0, batch_size)
-    return K.max(K.abs(diff))
-
-
-# KS test statistic for random 1D projection of point cloud
-def kstest_loss(z):
-    v = K.random_normal_variable((latent_dim, 1), 0, 1)
-    v = v / K.sqrt(K.dot(K.transpose(v), v))
-    p = K.dot(z, v)
-    print "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n" * 3
-    print "NONSENSE, using projection to first dim instead of random projection!"
-    p = z[:, 0]
-    p = K.reshape(p, (batch_size, ))
-    return kstest_tf(p)
-
-
 def minieval(func, data):
     input = K.placeholder(shape=data.shape)
     f = K.function([input], [func(input)])
@@ -76,7 +55,7 @@ def minieval(func, data):
 def test_kstest_tf():
     # Tests the hacked kstest_tf() that returns reversed_cdf.
     data = np.random.normal(size=(batch_size,))
-    out = minieval(kstest_tf, data)
+    out = minieval(eigen.kstest_tf, data)
     top = np.sort(data)[::-1][:20]
     print top
     print norm.cdf(top, 0.0, 1.0)
@@ -123,6 +102,7 @@ def test_eigen():
     eigvec = Lambda(lambda z: dominant_eigvect_layer(z))([inputs])
     model = Model(input=inputs, output=eigvec)
     optimizer = Adam(lr=0.001, clipvalue=1.0)
+#    optimizer = RMSprop(lr=args.lr, clipvalue=1.0)
     model.compile(optimizer=optimizer, loss=lambda x, x_pred: K.zeros((1, )))
 
     N = 512
@@ -152,6 +132,8 @@ def test_loss():
     z = Dense(latent_dim, activation="tanh", name="half_z")(net)
     z = Lambda(lambda z: 2*z, name="z")(z) # increase the support to [-2,+2].
     eigvec = Lambda(lambda z: dominant_eigvect_layer(z), name="eigvec")([z])
+    z_projected = Lambda(lambda z: K.reshape( K.dot(z, K.l2_normalize(K.random_normal_variable((latent_dim, 1), 0, 1), axis=-1)), (batch_size,)))([z])
+
     net = z
     net = Dense(intermediate_dim, activation="relu")(net)
     net = BatchNormalization()(net)
@@ -159,7 +141,7 @@ def test_loss():
     net = BatchNormalization()(net)
     net = Dense(intermediate_dim, activation="relu")(net)
     net = BatchNormalization()(net)
-    output = Dense(latent_dim, activation="sigmoid")(net)
+    output = Dense(input_dim, activation="tanh")(net)
 
     def eigenvalue_gap_loss(x, x_pred):
         WW = K.dot(K.transpose(z), z)
@@ -172,19 +154,20 @@ def test_loss():
         # shape = K.mean(K.square(z)) / 10
         # EIGENVALUE_GAP_LOSS_WEIGHT = 0.1 ; shape += eigenvalue_gap_loss(x, x_pred) * EIGENVALUE_GAP_LOSS_WEIGHT
         # RANDOM_VECT_LOSS_WEIGHT = 10 ; shape += random_vect_loss(z) * RANDOM_VECT_LOSS_WEIGHT
-        KSTEST_LOSS_WEIGHT = 1 ; shape = kstest_loss(z) * KSTEST_LOSS_WEIGHT
-        return recons + shape
+        KSTEST_LOSS_WEIGHT = 1 ; shape = eigen.kstest_loss(z, latent_dim, batch_size) * KSTEST_LOSS_WEIGHT
+#        KSTEST_LOSS_WEIGHT = 10 ; shape = eigen.kstest_tf(z_projected, batch_size) * KSTEST_LOSS_WEIGHT
+        return recons
 
     model = Model(input=inputs, output=output)
     optimizer = RMSprop()
     model.compile(optimizer=optimizer, loss=total_loss,
-        metrics=["mse", lambda _1, _2: kstest_loss(z)])
+                  metrics=["mse", lambda _1, _2: eigen.kstest_loss(z, latent_dim, batch_size)])
 
     encoder = Model(input=inputs, output=z)
     encoder.compile(optimizer=optimizer, loss="mse")
 
     N = 10000 // batch_size * batch_size
-    epoch_count = 50
+    epoch_count = 200
     megaepoch_count = 1
 
     for i in range(megaepoch_count):
@@ -193,7 +176,9 @@ def test_loss():
         model.fit(data, data, nb_epoch=epoch_count, batch_size=batch_size, verbose=2)
         data = np.random.uniform(size=(N, input_dim)) * 2 - 1
         z = encoder.predict(data, batch_size=batch_size)
+        output = model.predict(data, batch_size=batch_size)
         # cholesky(z)
+
 
 
     for i in range(min((latent_dim, 10))):
@@ -214,16 +199,20 @@ def test_loss():
     import matplotlib
     from mpl_toolkits.mplot3d import Axes3D
 
+    plt.scatter(output[:, 0], output[:, 1])
+    plt.show()
+
     if latent_dim==1:
         plt.hist(z, bins=20)
     elif latent_dim==2:
         plt.scatter(z[:, 0], z[:, 1])
     else:
         fig = plt.figure()
-        ax = fig.add_subplot(111, projection='3d')
+        ax = fig.add_subplot(111) #, projection='3d')
         z = z[:1000, :]
         # TODO color according to reconstruction loss.
         ax.scatter(z[:, 0], z[:, 1], z[:, 2])
+        ax.set_title('Latent points')
     plt.show()
 
     def cumulative_view(projected_z, title):

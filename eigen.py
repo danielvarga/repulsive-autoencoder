@@ -38,12 +38,12 @@ def kstest_tf(p, batch_size):
     normal = tf.contrib.distributions.Normal(0.0, 1.0)
     reverted_cdf = normal.cdf(values) # reverted because values are sorted descending!
     diff = reverted_cdf - tf.linspace(1.0, 0.0, batch_size)
-    return K.max(K.abs(diff))
+    return K.mean(K.abs(diff))
 
 
 # KS test statistic for random 1D projection of point cloud
 def kstest_loss(z, latent_dim, batch_size):
-    v = K.random_normal_variable((latent_dim, 1), 0, 1)
+    v = K.random_normal((latent_dim, 1), 0, 1)
     v = v / K.sqrt(K.dot(K.transpose(v), v))
     p = K.dot(z, v)
 #    print "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n" * 3

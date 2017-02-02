@@ -129,8 +129,8 @@ def test_loss():
     net = BatchNormalization()(net)
     net = Dense(intermediate_dim, activation="relu")(net)
     net = BatchNormalization()(net)
-    z = Dense(latent_dim, activation="tanh", name="half_z")(net)
-    z = Lambda(lambda z: 2*z, name="z")(z) # increase the support to [-2,+2].
+    z = Dense(latent_dim, activation="linear", name="half_z")(net)
+#    z = Lambda(lambda z: 2*z, name="z")(z) # increase the support to [-2,+2].
     eigvec = Lambda(lambda z: dominant_eigvect_layer(z), name="eigvec")([z])
     z_projected = Lambda(lambda z: K.reshape( K.dot(z, K.l2_normalize(K.random_normal_variable((latent_dim, 1), 0, 1), axis=-1)), (batch_size,)))([z])
 
@@ -141,7 +141,7 @@ def test_loss():
     net = BatchNormalization()(net)
     net = Dense(intermediate_dim, activation="relu")(net)
     net = BatchNormalization()(net)
-    output = Dense(input_dim, activation="tanh")(net)
+    output = Dense(input_dim, activation="linear")(net)
 
     def eigenvalue_gap_loss(x, x_pred):
         WW = K.dot(K.transpose(z), z)
@@ -156,7 +156,7 @@ def test_loss():
         # RANDOM_VECT_LOSS_WEIGHT = 10 ; shape += random_vect_loss(z) * RANDOM_VECT_LOSS_WEIGHT
         KSTEST_LOSS_WEIGHT = 1 ; shape = eigen.kstest_loss(z, latent_dim, batch_size) * KSTEST_LOSS_WEIGHT
 #        KSTEST_LOSS_WEIGHT = 10 ; shape = eigen.kstest_tf(z_projected, batch_size) * KSTEST_LOSS_WEIGHT
-        return recons
+        return recons + 0*shape
 
     model = Model(input=inputs, output=output)
     optimizer = RMSprop()

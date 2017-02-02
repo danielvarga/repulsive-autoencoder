@@ -156,7 +156,7 @@ def test_loss():
         # RANDOM_VECT_LOSS_WEIGHT = 10 ; shape += random_vect_loss(z) * RANDOM_VECT_LOSS_WEIGHT
         KSTEST_LOSS_WEIGHT = 1 ; shape = eigen.kstest_loss(z, latent_dim, batch_size) * KSTEST_LOSS_WEIGHT
 #        KSTEST_LOSS_WEIGHT = 10 ; shape = eigen.kstest_tf(z_projected, batch_size) * KSTEST_LOSS_WEIGHT
-        return recons + 0*shape
+        return recons + shape
 
     model = Model(input=inputs, output=output)
     optimizer = RMSprop()

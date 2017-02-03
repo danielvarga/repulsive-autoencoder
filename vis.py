@@ -118,7 +118,7 @@ def displayRandom(n, x_train, latent_dim, sampler, generator, name, batch_size=3
     indx = 0
     for i in range(n):
         for j in range(n):
-            image = x_decoded[indx].reshape(x_train.shape[1:])
+            image = x_decoded[indx].reshape(x_train[0].shape[1:])
             images.append(image)
             indx += 1
     assert indx == cnt
@@ -239,11 +239,11 @@ def displaySet(imageBatch, batchSize, n, generator, name):
     nsqrt = int(np.ceil(np.sqrt(n)))
     recons = generator.predict(imageBatch, batch_size=batchSize)
 
-    mergedSet = np.zeros(shape=[n*2] + list(imageBatch.shape[1:]))
+    mergedSet = np.zeros(shape=[n*2] + list(imageBatch[0].shape[1:]))
     for i in range(n):
-        mergedSet[2*i] = imageBatch[i]
+        mergedSet[2*i] = imageBatch[0][i]
         mergedSet[2*i+1] = recons[i]
-    result = mergedSet.reshape([2*n] + list(imageBatch.shape[1:]))
+    result = mergedSet.reshape([2*n] + list(imageBatch[0].shape[1:]))
     plotImages(result, 2*nsqrt, nsqrt, name)
 
 def displayInterp(x_train, x_test, batch_size, dim,

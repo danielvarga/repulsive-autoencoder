@@ -12,24 +12,30 @@ class DenseCritic(Critic):
         self.activation = activation
         self.wd = wd
 
-    def __call__(self, x):
+    def __call__(self, z, y):
+
+	critic_layers = []
+
         #h = Flatten()(x)
-	h = x
+	h = z
 
 	layers = []
         for intermediate_dim in self.intermediate_dims:
-            layers.append(Dense(intermediate_dim, W_regularizer=l2(self.wd)))
+            d1 = Dense(intermediate_dim, W_regularizer=l2(self.wd))
+	    layers.append(d1)
+	    critic_layers.append(d1)
             layers.append(Activation(self.activation))
 
-	layers.append(Dense(1, W_regularizer=l2(self.wd)))
+	d1 = Dense(1, W_regularizer=l2(self.wd))
+	layers.append(d1)
+	critic_layers.append(d1)
 
-	# add climp
 
-        critic_input = Input(shape=(self.latent_dim,))
+        critic_input = Input(batch_shape=(200,self.latent_dim,))
         critic_output = critic_input
         for layer in layers:
             critic_output = layer(critic_output)
             h = layer(h)
 
-        return critic_input, critic_output, h
+        return critic_input, critic_output, h, critic_layers
 

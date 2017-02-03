@@ -19,6 +19,7 @@ from arm import ArmLayer
 
 def build_model(args):
     x = Input(batch_shape=([args.batch_size] + list(args.original_shape)))
+    y = Input(batch_shape=([args.batch_size] + [1]))
 
     if args.encoder == "dense":
         encoder = dense.DenseEncoder(args.intermediate_dims,args.activation, args.encoder_wd)
@@ -54,16 +55,18 @@ def build_model(args):
         decoder = model_gaussian.GaussianDecoder(args, x)
     generator_input, recons_output, generator_output = decoder(z)
 
-    encoder = Model(x, z_mean)
-    encoder_var = Model(x, z_log_var)
-    ae = Model(x, recons_output)
+
+    import dense_critic    
+    critic = dense_critic.DenseCritic(args.latent_dim, args.intermediate_dims, args.activation, args.encoder_wd)
+    critic_input, critic_output, critic_val, critic_layers = critic(z, y)
+
+
+    encoder = Model([x, critic_input], z_mean)
+    encoder_var = Model([x, critic_input], z_log_var)
+    ae = Model([x, critic_input], recons_output)
     generator = Model(generator_input, generator_output)
 
-    import dense_critic
-    
-    critic = dense_critic.DenseCritic(args.latent_dim, args.intermediate_dims, args.activation, args.encoder_wd)
-    critic_input, critic_output, critic_val = critic(z)
-    latent_critic = Model(critic_input, critic_output)
+    latent_critic = Model([x, critic_input], critic_output)
 
     armLayer = ArmLayer(dict_size=1000, iteration=5, threshold=0.01, reconsCoef=1)
     sparse_input = Flatten()(x)
@@ -82,11 +85,12 @@ def build_model(args):
     else:
         assert False, "Unknown optimizer %s" % args.optimizer
 
+    optimizer2 = Adam(lr=args.lr, clipvalue=1.0)
+
     ae.compile(optimizer=optimizer, loss=loss, metrics=metrics)
-    latent_critic.compile(optimizer=optimizer, loss=loss, metrics=["mse"])
+    latent_critic.compile(optimizer=optimizer2, loss=loss, metrics=["mse"])
 
-
-    return ae, encoder, encoder_var, generator, latent_critic
+    return ae, encoder, encoder_var, generator, latent_critic, critic_layers
 
 
 def add_sampling(hidden, sampling, batch_size, latent_dim, wd):

@@ -31,7 +31,7 @@ import data
 args.original_shape = x_train.shape[1:]
 
 import model
-ae, encoder, encoder_var, generator, latent_critic = model.build_model(args)
+ae, encoder, encoder_var, generator, latent_critic, critic_layers  = model.build_model(args)
 ae.summary()
 latent_critic.summary()
 
@@ -55,10 +55,26 @@ for epoch in range(args.nb_epoch):
     number_of_batches = int(x_train.shape[0]/args.batch_size)
     for ind in range(number_of_batches):
 
+	fake_latent = [[0] * args.latent_dim] * args.batch_size
+
+
+	for layer in critic_layers:
+	    weights = layer.get_weights()
+	    #print(weights)
+
+	    weights[0] = np.clip(weights[0], -0.01, 0.01)
+	    #weights[1] = np.clip(weights[1], -0.01, 0.01)
+	    layer.set_weights(weights)
+	
+	    #print(weights)
+
 	# Train the ae
+
 	image_batch = x_train[ind*args.batch_size:(ind+1)*args.batch_size]
-	print(image_batch.shape)
-	ae_loss = ae.train_on_batch(image_batch, image_batch)
+	#print(image_batch.shape)
+	#ae_loss = ae.train_on_batch([np.array(image_batch), np.array(fake_latent)], image_batch)
+	ae_loss = ae.fit([np.array(image_batch), np.array(fake_latent)],
+		image_batch, batch_size=args.batch_size, nb_epoch=2)
 
 	
 	
@@ -66,19 +82,19 @@ for epoch in range(args.nb_epoch):
 	ae.trainable = False
 
 	true_sample = sampler(args.batch_size, args.latent_dim)
-	images_encoded = encoder.predict(image_batch, batch_size = args.batch_size)
+	images_encoded = encoder.predict([np.array(image_batch), np.array(fake_latent)], batch_size = args.batch_size)
 	
 	x = np.concatenate((true_sample, images_encoded))
 	y = [1] * args.batch_size + [0] * args.batch_size
-        print(x.shape)
+        #print(x.shape)
+	image_batch = np.concatenate((image_batch, image_batch))
 	#d_loss = latent_critic.train_on_batch(x, y)
 	#y = latent_critic.predict(x, batch_size=args.batch_size)
-	d_loss = latent_critic.fit([image_batch, x], y, batch_size=args.batch_size)
-	print(y.shape)
-	print(y)
+	d_loss = latent_critic.fit([np.array(image_batch), np.array(x)], y, batch_size=args.batch_size, nb_epoch=3, verbose=1)
+	#print(y)
 	ae.trainable = True
 	
-	print("batch end")
+	#print("batch end")
 	#print("batch %d d_loss: %f" % (ind, d_loss))
 
 	"""    
@@ -88,6 +104,8 @@ for epoch in range(args.nb_epoch):
 	g_loss = discriminator_on_generator.train_on_batch(noise, [1]*args.batch_size)
 	discriminator.trainable = True
 	"""
+    print("Epoch ended.")
+    vis.displaySet([np.array(x_train[:args.batch_size]),np.array(x)], args.batch_size, 100, ae, "%s-train" % args.prefix)
 
 print("Train ended.")
 	

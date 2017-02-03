@@ -47,7 +47,7 @@ def loss_factory(model, encoder, loss_features, args):
         return K.mean(loss)
 
     def critic_loss(x, x_decoded):
-        loss = loss_features[6]
+        loss = -100.0 * K.mean(loss_features[6])
         return loss
 
     # pushing latent points towards unit sphere surface, both from inside and out.

@@ -20,8 +20,8 @@ import eigen
 
 batch_size = 256
 
-input_dim = 50
-latent_dim = 50
+input_dim = 3
+latent_dim = 3
 intermediate_dim = 200
 
 L2_REG_WEIGHT = 0.02
@@ -161,15 +161,21 @@ def test_loss():
     # EIGENVALUE_GAP_LOSS_WEIGHT = 0.1 ; shape = eigenvalue_gap_loss(x, x_pred) * EIGENVALUE_GAP_LOSS_WEIGHT
     # RANDOM_VECT_LOSS_WEIGHT = 10 ; shape = random_vect_loss(z) * RANDOM_VECT_LOSS_WEIGHT
 
-    loss_name = "kstest"
+    loss_name = "l2"
+
     if loss_name == "kstest":
         loss_fn = kstest_loss
         LOSS_WEIGHT = KSTEST_LOSS_WEIGHT
     elif loss_name == "eigenvalue_gap":
         loss_fn = eigenvalue_gap_loss
         LOSS_WEIGHT = EIGENVALUE_GAP_LOSS_WEIGHT
+    elif loss_name == "l2":
+        loss_fn = lambda: K.mean(K.square(z))
+        LOSS_WEIGHT = 0.0 # 1.0 / 1600
     else:
         assert False, "unknown loss name"
+
+    print "loss:", loss_name, "weight:", LOSS_WEIGHT
 
     def total_loss(x, x_pred):
         recons_loss = K.mean(K.square(x-x_pred))
@@ -187,16 +193,34 @@ def test_loss():
     epoch_count = 200
     megaepoch_count = 1
 
+    def sampler_uniform(n, d):
+        return np.random.uniform(size=(n, d)) * 2 - 1
+
+    # 2 cubes
+    def sampler_bicube(n, d):
+        return np.random.uniform(size=(n, d)) * \
+            np.expand_dims((np.random.randint(2, size=n).astype(np.float32) * 2 - 1), 1)
+
+    # 2^d cubes [1/3, 1]^d
+    def sampler_expcube(n, d):
+        return ((np.random.uniform(size=(n, d)) * 2 + 1) / 3) * (np.random.randint(2, size=(n,d)).astype(np.float32) * 2 - 1)
+
+    datasets = {"uniform": sampler_uniform, "bicube": sampler_bicube, "expcube": sampler_expcube}
+
+    dataset = "uniform"
+    print "dataset:", dataset
+    sampler = datasets[dataset]
+
+    sampler = sampler_expcube
+
     for i in range(megaepoch_count):
         print "================"
-        data = np.random.uniform(size=(N, input_dim)) * 2 - 1
+        data = sampler(N, input_dim)
         model.fit(data, data, nb_epoch=epoch_count, batch_size=batch_size, verbose=2)
-        data = np.random.uniform(size=(N, input_dim)) * 2 - 1
+        data = sampler(N, input_dim)
         z = encoder.predict(data, batch_size=batch_size)
         output = model.predict(data, batch_size=batch_size)
         # cholesky(z)
-
-
 
     for i in range(min((latent_dim, 10))):
         print "KS for dim", i, "=", kstest(z[:, i], 'norm')
@@ -234,7 +258,7 @@ def test_loss():
 
     def cumulative_view(projected_z, title):
         fig, ax = plt.subplots(figsize=(10, 8))
-        n, bins, patches = ax.hist(projected_z, bins=20, cumulative=True,
+        n, bins, patches = ax.hist(projected_z, bins=100, cumulative=True,
                                     normed=1, histtype='step', label='Empirical')
         mu = np.mean(projected_z)
         sigma = np.std(projected_z)
@@ -247,7 +271,11 @@ def test_loss():
         ax.set_title(title)
         plt.show()
 
-    cumulative_view(projected_z, "CDF of randomly projected latent cloud")
+    for i in range(1, 4):
+        projector = np.random.normal(size=(latent_dim,))
+        projector /= np.linalg.norm(projector)
+        projected_z = z.dot(projector)
+        cumulative_view(projected_z, "CDF of randomly projected latent cloud #%d" % i)
     cumulative_view(z[:, 0], "CDF of first coordinate of latent cloud")
     cumulative_view(z[:, 1], "CDF of second coordinate of latent cloud")
 

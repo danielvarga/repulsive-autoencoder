@@ -143,25 +143,42 @@ def test_loss():
     net = BatchNormalization()(net)
     output = Dense(input_dim, activation="linear")(net)
 
-    def eigenvalue_gap_loss(x, x_pred):
+    def eigenvalue_gap_loss():
         WW = K.dot(K.transpose(z), z)
         mineigval, maxeigval = eigen.extreme_eigvals(WW, batch_size, latent_dim=latent_dim, iterations=3, inner_normalization=False)
         loss = K.sqrt(maxeigval / mineigval) # K.square(maxeigval-1) + K.square(mineigval-1)
         return loss
 
+    KSTEST_LOSS_WEIGHT = 10.0 # Keep it in sync with the aggregator!
+    def kstest_loss():
+        # Inner points are overrepresented in a mean, maybe reweight with some bathtub shape.
+        aggregator = lambda diff: K.mean(K.square(diff))
+        loss = eigen.kstest_loss(z, latent_dim, batch_size, aggregator)
+        return loss
+
+    # TODO TRY THESE, AFTER FIXING EIGENVALUE_GAP_LOSS.
+    # Also, maybe something that's volume preserving, or a bit more volume-preserving.
+    # EIGENVALUE_GAP_LOSS_WEIGHT = 0.1 ; shape = eigenvalue_gap_loss(x, x_pred) * EIGENVALUE_GAP_LOSS_WEIGHT
+    # RANDOM_VECT_LOSS_WEIGHT = 10 ; shape = random_vect_loss(z) * RANDOM_VECT_LOSS_WEIGHT
+
+    loss_name = "kstest"
+    if loss_name == "kstest":
+        loss_fn = kstest_loss
+        LOSS_WEIGHT = KSTEST_LOSS_WEIGHT
+    elif loss_name == "eigenvalue_gap":
+        loss_fn = eigenvalue_gap_loss
+        LOSS_WEIGHT = EIGENVALUE_GAP_LOSS_WEIGHT
+    else:
+        assert False, "unknown loss name"
+
     def total_loss(x, x_pred):
-        recons = K.mean(K.square(x-x_pred))
-        # shape = K.mean(K.square(z)) / 10
-        # EIGENVALUE_GAP_LOSS_WEIGHT = 0.1 ; shape += eigenvalue_gap_loss(x, x_pred) * EIGENVALUE_GAP_LOSS_WEIGHT
-        # RANDOM_VECT_LOSS_WEIGHT = 10 ; shape += random_vect_loss(z) * RANDOM_VECT_LOSS_WEIGHT
-        KSTEST_LOSS_WEIGHT = 1 ; shape = eigen.kstest_loss(z, latent_dim, batch_size) * KSTEST_LOSS_WEIGHT
-#        KSTEST_LOSS_WEIGHT = 10 ; shape = eigen.kstest_tf(z_projected, batch_size) * KSTEST_LOSS_WEIGHT
-        return recons + shape
+        recons_loss = K.mean(K.square(x-x_pred))
+        return recons_loss + LOSS_WEIGHT * loss_fn()
 
     model = Model(input=inputs, output=output)
     optimizer = RMSprop()
     model.compile(optimizer=optimizer, loss=total_loss,
-                  metrics=["mse", lambda _1, _2: eigen.kstest_loss(z, latent_dim, batch_size)])
+                  metrics=["mse", lambda _1, _2: loss_fn() ])
 
     encoder = Model(input=inputs, output=z)
     encoder.compile(optimizer=optimizer, loss="mse")
@@ -208,8 +225,8 @@ def test_loss():
         plt.scatter(z[:, 0], z[:, 1])
     else:
         fig = plt.figure()
-        ax = fig.add_subplot(111) #, projection='3d')
-        z = z[:1000, :]
+        ax = fig.add_subplot(111, projection='3d')
+        z = z[:2000, :]
         # TODO color according to reconstruction loss.
         ax.scatter(z[:, 0], z[:, 1], z[:, 2])
         ax.set_title('Latent points')

@@ -33,24 +33,23 @@ def eigvec(WW, n, latent_dim, iterations=9, inner_normalization=False):
     return domineigvec, domineigval
 
 # input: 1D tensor. output: Kolmogorov-Smirnov test statistic.
-def kstest_tf(p, batch_size):
+def kstest_tf(p, batch_size, aggregator=None):
     values, indices = tf.nn.top_k(p, k=batch_size, sorted=True)
     normal = tf.contrib.distributions.Normal(0.0, 1.0)
     reverted_cdf = normal.cdf(values) # reverted because values are sorted descending!
     diff = reverted_cdf - tf.linspace(1.0, 0.0, batch_size)
-    return K.sqrt(K.mean(K.square(diff)))
+    if aggregator is None:
+        aggregator = lambda x: K.mean(K.square(x))
+    return aggregator(diff)
 
 
 # KS test statistic for random 1D projection of point cloud
-def kstest_loss(z, latent_dim, batch_size):
+def kstest_loss(z, latent_dim, batch_size, aggregator=None):
     v = K.random_normal((latent_dim, 1), 0, 1)
     v = v / K.sqrt(K.dot(K.transpose(v), v))
     p = K.dot(z, v)
-#    print "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n" * 3
-#    print "NONSENSE, using projection to first dim instead of random projection!"
-#    p = z[:, 0]
     p = K.reshape(p, (batch_size, ))
-    return kstest_tf(p, batch_size)
+    return kstest_tf(p, batch_size, aggregator)
 
 
 def test_eigenvec():

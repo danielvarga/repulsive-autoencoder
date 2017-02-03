@@ -31,8 +31,9 @@ import data
 args.original_shape = x_train.shape[1:]
 
 import model
-ae, encoder, encoder_var, generator = model.build_model(args)
+ae, encoder, encoder_var, generator, latent_critic = model.build_model(args)
 ae.summary()
+latent_critic.summary()
 
 sampler = model.sampler_factory(args, x_train)
 
@@ -47,6 +48,51 @@ for schedule in args.weight_schedules:
         cbs.append(callbacks.WeightSchedulerCallback(args.nb_epoch, schedule[0], schedule[1], schedule[2], schedule[3], schedule[4], schedule[5]))
 
 
+sampler = model.sampler_factory(args, x_train)
+
+
+for epoch in range(args.nb_epoch):
+    number_of_batches = int(x_train.shape[0]/args.batch_size)
+    for ind in range(number_of_batches):
+
+	# Train the ae
+	image_batch = x_train[ind*args.batch_size:(ind+1)*args.batch_size]
+	print(image_batch.shape)
+	ae_loss = ae.train_on_batch(image_batch, image_batch)
+
+	
+	
+	# Train the latent discriminator/critic
+	ae.trainable = False
+
+	true_sample = sampler(args.batch_size, args.latent_dim)
+	images_encoded = encoder.predict(image_batch, batch_size = args.batch_size)
+	
+	x = np.concatenate((true_sample, images_encoded))
+	y = [1] * args.batch_size + [0] * args.batch_size
+        print(x.shape)
+	#d_loss = latent_critic.train_on_batch(x, y)
+	#y = latent_critic.predict(x, batch_size=args.batch_size)
+	d_loss = latent_critic.fit([image_batch, x], y, batch_size=args.batch_size)
+	print(y.shape)
+	print(y)
+	ae.trainable = True
+	
+	print("batch end")
+	#print("batch %d d_loss: %f" % (ind, d_loss))
+
+	"""    
+	
+	discriminator.trainable = False
+	noise = sampler(args.batch_size, latent_dim)
+	g_loss = discriminator_on_generator.train_on_batch(noise, [1]*args.batch_size)
+	discriminator.trainable = True
+	"""
+
+print("Train ended.")
+	
+"""
+
 ae.fit(x_train, x_train,
        verbose=args.verbose,
        shuffle=True,
@@ -54,6 +100,8 @@ ae.fit(x_train, x_train,
        batch_size=args.batch_size,
        callbacks = cbs,
        validation_data=(x_test, x_test))
+
+"""
 
 vis.saveModel(ae, args.prefix + "_model")
 vis.saveModel(encoder, args.prefix + "_encoder")

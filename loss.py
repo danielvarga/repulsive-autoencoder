@@ -46,6 +46,10 @@ def loss_factory(model, encoder, loss_features, args):
         loss = original_dim * objectives.mean_squared_error(edge_x, edge_x_decoded)
         return K.mean(loss)
 
+    def critic_loss(x, x_decoded):
+        loss = loss_features[6]
+        return loss
+
     # pushing latent points towards unit sphere surface, both from inside and out.
     def sphere_loss(x, x_decoded):
         z_mean = loss_features[1]
@@ -76,6 +80,9 @@ def loss_factory(model, encoder, loss_features, args):
         z_centered = z - K.mean(z, axis=0)
         loss = K.sum(K.square(K.eye(K.int_shape(z_centered)[1]) - K.dot(K.transpose(z_centered), z_centered)))
         return loss
+
+
+
 
     # Pushes latent datapoints in the direction of the hyperplane that is
     # orthogonal to the dominant eigenvector of the covariance matrix of the minibatch.

@@ -23,7 +23,7 @@ def build_model(args):
     if args.encoder == "dense":
         encoder = dense.DenseEncoder(args.intermediate_dims,args.activation, args.encoder_wd)
     elif args.encoder == "conv":
-        encoder = model_conv_discgen.ConvEncoder(
+        encoder = model_conv_discgen_sep.ConvEncoder(
             depth = args.depth,
             latent_dim = args.latent_dim,
             intermediate_dims = args.intermediate_dims,
@@ -41,7 +41,7 @@ def build_model(args):
     if args.decoder == "dense":
         decoder = dense.DenseDecoder(args.latent_dim, args.intermediate_dims, args.original_shape, args.activation, args.decoder_wd)
     elif args.decoder == "conv":
-        decoder = model_conv_discgen.ConvDecoder(
+        decoder = model_conv_discgen_sep.ConvDecoder(
             depth = args.depth,
             latent_dim = args.latent_dim,
             intermediate_dims =args.intermediate_dims,
@@ -59,12 +59,18 @@ def build_model(args):
     ae = Model(x, recons_output)
     generator = Model(generator_input, generator_output)
 
+    import dense_critic
+    
+    critic = dense_critic.DenseCritic(args.latent_dim, args.intermediate_dims, args.activation, args.encoder_wd)
+    critic_input, critic_output, critic_val = critic(z)
+    latent_critic = Model(critic_input, critic_output)
+
     armLayer = ArmLayer(dict_size=1000, iteration=5, threshold=0.01, reconsCoef=1)
     sparse_input = Flatten()(x)
     sparse_input = armLayer(sparse_input)
     sparse_output = Flatten()(recons_output)
     sparse_output = armLayer(sparse_output)
-    loss_features = (z, z_mean, z_log_var, z_normed, sparse_input, sparse_output)
+    loss_features = (z, z_mean, z_log_var, z_normed, sparse_input, sparse_output, critic_val)
     loss, metrics = loss_factory(ae, encoder, loss_features, args)
 
     if args.optimizer == "rmsprop":
@@ -77,8 +83,10 @@ def build_model(args):
         assert False, "Unknown optimizer %s" % args.optimizer
 
     ae.compile(optimizer=optimizer, loss=loss, metrics=metrics)
+    latent_critic.compile(optimizer=optimizer, loss=loss, metrics=["mse"])
 
-    return ae, encoder, encoder_var, generator
+
+    return ae, encoder, encoder_var, generator, latent_critic
 
 
 def add_sampling(hidden, sampling, batch_size, latent_dim, wd):
@@ -91,6 +99,7 @@ def add_sampling(hidden, sampling, batch_size, latent_dim, wd):
         def sampling(inputs):
             z_mean, z_log_var = inputs
             epsilon = K.random_normal(shape=(batch_size, latent_dim), mean=0.)
+	    #epsilon = K.random_uniform(shape=(batch_size, latent_dim), mean=0.)
             return z_mean + K.exp(z_log_var / 2) * epsilon
         z = Lambda(sampling, output_shape=(latent_dim,))([z_mean, z_log_var])
         return z, z_mean, z_log_var

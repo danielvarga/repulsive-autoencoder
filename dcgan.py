@@ -13,12 +13,9 @@ from keras.regularizers import WeightRegularizer
 l2 = 1e-5         # l2 weight decay
 
 nc = 3            # # of channels in image
-npx = 72
+npx = 64
 npy = 64          # # of pixels width/height of images
 nx = npx*npy*nc   # # of dimensions in X
-
-nzx = npx // 8
-nzy = npy // 8    # # of dim in the first conv layer of the generator
 
 nz = 100          # # of dim for Z
 ngf = 128         # # of gen filters in first conv layer
@@ -33,25 +30,32 @@ def generator_layer():
     input = Input(shape=(nz,))
     net = input
     wd = WeightRegularizer(l2=l2)
-    assert npx % 8 == 0
-    assert npy % 8 == 0
-    net = Dense(output_dim=ngf*8*(npx/8)*(npy/8), W_regularizer=wd)(net)
+    assert npx % 16 == 0
+    assert npy % 16 == 0
+    net = Dense(output_dim=ngf*8*(npx/16)*(npy/16), W_regularizer=wd)(net)
     net = Activation('relu')(BatchNormalization()(net))
-    net = Reshape((npx/8, npy/8, ngf*8))(net)
+    net = Reshape((npx/16, npy/16, ngf*8))(net)
     deconv = False
     for wide  in (4, 2, 1):
         wd = WeightRegularizer(l2=l2)
         if deconv:
             net = Deconvolution2D(ngf*wide, 5, 5,
-                output_shape=(nbatch, npx/wide, npy/wide, ngf*wide),
+                output_shape=(nbatch, npx/wide/2, npy/wide/2, ngf*wide),
                 subsample=(2, 2), border_mode='same',
                 W_regularizer=wd)(net)
         else:
             net = UpSampling2D(size=(2, 2))(net)
             net = Convolution2D(ngf*wide, 5, 5, border_mode='same', W_regularizer=wd)(net)
         net = Activation('relu')(BatchNormalization()(net))
-    wd = WeightRegularizer(l2=l2)
-    net = Convolution2D(nc, 5, 5, border_mode='same', W_regularizer=wd)(net)
+
+        if deconv:
+            wd = WeightRegularizer(l2=l2)
+            net = Deconvolution2D(nc, 5, 5, output_shape=(nbatch, nc, npx, npx),
+                                  subsample=(2, 2), border_mode='same', W_regularizer=wd)(net)
+        else:
+            wd = WeightRegularizer(l2=l2)
+            net = UpSampling2D(size=(2, 2))(net)
+            net = Convolution2D(nc, 5, 5, border_mode='same', W_regularizer=wd)(net)
     net = Activation('tanh')(net)
     return input, net
 
@@ -121,7 +125,7 @@ model = Model(input=input, output=output)
 optimizer = Adam()
 model.compile(optimizer, loss="mse")
 model.summary()
-out = model.predict([np.random.uniform(size=(nbatch, 72, 64, 3))])
+out = model.predict([np.random.uniform(size=(nbatch, npx, npy, nc))])
 print out.shape
 input, output = generator_layer()
 model = Model(input=input, output=output)

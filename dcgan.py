@@ -13,8 +13,12 @@ from keras.regularizers import WeightRegularizer
 l2 = 1e-5         # l2 weight decay
 
 nc = 3            # # of channels in image
-npx = 64          # # of pixels width/height of images
-nx = npx*npx*nc   # # of dimensions in X
+npx = 72
+npy = 64          # # of pixels width/height of images
+nx = npx*npy*nc   # # of dimensions in X
+
+nzx = npx // 8
+nzy = npy // 8    # # of dim in the first conv layer of the generator
 
 nz = 100          # # of dim for Z
 ngf = 128         # # of gen filters in first conv layer
@@ -29,30 +33,25 @@ def generator_layer():
     input = Input(shape=(nz,))
     net = input
     wd = WeightRegularizer(l2=l2)
-    net = Dense(output_dim=ngf*8*4*4, W_regularizer=wd)(net)
+    assert npx % 8 == 0
+    assert npy % 8 == 0
+    net = Dense(output_dim=ngf*8*(npx/8)*(npy/8), W_regularizer=wd)(net)
     net = Activation('relu')(BatchNormalization()(net))
-    net = Reshape((ngf*8, 4, 4))(net)
+    net = Reshape((npx/8, npy/8, ngf*8))(net)
     deconv = False
-    for wide, px in zip([4, 2, 1], [7, 13, 25]):
+    for wide  in (4, 2, 1):
         wd = WeightRegularizer(l2=l2)
         if deconv:
             net = Deconvolution2D(ngf*wide, 5, 5,
-                output_shape=(nbatch, ngf*wide, px, px),
+                output_shape=(nbatch, npx/wide, npy/wide, ngf*wide),
                 subsample=(2, 2), border_mode='same',
                 W_regularizer=wd)(net)
         else:
             net = UpSampling2D(size=(2, 2))(net)
             net = Convolution2D(ngf*wide, 5, 5, border_mode='same', W_regularizer=wd)(net)
         net = Activation('relu')(BatchNormalization()(net))
-    if deconv:
-        wd = WeightRegularizer(l2=l2)
-        # unfinished, won't work, 25 to 64.
-        net = Deconvolution2D(nc, 5, 5, output_shape=(nbatch, nc, npx, npx),
-            subsample=(2, 2), border_mode='same', W_regularizer=wd)(net)
-    else:
-        wd = WeightRegularizer(l2=l2)
-        net = UpSampling2D(size=(2, 2))(net)
-        net = Convolution2D(nc, 5, 5, border_mode='same', W_regularizer=wd)(net)
+    wd = WeightRegularizer(l2=l2)
+    net = Convolution2D(nc, 5, 5, border_mode='same', W_regularizer=wd)(net)
     net = Activation('tanh')(net)
     return input, net
 
@@ -60,7 +59,7 @@ def generator_layer():
 # 64x64
 def discriminator_layer():
     alpha = 0.2
-    input = Input(shape=(nc, npx, npx))
+    input = Input(shape=(npx, npy, nc))
     net = input
     wd = WeightRegularizer(l2=l2)
     net = Convolution2D(ndf, 5, 5, border_mode='same', W_regularizer=wd)(net)
@@ -68,8 +67,8 @@ def discriminator_layer():
     net = Activation('relu')(BatchNormalization()(net))
     for wide in [2, 4, 8]:
         wd = WeightRegularizer(l2=l2)
-        print "hey", ngf*wide
-        net = Convolution2D(ngf*wide, 5, 5,
+        print "hey", ndf*wide
+        net = Convolution2D(ndf*wide, 5, 5,
             border_mode='same', subsample=(2, 2), W_regularizer=wd)(net)
         net = LeakyReLU(alpha=alpha)(BatchNormalization()(net))
     net = Flatten()(net)
@@ -122,9 +121,8 @@ model = Model(input=input, output=output)
 optimizer = Adam()
 model.compile(optimizer, loss="mse")
 model.summary()
-out = model.predict([np.random.uniform(size=(nbatch, 3, 64, 64))])
+out = model.predict([np.random.uniform(size=(nbatch, 72, 64, 3))])
 print out.shape
-
 input, output = generator_layer()
 model = Model(input=input, output=output)
 optimizer = Adam()

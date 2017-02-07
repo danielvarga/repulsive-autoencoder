@@ -1,4 +1,5 @@
 import numpy as np
+from keras.models import Sequential
 from keras.layers import Input, Dense, Reshape, Flatten
 from keras.layers.core import Activation
 from keras.layers.normalization import BatchNormalization
@@ -9,6 +10,7 @@ from keras.models import Model
 from keras.optimizers import Adam, RMSprop
 from keras.regularizers import WeightRegularizer
 
+import data
 
 l2 = 1e-5         # l2 weight decay
 
@@ -22,12 +24,13 @@ ngf = 128         # # of gen filters in first conv layer
 ndf = 128         # # of discrim filters in first conv layer
 
 nbatch = 128      # # of examples in batch
-
+nepoch = 100
+ndisc = 1         # # of discr updates for each generator update
 
 # Ported from https://github.com/Newmu/dcgan_code/blob/master/faces/train_uncond_dcgan.py
 # 64x64
 def generator_layer():
-    input = Input(shape=(nz,))
+    input = Input(shape=(nz,), name="gen_input")
     net = input
     wd = WeightRegularizer(l2=l2)
     assert npx % 16 == 0
@@ -48,14 +51,14 @@ def generator_layer():
             net = Convolution2D(ngf*wide, 5, 5, border_mode='same', W_regularizer=wd)(net)
         net = Activation('relu')(BatchNormalization()(net))
 
-        if deconv:
-            wd = WeightRegularizer(l2=l2)
-            net = Deconvolution2D(nc, 5, 5, output_shape=(nbatch, nc, npx, npx),
-                                  subsample=(2, 2), border_mode='same', W_regularizer=wd)(net)
-        else:
-            wd = WeightRegularizer(l2=l2)
-            net = UpSampling2D(size=(2, 2))(net)
-            net = Convolution2D(nc, 5, 5, border_mode='same', W_regularizer=wd)(net)
+    if deconv:
+        wd = WeightRegularizer(l2=l2)
+        net = Deconvolution2D(nc, 5, 5, output_shape=(nbatch, nc, npx, npx),
+                              subsample=(2, 2), border_mode='same', W_regularizer=wd)(net)
+    else:
+        wd = WeightRegularizer(l2=l2)
+        net = UpSampling2D(size=(2, 2))(net)
+        net = Convolution2D(nc, 5, 5, border_mode='same', W_regularizer=wd)(net)
     net = Activation('tanh')(net)
     return input, net
 
@@ -63,7 +66,7 @@ def generator_layer():
 # 64x64
 def discriminator_layer():
     alpha = 0.2
-    input = Input(shape=(npx, npy, nc))
+    input = Input(shape=(npx, npy, nc), name="disc_input")
     net = input
     wd = WeightRegularizer(l2=l2)
     net = Convolution2D(ndf, 5, 5, border_mode='same', W_regularizer=wd)(net)
@@ -120,17 +123,63 @@ def discriminator_layer_mnist():
     return input, net
 
 
-input, output = discriminator_layer()
-model = Model(input=input, output=output)
+disc_input, disc_output = discriminator_layer()
+discriminator = Model(input=disc_input, output=disc_output)
 optimizer = Adam()
-model.compile(optimizer, loss="mse")
-model.summary()
-out = model.predict([np.random.uniform(size=(nbatch, npx, npy, nc))])
+discriminator.compile(optimizer, loss="mse")
+print "Discriminator"
+discriminator.summary()
+out = discriminator.predict([np.random.uniform(size=(nbatch, npx, npy, nc))])
 print out.shape
-input, output = generator_layer()
-model = Model(input=input, output=output)
+gen_input, gen_output = generator_layer()
+generator = Model(input=gen_input, output=gen_output)
 optimizer = Adam()
-model.compile(optimizer, loss="mse")
-model.summary()
-out = model.predict([np.random.normal(size=(nbatch, nz))])
+generator.compile(optimizer, loss="mse")
+print "Generator:"
+generator.summary()
+out = generator.predict([np.random.normal(size=(nbatch, nz))])
 print out.shape
+
+# Freeze weights in the discriminator for stacked training
+def make_trainable(net, val):
+    net.trainable = val
+    for l in net.layers:
+        l.trainable = val
+make_trainable(discriminator, False)
+
+
+# combined net
+gen_disc = Sequential()
+gen_disc.add(generator)
+discriminator.trainable=False
+gen_disc.add(discriminator)
+gen_disc.compile(loss='mse', optimizer=Adam())
+print "combined net"
+gen_disc.summary()
+
+
+print "loading data"
+(x_train, x_test) = data.load("bedroom", trainSize=1000, testSize=500, shape=(64,64))
+
+fake_gen_input = np.zeros(shape=(nz,)).astype('float32')
+
+print "starting training"
+for epoch in range(nepoch):
+    indices = np.random.permutation(range(x_train.shape[0]))
+    for batch in range(x_train.shape[0] // nbatch):
+        # update discriminator
+        x_predicted = generator.predict([np.random.normal(size=(nbatch, nz))], batch_size=nbatch)
+        curr_indices = indices[batch*nbatch: (batch+1)*nbatch]
+        x_true = x_train[curr_indices]
+        xs = np.concatenate((x_predicted, x_true), axis=0).astype('float32')
+        ys = np.array([0] * nbatch + [1] * nbatch).astype('float32')
+        d = {"disc_input":xs, "gen_input":fake_gen_input}
+        r = discriminator.fit(d, ys, batch_size=nbatch, nb_epoch=1, shuffle=True)
+        print 'E:',np.exp(r.totals['loss']/nbatch)
+
+        if batch % ndisc == ndisc-1: # update generator
+            gen_in = np.random.normal(size=(nbatch, nz))
+            gen_out = np.array([1.0] *  nbatch)
+            r= gen_disc.fit(inp, out, batch_size=nbatch, nb_epoch=1)
+            print 'D:',np.exp(r.totals['loss']/nbatch)
+    

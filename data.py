@@ -3,6 +3,7 @@ import os
 import os.path
 from PIL import Image
 import numpy as np
+import scipy.misc
 
 def load(dataset, trainSize, testSize, shape=None, color=False, digit=None):
     if dataset == "mnist":
@@ -10,6 +11,8 @@ def load(dataset, trainSize, testSize, shape=None, color=False, digit=None):
     elif dataset == "celeba":
         # What's the pythonic way of doing this?
         (x_train, x_test) = load_celeba(shape=shape, color=color)  if shape is not None else load_celeba(color=color)
+    elif dataset == "bedroom":
+        (x_train, x_test) = load_bedroom(shape=shape, trainSize=trainSize, testSize=testSize)
     else:
         raise Exception("Invalid dataset: ", dataset)
 
@@ -82,3 +85,47 @@ def load_celeba(shape=(72, 60),color=False):
     x_train = np.random.permutation(x_train)
     x_test = np.random.permutation(x_test)
     return (x_train, x_test)
+
+def load_bedroom(shape=(64, 64), trainSize=0, testSize=0):
+    if shape==(64, 64):
+        cacheFile = "/home/zombori/datasets/bedroom/bedroom_64_64.npy"
+    else:
+        assert False, "We don't have a bedroom dataset with this size."
+    if os.path.isfile(cacheFile):
+        input = np.load(cacheFile)
+    else:
+        assert False, "Missing cache file: {}".format(cacheFile)
+    if trainSize > 0:
+        x_train = input[:trainSize]
+    if testSize > 0:
+        x_test = input[trainSize:trainSize+testSize]
+    else:
+        x_test = input[-200:] # TODO
+    x_train = x_train.astype('float32') / 255.
+    x_test = x_test.astype('float32') / 255.
+    return (x_train, x_test)
+
+        
+
+def resize_bedroom(sizeX, sizeY, count, outputFile):
+    directory = "/home/zombori/datasets/bedroom/data"
+    def auxFun(path, count):
+        if count <= 0: return (0, [])        
+        if path.endswith('.webp'):
+            img = Image.open(path)
+            arr = np.array(img)
+            arr = scipy.misc.imresize(arr, size=(sizeX, sizeY, 3))
+            return (1, [arr])
+        
+        images=[]
+        imgCount = 0
+        for f in sorted(os.listdir(path)):
+            f = os.path.join(path, f)
+            currCount, currImages = auxFun(f, count - imgCount)
+            images.extend(currImages)
+            imgCount += currCount
+        return (imgCount, images)
+    cnt, images = auxFun(directory, count)
+    images = np.array(images)
+    np.save(outputFile, images)
+    return images

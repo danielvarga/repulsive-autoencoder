@@ -46,7 +46,6 @@ for schedule in args.weight_schedules:
     if schedule[1] != schedule[2]:
         cbs.append(callbacks.WeightSchedulerCallback(args.nb_epoch, schedule[0], schedule[1], schedule[2], schedule[3], schedule[4], schedule[5]))
 
-
 ae.fit(x_train, x_train,
        verbose=args.verbose,
        shuffle=True,

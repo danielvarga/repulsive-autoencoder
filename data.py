@@ -12,7 +12,7 @@ def load(dataset, trainSize, testSize, shape=None, color=False, digit=None):
         # What's the pythonic way of doing this?
         (x_train, x_test) = load_celeba(shape=shape, color=color)  if shape is not None else load_celeba(color=color)
     elif dataset == "bedroom":
-        (x_train, x_test) = load_bedroom(shape=shape, trainSize=trainSize, testSize=testSize)
+        (x_train, x_test) = load_bedroom(shape=(64,64), trainSize=trainSize, testSize=testSize)
     else:
         raise Exception("Invalid dataset: ", dataset)
 
@@ -46,7 +46,7 @@ def load_celeba(shape=(72, 60),color=False):
             cacheFile = "/home/zombori/datasets/celeba_color.npy"
         else:
             cacheFile = "/home/csadrian/datasets/celeba.npy"
-    elif shape==(72, 64):
+    elif shape==(72, 64) or shape==(64,64):
         directory = "/home/daniel/autoencoding_beyond_pixels/datasets/celeba/img_align_celeba-64x72"
         if color:
             cacheFile = "/home/zombori/datasets/celeba6472_color.npy"
@@ -78,6 +78,9 @@ def load_celeba(shape=(72, 60),color=False):
         input = np.array(imgs)
         input = input[:trainSize + testSize] / 255.0 # the whole dataset does not fit into memory as a float
         np.save(cacheFile,input)
+
+        if shape==(64, 64):
+            input = input[:,4:68,:,:]
 
     x_train = input[:trainSize]
     x_test = input[trainSize:trainSize+testSize]

@@ -5,6 +5,7 @@ import numpy.linalg
 from sklearn.random_projection import GaussianRandomProjection
 import matplotlib.pyplot as plt
 import os.path
+import seaborn as sns
 
 import vis
 import data
@@ -68,12 +69,35 @@ else:
     encoder_var =encoder
     latent_train = latent_train_mean
 
-
 projector = np.random.normal(size=(args.latent_dim,))
 projector /= np.linalg.norm(projector)
 projected_z = latent_train.dot(projector)
 projected_z = projected_z.flatten()
 vis.cumulative_view(projected_z, "CDF of randomly projected latent cloud", prefix + "_cdf.png")
+vis.cumulative_view(latent_train[:,0], "CDF of 1st coordinate of latent cloud", prefix + "_cdf1.png")
+vis.cumulative_view(latent_train[:,1], "CDF of 2nd coordinate of latent cloud", prefix + "_cdf2.png")
+
+# how normal is the input and the output?
+flat_input = x_train.reshape(x_train.shape[0], -1)
+flat_output = ae.predict(x_train, batch_size = batch_size).reshape(x_train.shape[0], -1)
+projector = np.random.normal(size=(flat_input.shape[1],))
+projector /= np.linalg.norm(projector)
+projected_input = flat_input.dot(projector)
+projected_output = flat_output.dot(projector)
+vis.cumulative_view(projected_input, "CDF of randomly projected latent cloud", prefix + "_cdf_input.png")
+vis.cumulative_view(projected_output, "CDF of randomly projected latent cloud", prefix + "_cdf_output.png")
+
+if False:
+    origo_orig = np.mean(flat_input, axis=0)
+    cov_orig = np.cov(flat_input.T)
+    cho_orig = np.linalg.cholesky(cov_orig)
+    sample_orig = np.random.normal(size=(batch_size, flat_input.shape[1]))
+    sample_orig = cho_orig.dot(sample_orig.T).T + origo_orig
+    sample_orig = sample_orig.reshape([-1] + list(x_train.shape[1:]))
+    sample_recons = ae.predict(sample_orig, batch_size=batch_size)
+    vis.plotImages(sample_recons, 20, 10, prefix + "_tmp_recons")
+    
+
 
 
 if False: #do_latent_variances:
@@ -136,13 +160,21 @@ plt.close()
 
 
 # histogram of distances from the origo and from zero
+# Set up the matplotlib figure
+f, axes = plt.subplots(2, 2, figsize=(7, 7), sharex=True)
+
 variance = np.mean(np.square(latent_train_mean - origo), axis=1)
 variance2 = np.mean(np.square(latent_train_mean), axis=1)
-plt.hist(variance, bins = 30, label="Squared istance from mean")
-plt.hist(variance2, bins = 30, label="Squared distance from origo")
+sns.kdeplot(np.mean(latent_train_mean-origo, axis=1), bw=0.5, ax=axes[0, 0])
+sns.kdeplot(np.mean(latent_train_mean, axis=1), bw=0.5, ax=axes[0, 1])
 target = np.random.normal(0.0, 1.0, latent_train_mean.shape)
 variance_target = np.mean(np.square(target), axis=1)
+sns.kdeplot(np.mean(target, axis=1), bw=0.5, ax=axes[1, 0])
+
+plt.hist(variance, bins = 30, label="Squared distance from mean")
+plt.hist(variance2, bins = 30, label="Squared distance from origo")
 plt.hist(variance_target, bins = 30, label="Target squared distance")
+
 plt.legend()
 plt.savefig(prefix+"_variance_hist.png")
 plt.close()
@@ -215,7 +247,6 @@ z = np.random.normal(0.0, 1.0, (N, latent_dim))
 sample = cho.dot(z.T).T+origo_mean
 print sample.shape
 
-
 def oval_sampler(batch_size, latent_dim):
     z = np.random.normal(size=(batch_size, latent_dim))
     z = cho.dot(z.T).T+origo_mean
@@ -267,14 +298,15 @@ eigpairs = latent_dim - 1 - np.array(eigpairs)
 #     if (dim1 >= latent_dim) or (dim2 >= latent_dim):
 #         del eigpairs[i]
     
-for eigIndex1, eigIndex2 in eigpairs:
-    print "eigenplane grid", eigIndex1, eigIndex2
-    plane = eigval2d_grid(grid_size, latent_dim, eigVects[:, eigIndex1], eigVals[eigIndex1], eigVects[:, eigIndex2], eigVals[eigIndex2], radius=4.0, elliptic=True)
-    vis.displayPlane(x_train=x_train, latent_dim=latent_dim, plane=plane,
-        generator=generator, name=prefix + "_eigs%d-%d" % (eigIndex1, eigIndex2), batch_size=batch_size)
-    plane = eigval2d_grid(grid_size, latent_dim, eigVects[:, eigIndex1], eigVals[eigIndex1], eigVects[:, eigIndex2], eigVals[eigIndex2], radius=4.0, elliptic=False)
-    vis.displayPlane(x_train=x_train, latent_dim=latent_dim, plane=plane,
-        generator=generator, name=prefix + "_eigs-nonell%d-%d" % (eigIndex1, eigIndex2), batch_size=batch_size)
+if latent_dim == 200:
+    for eigIndex1, eigIndex2 in eigpairs:
+        print "eigenplane grid", eigIndex1, eigIndex2
+        plane = eigval2d_grid(grid_size, latent_dim, eigVects[:, eigIndex1], eigVals[eigIndex1], eigVects[:, eigIndex2], eigVals[eigIndex2], radius=4.0, elliptic=True)
+        vis.displayPlane(x_train=x_train, latent_dim=latent_dim, plane=plane,
+                         generator=generator, name=prefix + "_eigs%d-%d" % (eigIndex1, eigIndex2), batch_size=batch_size)
+        plane = eigval2d_grid(grid_size, latent_dim, eigVects[:, eigIndex1], eigVals[eigIndex1], eigVects[:, eigIndex2], eigVals[eigIndex2], radius=4.0, elliptic=False)
+        vis.displayPlane(x_train=x_train, latent_dim=latent_dim, plane=plane,
+                         generator=generator, name=prefix + "_eigs-nonell%d-%d" % (eigIndex1, eigIndex2), batch_size=batch_size)
 
 # visualise the plane specified by the two largest eigenvalues intersected with the standard normal sphere
 # compare this with _eigs0-1.png

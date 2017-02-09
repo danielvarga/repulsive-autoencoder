@@ -21,12 +21,31 @@ npy = 64          # # of pixels width/height of images
 nx = npx*npy*nc   # # of dimensions in X
 
 nz = 100          # # of dim for Z
-ngf = 128         # # of gen filters in first conv layer
+ngf = 512         # # of gen filters in first conv layer
 ndf = 128         # # of discrim filters in first conv layer
 
-nbatch = 128      # # of examples in batch
-nepoch = 10
-ndisc = 1         # # of discr updates for each generator update
+nbatch = 100      # # of examples in batch
+nepoch = 200
+ndisc = 5         # # of discr updates for each generator update
+
+# DCGAN_G (
+#   (main): Sequential (
+#     (initial.100-4096.convt): ConvTranspose2d(100, 4096, kernel_size=(4, 4), stride=(1, 1), bias=False)
+#     (initial.4096.batchnorm): BatchNorm2d(4096, eps=1e-05, momentum=0.1, affine=True)
+#     (initial.4096.relu): ReLU (inplace)
+#     (pyramid.4096-2048.convt): ConvTranspose2d(4096, 2048, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1), bias=False)
+#     (pyramid.2048.batchnorm): BatchNorm2d(2048, eps=1e-05, momentum=0.1, affine=True)
+#     (pyramid.2048.relu): ReLU (inplace)
+#     (pyramid.2048-1024.convt): ConvTranspose2d(2048, 1024, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1), bias=False)
+#     (pyramid.1024.batchnorm): BatchNorm2d(1024, eps=1e-05, momentum=0.1, affine=True)
+#     (pyramid.1024.relu): ReLU (inplace)
+#     (pyramid.1024-512.convt): ConvTranspose2d(1024, 512, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1), bias=False)
+#     (pyramid.512.batchnorm): BatchNorm2d(512, eps=1e-05, momentum=0.1, affine=True)
+#     (pyramid.512.relu): ReLU (inplace)
+#     (final.512-3.convt): ConvTranspose2d(512, 3, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1), bias=False)
+#     (final.3.tanh): Tanh ()
+#   )
+
 
 # Ported from https://github.com/Newmu/dcgan_code/blob/master/faces/train_uncond_dcgan.py
 # 64x64
@@ -176,7 +195,7 @@ def make_trainable(net, val):
 
 
 print "loading data"
-(x_train, x_test) = data.load("bedroom", trainSize=1000, testSize=500, shape=(64,64))
+(x_train, x_test) = data.load("bedroom", trainSize=50000, testSize=500, shape=(64,64))
 
 fake_gen_input = np.zeros(shape=(nbatch*2, nz)).astype('float32')
 def gaussian_sampler(batch_size, latent_dim):
@@ -205,5 +224,5 @@ for epoch in range(nepoch):
     disc_loss = disc_r.history['loss'][0]
     gen_loss = gen_r.history['loss'][0]
 
-    print "Generator: {}, Discriminator: {}, Sum: {}".format(gen_loss, disc_loss, gen_loss+disc_loss)
-    vis.displayRandom(10, x_train, nz, gaussian_sampler, generator, "pictures/dcgan-random", batch_size=nbatch)
+    print "Epoch: {}, Generator: {}, Discriminator: {}, Sum: {}".format(epoch, gen_loss, disc_loss, gen_loss+disc_loss)
+    vis.displayRandom(10, x_train, nz, gaussian_sampler, generator, "pictures/dcgan-random-{}".format(epoch), batch_size=nbatch)

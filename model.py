@@ -7,6 +7,7 @@ import dense
 import model_conv_discgen
 import model_gaussian
 import model_resnet
+import model_dcgan
 
 from keras.layers import Input, Dense, Lambda, Reshape, Flatten, Activation
 from keras.models import Model
@@ -56,6 +57,8 @@ def build_model(args):
         decoder = model_gaussian.GaussianDecoder(args, x)
     elif args.decoder == "resnet":
         decoder = model_resnet.ResnetDecoder(args)
+    elif args.decoder =="dcgan":
+        decoder = model_dcgan.DcganDecoder(args.latent_dim, args.batch_size, args.original_shape, args.decoder_wd)
     decoder_fun_output = decoder(z)
     generator_input, recons_output, generator_output = decoder_fun_output[:3]
 

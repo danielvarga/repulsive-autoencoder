@@ -1,5 +1,5 @@
 import numpy as np
-from keras.layers import Dense, Flatten, Activation, Reshape, Input
+from keras.layers import Dense, Flatten, Activation, Reshape, Input, BatchNormalization
 from keras.regularizers import l2
 
 class Encoder(object):
@@ -22,18 +22,21 @@ class DenseEncoder(Encoder):
         return h
 
 class DenseDecoder(Decoder):
-    def __init__(self, latent_dim, intermediate_dims, original_shape, activation, wd):
+    def __init__(self, latent_dim, intermediate_dims, original_shape, activation, wd, use_bn):
         self.latent_dim = latent_dim
         self.intermediate_dims = intermediate_dims
         self.original_shape = original_shape
         self.activation = activation
         self.wd = wd
+        self.use_bn = use_bn
 
     def __call__(self, recons_input):
         # we instantiate these layers separately so as to reuse them both for reconstruction and generation
         layers = []
         for intermediate_dim in reversed(self.intermediate_dims):
             layers.append(Dense(intermediate_dim, W_regularizer=l2(self.wd)))
+            if self.use_bn:
+                layers.append(BatchNormalization(mode=2))
             layers.append(Activation(self.activation))
         layers.append(Dense(np.prod(self.original_shape), activation='sigmoid', name="decoder_top", W_regularizer=l2(self.wd)))
         layers.append(Reshape(self.original_shape))

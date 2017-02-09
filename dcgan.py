@@ -182,6 +182,7 @@ fake_gen_input = np.zeros(shape=(nbatch*2, nz)).astype('float32')
 def gaussian_sampler(batch_size, latent_dim):
     return np.random.normal(size=(batch_size, latent_dim))
 
+vis.plotImages(x_train[:100], 10, 10, "pictures/dcgan-orig")
 print "starting training"
 for epoch in range(nepoch):
     indices = np.random.permutation(range(x_train.shape[0]))

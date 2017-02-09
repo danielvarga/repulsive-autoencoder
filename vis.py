@@ -220,7 +220,7 @@ def displayOneMarkov(n, iterations, latent_dim, sampler, generator, encoder, enc
     plotImages(result, n, iterations+1, name)
 
 def displayNearest(x_train, x_train_latent, generator, batch_size, name, origo="default", nx=40, ny=20, working_mask=None):
-    if origo == "default":
+    if origo is "default":
         origo = np.zeros(shape=x_train_latent.shape[1:])
     distances = np.square(x_train_latent - origo)
     if working_mask is not None:
@@ -251,7 +251,7 @@ def displayInterp(x_train, x_test, batch_size, dim,
         encoder, encoder_var, do_latent_variances, generator, gridSize, name,
         anchor_indices=None):
     if anchor_indices is None:
-        anchor_indices = [15, 7, 1]
+        anchor_indices = [14, 6, 0]
     assert len(anchor_indices)==3, "Three anchors are expected for interpolation"
     train_latent_mean = encoder.predict(x_train[:batch_size], batch_size=batch_size)
     test_latent_mean = encoder.predict(x_test[:batch_size], batch_size=batch_size)
@@ -264,7 +264,8 @@ def displayInterp(x_train, x_test, batch_size, dim,
         train_latent = np.random.normal(size=train_latent_mean.shape) * np.exp(train_latent_logvar/2) + train_latent_mean
         test_latent = np.random.normal(size=test_latent_mean.shape) * np.exp(test_latent_logvar/2) + test_latent_mean
         
-    anchor1, anchor2, anchor3 = train_latent[anchor_indices]
+    anchor1, anchor2 = train_latent[anchor_indices[:2]]
+    anchor3 = test_latent[anchor_indices[2]]
     anchor4 = anchor3 + anchor2 - anchor1
     anchors = np.array([anchor1, anchor2, anchor3, anchor4])
     interpGrid = grid_layout.create_mine_grid(gridSize, gridSize, dim, gridSize-1, anchors, False, False) # TODO different interpolations for different autoencoders!!!    
@@ -278,7 +279,7 @@ def displayInterp(x_train, x_test, batch_size, dim,
     predictedGrid = predictedGrid[0:n]
 
     prologGrid = np.zeros([gridSize] + list(x_train.shape[1:]))
-    prologGrid[0:3] = x_train[anchor_indices] # [x_train[anchors[0]],x_train[anchors[1]], x_test[anchors[2]]]
+    prologGrid[0:3] = [x_train[anchor_indices[0]], x_train[anchor_indices[1]], x_test[anchor_indices[2]]]
 
     grid = np.concatenate([prologGrid, predictedGrid])
     reshapedGrid = grid.reshape([grid.shape[0]] + list(x_train.shape[1:]))
@@ -413,7 +414,7 @@ def loadModel(filePrefix):
 
 def cumulative_view(projected_z, title, name):
     fig, ax = plt.subplots(figsize=(10, 8))
-    n, bins, patches = ax.hist(projected_z, bins=50, cumulative=True,
+    n, bins, patches = ax.hist(projected_z, bins=100, cumulative=True,
                                normed=1, histtype='step', label='Empirical')
     mu = np.mean(projected_z)
     sigma = np.std(projected_z)

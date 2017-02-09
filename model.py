@@ -41,7 +41,7 @@ def build_model(args):
     z_projected = Lambda(lambda z: K.reshape( K.dot(z, K.l2_normalize(K.random_normal_variable((args.latent_dim, 1), 0, 1), axis=-1)), (args.batch_size,)))([z])
 
     if args.decoder == "dense":
-        decoder = dense.DenseDecoder(args.latent_dim, args.intermediate_dims, args.original_shape, args.activation, args.decoder_wd)
+        decoder = dense.DenseDecoder(args.latent_dim, args.intermediate_dims, args.original_shape, args.activation, args.decoder_wd, args.decoder_use_bn)
     elif args.decoder == "conv":
         decoder = model_conv_discgen.ConvDecoder(
             depth = args.depth,

@@ -78,6 +78,23 @@ class WeightSchedulerCallback(Callback):
         K.set_value(self.weight, (1-relative_phase) * self.startValue + relative_phase * self.stopValue)
         print "\nPhase {}, {} weight: {}".format(phase, self.name, K.eval(self.weight))
 
+class SaveModelsCallback(Callback):
+    def __init__(self, ae, encoder, encoder_var, generator, prefix, frequency, **kwargs):
+        self.ae = ae
+        self.encoder = encoder
+        self.encoder_var = encoder_var
+        self.generator = generator
+        self.prefix = prefix
+        self.frequency = frequency
+        super(SaveModelsCallback, self).__init__(**kwargs)
+
+    def on_epoch_end(self, epoch, logs):        
+        if (epoch+1) % self.frequency != 0: return        
+        vis.saveModel(self.ae, args.prefix + "_model")
+        vis.saveModel(self.encoder, args.prefix + "_encoder")
+        vis.saveModel(self.encoder_var, args.prefix + "_encoder_var")
+        vis.saveModel(self.generator, args.prefix + "_generator")
+
 
 class FlushCallback(Callback):
     def on_epoch_end(self, epoch, logs):

@@ -9,9 +9,11 @@ from keras.layers.advanced_activations import LeakyReLU
 from keras.models import Model
 from keras.optimizers import Adam, RMSprop
 from keras.regularizers import WeightRegularizer
+from keras.preprocessing.image import ImageDataGenerator
 
 import data
 import vis
+import model_dcgan
 
 l2 = 1e-5         # l2 weight decay
 
@@ -25,26 +27,7 @@ ngf = 512         # # of gen filters in first conv layer
 ndf = 128         # # of discrim filters in first conv layer
 
 nbatch = 100      # # of examples in batch
-nepoch = 200
-ndisc = 5         # # of discr updates for each generator update
-
-# DCGAN_G (
-#   (main): Sequential (
-#     (initial.100-4096.convt): ConvTranspose2d(100, 4096, kernel_size=(4, 4), stride=(1, 1), bias=False)
-#     (initial.4096.batchnorm): BatchNorm2d(4096, eps=1e-05, momentum=0.1, affine=True)
-#     (initial.4096.relu): ReLU (inplace)
-#     (pyramid.4096-2048.convt): ConvTranspose2d(4096, 2048, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1), bias=False)
-#     (pyramid.2048.batchnorm): BatchNorm2d(2048, eps=1e-05, momentum=0.1, affine=True)
-#     (pyramid.2048.relu): ReLU (inplace)
-#     (pyramid.2048-1024.convt): ConvTranspose2d(2048, 1024, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1), bias=False)
-#     (pyramid.1024.batchnorm): BatchNorm2d(1024, eps=1e-05, momentum=0.1, affine=True)
-#     (pyramid.1024.relu): ReLU (inplace)
-#     (pyramid.1024-512.convt): ConvTranspose2d(1024, 512, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1), bias=False)
-#     (pyramid.512.batchnorm): BatchNorm2d(512, eps=1e-05, momentum=0.1, affine=True)
-#     (pyramid.512.relu): ReLU (inplace)
-#     (final.512-3.convt): ConvTranspose2d(512, 3, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1), bias=False)
-#     (final.3.tanh): Tanh ()
-#   )
+niter = 200
 
 
 # Ported from https://github.com/Newmu/dcgan_code/blob/master/faces/train_uncond_dcgan.py
@@ -146,6 +129,8 @@ def discriminator_layer_mnist():
 ############################################
 disc_layers = discriminator_layers()
 gen_layers = generator_layers()
+#disc_layers = model_dcgan.discriminator_layers_wgan(latent_dim=nz, wd=0.0)
+#gen_layers = model_dcgan.generator_layers_wgan(latent_dim=nz, batch_size=nbatch, wd=0.0)
 
 gen_input = Input(shape=(nz,), name="gen_input")
 disc_input = Input(shape=(npx, npy, nc), name="disc_input")
@@ -165,21 +150,13 @@ discriminator = Model(disc_input, disc_output)
 discriminator.compile(optimizer=Adam(), loss="mse")
 print "Discriminator"
 discriminator.summary()
-#out = discriminator.predict([np.random.uniform(size=(nbatch, npx, npy, nc))])
-#print out.shape
+
 generator = Model(input=gen_input, output=gen_output)
 generator.compile(optimizer=Adam(), loss="mse")
 print "Generator:"
 generator.summary()
-#out = generator.predict([np.random.normal(size=(nbatch, nz))])
-#print out.shape
-gen_disc = Model(input=gen_input, output=gen_disc_output)
 
-# combined net
-#gen_disc = Sequential()
-#gen_disc.add(generator)
-#discriminator.trainable=False
-#gen_disc.add(discriminator)
+gen_disc = Model(input=gen_input, output=gen_disc_output)
 gen_disc.compile(loss='mse', optimizer=Adam())
 print "combined net"
 gen_disc.summary()
@@ -189,40 +166,45 @@ def make_trainable(net, val):
     net.trainable = val
     for l in net.layers:
         l.trainable = val
-#make_trainable(discriminator, False)
 
 
-
+def ndisc(gen_iters):
+    if gen_iters < 25:
+        return 100
+    else:
+        return 5
 
 print "loading data"
-(x_train, x_test) = data.load("bedroom", trainSize=50000, testSize=500, shape=(64,64))
+(x_train, x_test) = data.load("celeba", trainSize=10000, testSize=500, shape=(64,64), color=1)
+imageGenerator = ImageDataGenerator()
 
-fake_gen_input = np.zeros(shape=(nbatch*2, nz)).astype('float32')
 def gaussian_sampler(batch_size, latent_dim):
     return np.random.normal(size=(batch_size, latent_dim))
-
 vis.plotImages(x_train[:100], 10, 10, "pictures/dcgan-orig")
-print "starting training"
-for epoch in range(nepoch):
-    indices = np.random.permutation(range(x_train.shape[0]))
-    for batch in range(x_train.shape[0] // nbatch):
-        # update discriminator
-        x_predicted = generator.predict([np.random.normal(size=(nbatch, nz))], batch_size=nbatch)
-        curr_indices = indices[batch*nbatch: (batch+1)*nbatch]
-        x_true = x_train[curr_indices]
-        xs = np.concatenate((x_predicted, x_true), axis=0).astype('float32')
-        ys = np.array([0] * nbatch + [1] * nbatch).astype('float32')
-        make_trainable(discriminator, True)
-        disc_r = discriminator.fit(xs, ys, verbose=0, batch_size=nbatch, nb_epoch=1, shuffle=True)
 
-        if batch % ndisc == ndisc-1: # update generator
-            gen_in = np.random.normal(size=(nbatch, nz))
-            gen_out = np.array([1.0] *  nbatch)
-            make_trainable(discriminator, False)
-            gen_r= gen_disc.fit(gen_in, gen_out, verbose=0, batch_size=nbatch, nb_epoch=1)
+print "starting training"
+gen_iters = 0
+for iter in range(niter):
+    # update discriminator
+    disc_epoch_size = ndisc(iter) * nbatch
+    x_true = imageGenerator.flow(x_train, batch_size = disc_epoch_size)
+    x_predicted = generator.predict([np.random.normal(size=(disc_epoch_size, nz))], batch_size=nbatch)
+    print x_true.shape
+    print x_predicted.shape
+    xs = np.concatenate((x_predicted, x_true), axis=0)
+    ys = np.zeros(disc_epoch_size) + np.ones(disc_epoch_size)
+    make_trainable(discriminator, True)
+    disc_r = discriminator.fit(xs, ys, verbose=0, batch_size=nbatch, nb_epoch=1, shuffle=True)
+
+    # update generator
+    gen_in = np.random.normal(size=(nbatch, nz))
+    gen_out = np.array([1.0] *  nbatch)
+    make_trainable(discriminator, False)
+    gen_r= gen_disc.fit(gen_in, gen_out, verbose=0, batch_size=nbatch, nb_epoch=1)
+    gen_iters += 1
     
     disc_loss = disc_r.history['loss'][0]
     gen_loss = gen_r.history['loss'][0]
 
-    print "Epoch: {}, Generator: {}, Discriminator: {}, Sum: {}".format(epoch, gen_loss, disc_loss, gen_loss+disc_loss)
-    vis.displayRandom(10, x_train, nz, gaussian_sampler, generator, "pictures/dcgan-random-{}".format(epoch), batch_size=nbatch)
+    print "Iter: {}, Generator: {}, Discriminator: {}, Sum: {}".format(iter, gen_loss, disc_loss, gen_loss+disc_loss)
+    vis.displayRandom(10, x_train, nz, gaussian_sampler, generator, "pictures/gan-random-{}".format(iter), batch_size=nbatch)

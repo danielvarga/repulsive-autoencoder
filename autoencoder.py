@@ -42,6 +42,7 @@ cbs.append(callbacks.get_lr_scheduler(args.nb_epoch, args.lr))
 cbs.append(callbacks.ImageDisplayCallback(
     x_train, x_test, args,
     ae, encoder, encoder_var, generator, sampler))
+cbs.append(callbacks.SaveModelsCallback(ae, encoder, encoder_var, generator, args.prefix, args.frequency))
 for schedule in args.weight_schedules:
     if schedule[1] != schedule[2]:
         cbs.append(callbacks.WeightSchedulerCallback(args.nb_epoch, schedule[0], schedule[1], schedule[2], schedule[3], schedule[4], schedule[5]))

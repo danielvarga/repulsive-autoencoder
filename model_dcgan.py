@@ -1,5 +1,6 @@
 import numpy as np
 from keras.layers import Dense, Flatten, Activation, Reshape, Input, BatchNormalization, Flatten
+from keras.layers.advanced_activations import LeakyReLU
 from keras.layers.convolutional import Deconvolution2D, Convolution2D
 from keras.regularizers import l2
 
@@ -86,3 +87,21 @@ class DcganDecoder(Decoder):
             recons_output = layer(recons_output)
 
         return generator_input, recons_output, generator_output
+
+disc_channels = (64, 128, 256, 512, 1) 
+disc_use_bns = (False, True, True, True, False)
+disc_strides = (2, 2, 2, 2, 1)
+
+def discriminator_layers_wgan(latent_dim, wd):
+    alpha = 0.2
+    layers=[]
+    for channel, stride, use_bn in zip(disc_channels, disc_strides, disc_use_bns):
+        if stride == 1:
+            border_mode = "valid"
+        else:
+            border_mode = "same"
+        layers.append(Convolution2D(channel, 4, 4, subsample=(stride, stride), border_mode=border_mode, W_regularizer=l2(wd)))
+        if use_bn: layers.append(BatchNormalization())
+        if stride != 1: layers.append(LeakyReLU(alpha=alpha))
+    layers.append(Reshape((1,)))
+    return layers

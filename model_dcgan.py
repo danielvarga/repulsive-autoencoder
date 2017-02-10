@@ -4,7 +4,8 @@ from keras.layers.advanced_activations import LeakyReLU
 from keras.layers.convolutional import Deconvolution2D, Convolution2D
 from keras.regularizers import l2
 
-channels = (3, 512, 1024, 2048, 4096) # latent_dim is missing from the end of this tuple
+#channels = (3, 512, 1024, 2048, 4096) # latent_dim is missing from the end of this tuple
+channels = (3, 128, 256, 512, 1024) # latent_dim is missing from the end of this tuple
 sizes = (64, 32, 16, 8, 4, 1)
 strides = (2, 2, 2, 2, 2, 1)
 
@@ -35,10 +36,11 @@ def generator_layers_wgan(latent_dim, batch_size, wd):
     layers = []
     layers.append(Reshape((1,1,latent_dim)))
     for channel, size, stride, use_bn, activation in zip(generator_channels, generator_sizes, generator_strides, use_bns, generator_activations):
-        if stride == 1:
+        if size == 4:
             border_mode = "valid"
         else:
             border_mode = "same"
+	
         layers.append(Deconvolution2D(channel, 4, 4, output_shape=(batch_size, size, size, channel),
                                       subsample=(stride, stride), border_mode=border_mode, W_regularizer=l2(wd)))
         if use_bn: layers.append(BatchNormalization())

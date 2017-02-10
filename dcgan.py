@@ -127,10 +127,10 @@ def discriminator_layer_mnist():
     return input, net
 
 ############################################
-disc_layers = discriminator_layers()
-gen_layers = generator_layers()
-#disc_layers = model_dcgan.discriminator_layers_wgan(latent_dim=nz, wd=0.0)
-#gen_layers = model_dcgan.generator_layers_wgan(latent_dim=nz, batch_size=nbatch, wd=0.0)
+#disc_layers = discriminator_layers()
+#gen_layers = generator_layers()
+disc_layers = model_dcgan.discriminator_layers_wgan(latent_dim=nz, wd=0.0)
+gen_layers = model_dcgan.generator_layers_wgan(latent_dim=nz, batch_size=nbatch, wd=0.03)
 
 gen_input = Input(shape=(nz,), name="gen_input")
 disc_input = Input(shape=(npx, npy, nc), name="disc_input")
@@ -184,15 +184,19 @@ vis.plotImages(x_train[:100], 10, 10, "pictures/dcgan-orig")
 
 print "starting training"
 gen_iters = 0
+
+x_true_flow = imageGenerator.flow(x_train, batch_size = nbatch)
+
 for iter in range(niter):
     # update discriminator
     disc_epoch_size = ndisc(iter) * nbatch
-    x_true = imageGenerator.flow(x_train, batch_size = disc_epoch_size)
+    
+    x_true = np.concatenate([x_true_flow.next() for i in range(ndisc(iter))], axis=0)
     x_predicted = generator.predict([np.random.normal(size=(disc_epoch_size, nz))], batch_size=nbatch)
     print x_true.shape
     print x_predicted.shape
     xs = np.concatenate((x_predicted, x_true), axis=0)
-    ys = np.zeros(disc_epoch_size) + np.ones(disc_epoch_size)
+    ys = np.concatenate((-1.0 * np.ones(disc_epoch_size), np.ones(disc_epoch_size)), axis=0)
     make_trainable(discriminator, True)
     disc_r = discriminator.fit(xs, ys, verbose=0, batch_size=nbatch, nb_epoch=1, shuffle=True)
 

@@ -36,6 +36,7 @@ parser.add_argument('--weight_schedules', dest="weight_schedules", default='', h
 parser.add_argument('--trainSize', dest="trainSize", type=int, default=0, help="Train set size (0 means default size)")
 parser.add_argument('--testSize', dest="testSize", type=int, default=0, help="Test set size (0 means default size)")
 parser.add_argument('--gaussianParams', dest="gaussianParams", default="10,1,10", help="main_channel,dots,side_channel - this overrides latent_dim param")
+parser.add_argument('--shape', dest="shape", default="72,64", help="image shape")
 
 
 args_param = parser.parse_args()
@@ -44,8 +45,6 @@ ini_file = args.prefix + ".ini"
 exp.dumpParams(args, ini_file)
 
 def getArgs():
-    assert args.encoder in ("dense", "conv")
-
     if args.callback_prefix == "same":
         args.callback_prefix = args.prefix
     if args.color == 1:
@@ -60,10 +59,11 @@ def getArgs():
         args.spherical = True
     else:
         args.spherical = False
-    if args.dataset == 'celeba':
-        args.shape = (72, 64)
-    else:
-        args.shape = None
+    args.shape = tuple(map(int, str(args.shape).split(",")))
+#    if args.dataset == 'celeba':
+#        args.shape = (72, 64)
+#    else:
+#        args.shape = None
     if args.decoder_use_bn == 1:
         args.decoder_use_bn = True
     else:

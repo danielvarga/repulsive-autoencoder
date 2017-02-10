@@ -32,9 +32,16 @@ def build_model(args):
             image_dims = args.original_shape,
             batch_size = args.batch_size,
             base_filter_num = args.base_filter_num)
+    elif args.encoder == "dcgan":
+        encoder = model_dcgan.DcganEncoder(args.latent_dim, args.batch_size, args.original_shape, args.encoder_wd)
     hidden = encoder(x)
 
-    z, z_mean, z_log_var = add_sampling(hidden, args.sampling, args.batch_size, args.latent_dim, args.encoder_wd)
+    if args.encoder == "dcgan":
+        z = hidden
+        z_mean = hidden
+        z_log_var = hidden
+    else:
+        z, z_mean, z_log_var = add_sampling(hidden, args.sampling, args.batch_size, args.latent_dim, args.encoder_wd)
 
     z_normed = Lambda(lambda z_unnormed: K.l2_normalize(z_unnormed, axis=-1))([z])
     if args.spherical:

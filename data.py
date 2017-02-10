@@ -79,8 +79,8 @@ def load_celeba(shape=(72, 60),color=False):
         input = input[:trainSize + testSize] / 255.0 # the whole dataset does not fit into memory as a float
         np.save(cacheFile,input)
 
-        if shape==(64, 64):
-            input = input[:,4:68,:,:]
+    if shape==(64, 64):
+        input = input[:,4:68,:,:]
 
     x_train = input[:trainSize]
     x_test = input[trainSize:trainSize+testSize]

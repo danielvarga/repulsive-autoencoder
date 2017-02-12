@@ -152,7 +152,7 @@ def D_loss(y_true, y_pred):
     return - y_true * y_pred
 
 def G_loss(y_true, y_pred):
-    return -y_pred
+    return - y_pred
 
 discriminator = Model(disc_input, disc_output)
 discriminator.compile(optimizer=RMSprop(lr=0.0005), loss=D_loss)
@@ -174,8 +174,6 @@ def make_trainable(net, val):
     net.trainable = val
     for l in net.layers:
         l.trainable = val
-
-
 
 def ndisc(gen_iters):
     if gen_iters < 25:
@@ -206,18 +204,13 @@ class ClimperCallback(Callback):
 
     def on_batch_end(self, batch, logs={}):
 	for layer in self.layers:
-	    weights = layer.get_weights()
-	    #print(weights)
+	    if True or layer.__class__.__name__ == "Convolution2D":
+	        weights = layer.get_weights()
+		for i in range(len(weights)):
+                    weights[i] = np.clip(weights[i], -0.01, 0.01)
+                layer.set_weights(weights)	
+		    
 
-	    if len(weights) > 0:
-		    weights[0] = np.clip(weights[0], -0.01, 0.01)
-		    #weights[1] = np.clip(weights[1], -0.01, 0.01)
-		    layer.set_weights(weights)
-	
-		    #print(weights)
-
-	
-    
 climper = ClimperCallback(disc_layers)
 
 for iter in range(niter):

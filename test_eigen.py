@@ -1,3 +1,4 @@
+import sys
 import numpy as np
 import math
 import keras
@@ -68,7 +69,78 @@ def l2_loss(z):
 
 def covariance_loss(z):
     z_centered = z - K.mean(z, axis=0)
-    loss = K.mean(K.square(K.eye(K.int_shape(z_centered)[1]) - K.dot(K.transpose(z_centered), z_centered)))
+    cov = K.dot(K.transpose(z_centered), z_centered)
+    loss = K.mean(K.square(K.eye(K.int_shape(z_centered)[1]) * batch_size - cov))
+    return loss
+
+
+# Abandoned experiment. Analogously to VAE's variance loss, d - ln d - 1 penalizes small
+# positive d values harshly. Problem is, negative values can also appear.
+def tuned_covariance_loss(z):
+    z_centered = z - K.mean(z, axis=0)
+    cov = K.dot(K.transpose(z_centered), z_centered)
+    loss = K.mean(K.square(K.eye(K.int_shape(z_centered)[1]) * batch_size - cov))
+    d = tf.diag(cov) / batch_size
+    # diag_penalty = tf.cond(tf.greater(tf.reduce_min(d), 0), lambda: (d - K.log(d) - 1), lambda: (d-1)*(d-1))
+    is_pos = tf.cast(tf.greater(d, 0), tf.float32)
+    diag_penalty = is_pos * (d - K.log(d) - 1) \
+        + (1 - is_pos) * 1000000
+    loss += K.mean(diag_penalty)
+    return loss
+
+
+def matrix_exp(cov):
+    cov1 = cov
+    cov2 = K.dot(cov1, cov)
+    cov3 = K.dot(cov2, cov)
+    cov4 = K.dot(cov3, cov)
+    exp_cov = K.eye(K.int_shape(cov)[1]) + cov1 + cov2/2 + cov3/6 + cov4/24
+    return exp_cov
+
+
+def matrix_log(cov):
+    I = K.eye(K.int_shape(cov)[1])
+    cov1 = cov - I
+    cov2 = K.dot(cov1, cov1)
+    cov3 = K.dot(cov2, cov1)
+    cov4 = K.dot(cov3, cov1)
+    exp_cov = I - cov1 + cov2/2 - cov3/6 + cov4/24
+    return exp_cov
+
+
+# Absolutely does not work at this point, probably very buggy.
+def test_matrix_log():
+    N = 10
+    matrix = np.random.normal(size=(N, 2*N))
+    matrix = np.dot(matrix, matrix.T)
+
+    def inspect(m):
+        eigVals, eigVects = np.linalg.eigh(m)
+        print "eigvals =", list(reversed(eigVals))
+        print "max/min eigval ratio =", eigVals[-1]/eigVals[0]
+        print "dominant eigvect =", eigVects[:, -1]
+
+    logarithm = minieval(matrix_log, matrix)
+    print logarithm
+    print "----"
+    exponential = minieval(matrix_exp, logarithm)
+    print exponential
+
+    print "positive definite symmetric matrix"
+    inspect(matrix)
+    print "sum of eigenvalue logarithms", np.sum(np.log(np.linalg.eigh(matrix)[0]))
+    print "====="
+    print "log of matrix"
+    inspect(logarithm)
+    print "trace of matrix", np.trace(logarithm)
+
+
+# Abandoned experiment, Taylor series of matrix_log did not converge, probably buggy as well.
+def valpola_loss(z):
+    z_centered = z - K.mean(z, axis=0)
+    cov = K.dot(K.transpose(z_centered), z_centered)
+    log_cov = matrix_log(cov)
+    loss = tf.trace(cov - log_cov - K.eye(K.int_shape(z_centered)[1])) # eye is unnecessary
     return loss
 
 
@@ -81,6 +153,7 @@ def dominant_eigvect_layer(z):
 
 def cholesky(d):
     cov = np.cov(d.T)
+    print "cov =", cov
     mean = np.mean(d, axis=0)
 
     print "means =", mean
@@ -183,7 +256,13 @@ def test_loss():
         LOSS_WEIGHT = 0.0
     elif loss_name == "covariance":
         loss_fn = lambda: covariance_loss(z)
+        LOSS_WEIGHT = 0.02 / 256
+    elif loss_name == "tuned_covariance":
+        loss_fn = lambda: tuned_covariance_loss(z)
         LOSS_WEIGHT = 0.02
+    elif loss_name == "valpola":
+        loss_fn = lambda: valpola_loss(z)
+        LOSS_WEIGHT = 1.0
     else:
         assert False, "unknown loss name"
 
@@ -202,8 +281,8 @@ def test_loss():
     encoder.compile(optimizer=optimizer, loss="mse")
 
     N = 10000 // batch_size * batch_size
-    epoch_count = 200
-    megaepoch_count = 1
+    epoch_count = 10
+    megaepoch_count = 5
 
     def sampler_uniform(n, d):
         return np.random.uniform(size=(n, d)) * 2 - 1

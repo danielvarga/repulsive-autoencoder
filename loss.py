@@ -78,7 +78,8 @@ def loss_factory(model, encoder, loss_features, args):
     def covariance_loss(x, x_decoded):
         z = loss_features[1]
         z_centered = z - K.mean(z, axis=0)
-        loss = K.mean(K.square(K.eye(K.int_shape(z_centered)[1]) - K.dot(K.transpose(z_centered), z_centered)))
+        cov = K.dot(K.transpose(z_centered), z_centered)))
+        loss = K.mean(K.square(K.eye(K.int_shape(z_centered)[1]) * args.batch_size - cov))
         return loss
 
     def intermediary_loss(x, x_decoded):

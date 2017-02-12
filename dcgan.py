@@ -11,6 +11,8 @@ from keras.optimizers import Adam, RMSprop
 from keras.regularizers import WeightRegularizer
 from keras.preprocessing.image import ImageDataGenerator
 
+import keras.backend as K
+
 import data
 import vis
 import model_dcgan
@@ -27,7 +29,7 @@ ngf = 512         # # of gen filters in first conv layer
 ndf = 128         # # of discrim filters in first conv layer
 
 nbatch = 100      # # of examples in batch
-niter = 200
+niter = 20000
 
 
 # Ported from https://github.com/Newmu/dcgan_code/blob/master/faces/train_uncond_dcgan.py
@@ -130,7 +132,7 @@ def discriminator_layer_mnist():
 #disc_layers = discriminator_layers()
 #gen_layers = generator_layers()
 disc_layers = model_dcgan.discriminator_layers_wgan(latent_dim=nz, wd=0.0)
-gen_layers = model_dcgan.generator_layers_wgan(latent_dim=nz, batch_size=nbatch, wd=0.03)
+gen_layers = model_dcgan.generator_layers_wgan(latent_dim=nz, batch_size=nbatch, wd=0.0)
 
 gen_input = Input(shape=(nz,), name="gen_input")
 disc_input = Input(shape=(npx, npy, nc), name="disc_input")
@@ -146,18 +148,24 @@ for layer in disc_layers:
     disc_output = layer(disc_output)
     gen_disc_output = layer(gen_disc_output)
 
+def D_loss(y_true, y_pred):
+    return - y_true * y_pred
+
+def G_loss(y_true, y_pred):
+    return -y_pred
+
 discriminator = Model(disc_input, disc_output)
-discriminator.compile(optimizer=Adam(), loss="mse")
+discriminator.compile(optimizer=RMSprop(lr=0.0005), loss=D_loss)
 print "Discriminator"
 discriminator.summary()
 
 generator = Model(input=gen_input, output=gen_output)
-generator.compile(optimizer=Adam(), loss="mse")
+generator.compile(optimizer=RMSprop(lr=0.0005), loss=G_loss)
 print "Generator:"
 generator.summary()
 
 gen_disc = Model(input=gen_input, output=gen_disc_output)
-gen_disc.compile(loss='mse', optimizer=Adam())
+gen_disc.compile(loss=G_loss, optimizer=RMSprop(lr=0.0005))
 print "combined net"
 gen_disc.summary()
 
@@ -168,9 +176,12 @@ def make_trainable(net, val):
         l.trainable = val
 
 
+
 def ndisc(gen_iters):
     if gen_iters < 25:
         return 100
+    elif gen_iters % 500 == 0:
+	return 100
     else:
         return 5
 
@@ -187,6 +198,28 @@ gen_iters = 0
 
 x_true_flow = imageGenerator.flow(x_train, batch_size = nbatch)
 
+from keras.callbacks import Callback
+
+class ClimperCallback(Callback):
+    def __init__(self, layers):
+	self.layers = layers
+
+    def on_batch_end(self, batch, logs={}):
+	for layer in self.layers:
+	    weights = layer.get_weights()
+	    #print(weights)
+
+	    if len(weights) > 0:
+		    weights[0] = np.clip(weights[0], -0.01, 0.01)
+		    #weights[1] = np.clip(weights[1], -0.01, 0.01)
+		    layer.set_weights(weights)
+	
+		    #print(weights)
+
+	
+    
+climper = ClimperCallback(disc_layers)
+
 for iter in range(niter):
     # update discriminator
     disc_epoch_size = ndisc(iter) * nbatch
@@ -198,11 +231,11 @@ for iter in range(niter):
     xs = np.concatenate((x_predicted, x_true), axis=0)
     ys = np.concatenate((-1.0 * np.ones(disc_epoch_size), np.ones(disc_epoch_size)), axis=0)
     make_trainable(discriminator, True)
-    disc_r = discriminator.fit(xs, ys, verbose=0, batch_size=nbatch, nb_epoch=1, shuffle=True)
+    disc_r = discriminator.fit(xs, ys, verbose=0, batch_size=nbatch, nb_epoch=1, shuffle=True, callbacks=[climper])
 
     # update generator
     gen_in = np.random.normal(size=(nbatch, nz))
-    gen_out = np.array([1.0] *  nbatch)
+    gen_out = np.array([-1.0] *  nbatch)
     make_trainable(discriminator, False)
     gen_r= gen_disc.fit(gen_in, gen_out, verbose=0, batch_size=nbatch, nb_epoch=1)
     gen_iters += 1

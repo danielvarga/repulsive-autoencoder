@@ -20,7 +20,7 @@ import eigen
 
 batch_size = 256
 
-input_dim = 3
+input_dim = 2
 latent_dim = 3
 intermediate_dim = 200
 
@@ -64,6 +64,12 @@ def test_kstest_tf():
 
 def l2_loss(z):
     return L2_REG_WEIGHT * K.mean(K.square(z)) * latent_dim # sum over latent_dim, avg over minibatch
+
+
+def covariance_loss(z):
+    z_centered = z - K.mean(z, axis=0)
+    loss = K.mean(K.square(K.eye(K.int_shape(z_centered)[1]) - K.dot(K.transpose(z_centered), z_centered)))
+    return loss
 
 
 def dominant_eigvect_layer(z):
@@ -161,7 +167,7 @@ def test_loss():
     # EIGENVALUE_GAP_LOSS_WEIGHT = 0.1 ; shape = eigenvalue_gap_loss(x, x_pred) * EIGENVALUE_GAP_LOSS_WEIGHT
     # RANDOM_VECT_LOSS_WEIGHT = 10 ; shape = random_vect_loss(z) * RANDOM_VECT_LOSS_WEIGHT
 
-    loss_name = "l2"
+    loss_name = "covariance"
 
     if loss_name == "kstest":
         loss_fn = kstest_loss
@@ -171,7 +177,13 @@ def test_loss():
         LOSS_WEIGHT = EIGENVALUE_GAP_LOSS_WEIGHT
     elif loss_name == "l2":
         loss_fn = lambda: K.mean(K.square(z))
-        LOSS_WEIGHT = 0.0 # 1.0 / 1600
+        LOSS_WEIGHT = 1.0
+    elif loss_name == "0":
+        loss_fn = lambda: K.mean(K.square(z))*0.0
+        LOSS_WEIGHT = 0.0
+    elif loss_name == "covariance":
+        loss_fn = lambda: covariance_loss(z)
+        LOSS_WEIGHT = 0.02
     else:
         assert False, "unknown loss name"
 
@@ -182,7 +194,7 @@ def test_loss():
         return recons_loss + LOSS_WEIGHT * loss_fn()
 
     model = Model(input=inputs, output=output)
-    optimizer = RMSprop()
+    optimizer = Adam()
     model.compile(optimizer=optimizer, loss=total_loss,
                   metrics=["mse", lambda _1, _2: loss_fn() ])
 
@@ -211,8 +223,6 @@ def test_loss():
     print "dataset:", dataset
     sampler = datasets[dataset]
 
-    sampler = sampler_expcube
-
     for i in range(megaepoch_count):
         print "================"
         data = sampler(N, input_dim)
@@ -220,7 +230,7 @@ def test_loss():
         data = sampler(N, input_dim)
         z = encoder.predict(data, batch_size=batch_size)
         output = model.predict(data, batch_size=batch_size)
-        # cholesky(z)
+        cholesky(z)
 
     for i in range(min((latent_dim, 10))):
         print "KS for dim", i, "=", kstest(z[:, i], 'norm')

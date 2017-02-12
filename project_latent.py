@@ -125,6 +125,12 @@ print np.histogram(mean_variances, 100)
 
 latent_dim = latent_train.shape[1]
 
+print "origo"
+print origo
+print "cov"
+print np.cov(latent_train_mean.T)[:10, :10]
+
+sys.exit()
 
 vis.displayNearest(x_train, latent_train, generator, batch_size, name=prefix+"-nearest", origo = latent_train[6])
 vis.displayNearest(x_train, latent_train, generator, batch_size, name=prefix+"-nearest-masked", origo = latent_train[6], working_mask=working_mask)
@@ -224,9 +230,13 @@ if do_latent_variances:
 
 
 
-cov_train = np.cov(latent_train_mean.T)
+cov_train_mean = np.cov(latent_train_mean.T)
+eigVals, eigVects = np.linalg.eigh(cov_train_mean)
+print "cov_train_mean eigvals (latent means) = ", list(reversed(eigVals))
+
+cov_train = np.cov(latent_train.T)
 eigVals, eigVects = np.linalg.eigh(cov_train)
-print "cov_train eigvals = ", list(reversed(eigVals))
+print "cov_train eigvals (latent sampleds) = ", list(reversed(eigVals))
 
 
 # the below loop illustrates that taking small subsamples will not alter the eigenvalue structure of the covariance matrix 
@@ -244,18 +254,18 @@ cho = np.linalg.cholesky(cov_train)
 print "CHOS", cho.shape
 N = 100000
 z = np.random.normal(0.0, 1.0, (N, latent_dim))
-sample = cho.dot(z.T).T+origo_mean
+sample = cho.dot(z.T).T + origo
 print sample.shape
 
 def oval_sampler(batch_size, latent_dim):
     z = np.random.normal(size=(batch_size, latent_dim))
-    z = cho.dot(z.T).T+origo_mean
+    z = cho.dot(z.T).T+origo
 #    z /= np.linalg.norm(z)
     return z
 
 def diagonal_oval_sampler(batch_size, latent_dim):
     z = np.random.normal(size=(batch_size, latent_dim))
-    z = std_train * z + origo_mean
+    z = std_train * z + origo
     return z
 
 def diagonal_oval_sampler_nomean(batch_size, latent_dim):
@@ -267,7 +277,7 @@ def eigval1d_grid(grid_size, latent_dim):
     x = np.linspace(-2.0, 2.0, num=grid_size)
     xs = []
     for i in range(grid_size):
-        xi = x[i] * eigVects[:, 0] * np.sqrt(eigVals[0]) + origo_mean
+        xi = x[i] * eigVects[:, 0] * np.sqrt(eigVals[0]) + origo
         xs.append(xi)
     return np.array(xs)
 

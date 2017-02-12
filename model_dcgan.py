@@ -5,8 +5,8 @@ from keras.layers.convolutional import Deconvolution2D, Convolution2D
 from keras.regularizers import l2
 from keras import initializations
 
-#channels = (3, 512, 1024, 2048, 4096) # latent_dim is missing from the end of this tuple
-channels = (3, 128, 256, 512, 1024) # latent_dim is missing from the end of this tuple
+channels = (3, 512, 1024, 2048, 4096) # latent_dim is missing from the end of this tuple
+#channels = (3, 128, 256, 512, 1024) # latent_dim is missing from the end of this tuple
 sizes = (64, 32, 16, 8, 4, 1)
 strides = (2, 2, 2, 2, 2, 1)
 
@@ -27,7 +27,7 @@ def encoder_layers_wgan(latent_dim, batch_size, wd):
             border_mode = "valid"
         else:
             border_mode = "same"
-        layers.append(Convolution2D(channel, 4, 4, subsample=(stride, stride), border_mode=border_mode, init=normal_init), bias=False, W_regularizer=l2(wd))
+        layers.append(Convolution2D(channel, 4, 4, subsample=(stride, stride), border_mode=border_mode, init=normal_init, bias=False, W_regularizer=l2(wd)))
         if use_bn: layers.append(BatchNormalization())
         layers.append(Activation(activation, name="encoder_{}".format(size)))
     layers.append(Reshape((latent_dim,)))
@@ -54,6 +54,7 @@ def generator_layers_wgan(latent_dim, batch_size, wd):
 	"""
         layers.append(Convolution2D(channel, 4, 4, init=normal_init, bias=False,
                                       subsample=(1, 1), border_mode="same", W_regularizer=l2(wd)))
+
 
         if use_bn: layers.append(BatchNormalization())
         layers.append(Activation(activation, name="generator_{}".format(size)))

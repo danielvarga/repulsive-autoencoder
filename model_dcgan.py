@@ -5,8 +5,8 @@ from keras.layers.convolutional import Deconvolution2D, Convolution2D
 from keras.regularizers import l2
 from keras import initializations
 
-#channels = (3, 512, 1024, 2048, 4096) # latent_dim is missing from the end of this tuple
-channels = (3, 64, 128, 256, 512) # latent_dim is missing from the end of this tuple
+#channels = (512, 1024, 2048, 4096) # image_channel is missing from the beginning, latent_dim is missing from the end
+channels = (64, 128, 256, 512) # image_channel is missing from the beginning, latent_dim is missing from the end
 sizes = (64, 32, 16, 8, 4, 1)
 strides = (2, 2, 2, 2, 2, 1)
 
@@ -17,8 +17,8 @@ use_bns = (True, True, True, True, False)
 def normal_init(shape, name=None):
     return initializations.normal(shape, scale=0.02, name=name)
 
-def encoder_layers_wgan(latent_dim, batch_size, wd):
-    encoder_channels = list(channels[1:]) + [latent_dim]
+def encoder_layers_wgan(latent_dim, batch_size, wd, image_channel):
+    encoder_channels = list(channels) + [latent_dim]
     encoder_sizes = sizes[1:]
     encoder_strides = strides[1:]
     layers=[]
@@ -33,8 +33,8 @@ def encoder_layers_wgan(latent_dim, batch_size, wd):
     layers.append(Reshape((latent_dim,)))
     return layers
 
-def generator_layers_wgan(latent_dim, batch_size, wd):
-    generator_channels = reversed(channels)
+def generator_layers_wgan(latent_dim, batch_size, wd, image_channel):
+    generator_channels = list(reversed(channels)) + [image_channel]
     generator_sizes = reversed(sizes[:-1])
     generator_strides = reversed(strides[:-1])
     layers = []

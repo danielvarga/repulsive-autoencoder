@@ -134,8 +134,8 @@ def discriminator_layer_mnist():
 disc_layers = model_dcgan.discriminator_layers_wgan(latent_dim=nz, wd=0.0)
 gen_layers = model_dcgan.generator_layers_wgan(latent_dim=nz, batch_size=nbatch, wd=0.0)
 
-gen_input = Input(shape=(nz,), name="gen_input")
-disc_input = Input(shape=(npx, npy, nc), name="disc_input")
+gen_input = Input(batch_shape=(nbatch,nz), name="gen_input")
+disc_input = Input(batch_shape=(nbatch, npx, npy, nc), name="disc_input")
 
 gen_output = gen_input
 disc_output = disc_input
@@ -148,9 +148,14 @@ for layer in disc_layers:
     disc_output = layer(disc_output)
     gen_disc_output = layer(gen_disc_output)
 
+# y_true = 1 (real_image) or 0 (generated_image)
+# we push the real examples up, the false examples down
 def D_loss(y_true, y_pred):
-    return - y_true * y_pred
+    real = K.sum(y_pred * y_true) / K.sum(y_true)
+    fake = K.sum(y_pred * (1 - y_true)) / K.sum(1 - y_true)
+    return fake - real
 
+# y_true is irrelevant, the generator tries to make its output as large as possible
 def G_loss(y_true, y_pred):
     return - y_pred
 
@@ -160,12 +165,14 @@ print "Discriminator"
 discriminator.summary()
 
 generator = Model(input=gen_input, output=gen_output)
-generator.compile(optimizer=RMSprop(lr=0.0005), loss=G_loss)
+#generator.compile(optimizer=RMSprop(lr=0.0005), loss=G_loss)
+generator.compile(optimizer=RMSprop(), loss=G_loss)
 print "Generator:"
 generator.summary()
 
 gen_disc = Model(input=gen_input, output=gen_disc_output)
-gen_disc.compile(loss=G_loss, optimizer=RMSprop(lr=0.0005))
+#gen_disc.compile(loss=G_loss, optimizer=RMSprop(lr=0.0005))
+gen_disc.compile(loss=G_loss, optimizer=RMSprop())
 print "combined net"
 gen_disc.summary()
 
@@ -198,7 +205,7 @@ x_true_flow = imageGenerator.flow(x_train, batch_size = nbatch)
 
 from keras.callbacks import Callback
 
-class ClimperCallback(Callback):
+class CliperCallback(Callback):
     def __init__(self, layers):
 	self.layers = layers
 
@@ -211,7 +218,7 @@ class ClimperCallback(Callback):
                 layer.set_weights(weights)	
 		    
 
-climper = ClimperCallback(disc_layers)
+clipper = CliperCallback(disc_layers)
 
 for iter in range(niter):
     # update discriminator
@@ -219,12 +226,10 @@ for iter in range(niter):
     
     x_true = np.concatenate([x_true_flow.next() for i in range(ndisc(iter))], axis=0)
     x_predicted = generator.predict([np.random.normal(size=(disc_epoch_size, nz))], batch_size=nbatch)
-    print x_true.shape
-    print x_predicted.shape
     xs = np.concatenate((x_predicted, x_true), axis=0)
-    ys = np.concatenate((-1.0 * np.ones(disc_epoch_size), np.ones(disc_epoch_size)), axis=0)
+    ys = np.concatenate((np.zeros(disc_epoch_size), np.ones(disc_epoch_size)), axis=0)
     make_trainable(discriminator, True)
-    disc_r = discriminator.fit(xs, ys, verbose=0, batch_size=nbatch, nb_epoch=1, shuffle=True, callbacks=[climper])
+    disc_r = discriminator.fit(xs, ys, verbose=0, batch_size=nbatch, nb_epoch=1, shuffle=True, callbacks=[clipper])
 
     # update generator
     gen_in = np.random.normal(size=(nbatch, nz))

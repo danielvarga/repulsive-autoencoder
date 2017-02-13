@@ -5,8 +5,8 @@ from keras.layers.convolutional import Deconvolution2D, Convolution2D
 from keras.regularizers import l2
 from keras import initializations
 
-channels = (3, 512, 1024, 2048, 4096) # latent_dim is missing from the end of this tuple
-#channels = (3, 128, 256, 512, 1024) # latent_dim is missing from the end of this tuple
+#channels = (3, 512, 1024, 2048, 4096) # latent_dim is missing from the end of this tuple
+channels = (3, 64, 128, 256, 512) # latent_dim is missing from the end of this tuple
 sizes = (64, 32, 16, 8, 4, 1)
 strides = (2, 2, 2, 2, 2, 1)
 
@@ -103,7 +103,8 @@ class DcganDecoder(Decoder):
 
         return generator_input, recons_output, generator_output
 
-disc_channels = (64, 128, 256, 512, 1) 
+#disc_channels = (64, 128, 256, 512, 1) 
+disc_channels = (8, 16, 32, 64, 1) 
 disc_use_bns = (False, True, True, True, False)
 disc_strides = (2, 2, 2, 2, 1)
 

@@ -90,10 +90,10 @@ class SaveModelsCallback(Callback):
 
     def on_epoch_end(self, epoch, logs):        
         if (epoch+1) % self.frequency != 0: return        
-        vis.saveModel(self.ae, args.prefix + "_model")
-        vis.saveModel(self.encoder, args.prefix + "_encoder")
-        vis.saveModel(self.encoder_var, args.prefix + "_encoder_var")
-        vis.saveModel(self.generator, args.prefix + "_generator")
+        vis.saveModel(self.ae, self.prefix + "_model")
+        vis.saveModel(self.encoder, self.prefix + "_encoder")
+        vis.saveModel(self.encoder_var, self.prefix + "_encoder_var")
+        vis.saveModel(self.generator, self.prefix + "_generator")
 
 
 class FlushCallback(Callback):

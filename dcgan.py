@@ -131,7 +131,7 @@ def discriminator_layer_mnist():
 
 ############################################
 print "loading data"
-(x_train, x_test) = data.load("mnist", trainSize=10000, testSize=500, shape=(64,64), color=1)
+(x_train, x_test) = data.load("celeba", trainSize=10000, testSize=500, shape=(64,64), color=1)
 imageGenerator = ImageDataGenerator()
 x_true_flow = imageGenerator.flow(x_train, batch_size = nbatch)
 
@@ -140,7 +140,7 @@ print "building networks"
 #disc_layers = discriminator_layers()
 #gen_layers = generator_layers()
 disc_layers = model_dcgan.discriminator_layers_wgan(latent_dim=nz, wd=0.0000)
-gen_layers = model_dcgan.generator_layers_wgan(latent_dim=nz, batch_size=nbatch, wd=0.0000)
+gen_layers = model_dcgan.generator_layers_wgan(latent_dim=nz, batch_size=nbatch, wd=0.0000, image_channel=x_train.shape[3])
 
 gen_input = Input(batch_shape=(nbatch,nz), name="gen_input")
 disc_input = Input(batch_shape=(nbatch, npx, npy, x_train.shape[3]), name="disc_input")
@@ -273,11 +273,11 @@ for iter in range(niter):
 
     ii = ndisc(iter)
     for i in range(ii):
-	#clipper.on_batch_end(None)
+	clipper.on_batch_end(None)
 
         disc_r = discriminator.train_on_batch(xs[i*nbatch:(i+1)*nbatch], ys[i*nbatch:(i+1)*nbatch])
         disc_r = discriminator.train_on_batch(xs[(i+ii)*nbatch:(ii+i+1)*nbatch], ys[(ii+i)*nbatch:(ii+i+1)*nbatch])
-	clipper.on_batch_end(None)
+	#clipper.on_batch_end(None)
 
     # update generator
     gen_in = np.random.normal(size=(nbatch, nz))

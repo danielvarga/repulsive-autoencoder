@@ -203,9 +203,6 @@ discriminator.compile(optimizer=RMSprop(lr=0.0005), loss=D_loss)
 print "Discriminator"
 discriminator.summary()
 
-
-#make_trainable(discriminator, False)
-
 """
 gen_disc_input = Input(shape=(nz,), name="gen_disc_input")
 x = generator(gen_disc_input)
@@ -309,3 +306,8 @@ for iter in range(niter):
     print "Iter: {}, Generator: {}, Discriminator: {}, Sum: {}".format(iter, gen_loss, disc_loss, gen_loss+disc_loss)
     if gen_iters % 5 == 0:
         vis.displayRandom(10, x_train, nz, gaussian_sampler, generator, "pictures/gan-random-enloss-after-batch-batch-notshuffled{}".format(iter), batch_size=nbatch)
+        vis.displayRandom(10, x_train, nz, gaussian_sampler, generator, "pictures/gan-random", batch_size=nbatch)
+        vis.saveModel(discriminator, "pictures/gan_discriminator")
+        vis.saveModel(generator, "pictures/gan_generator")
+        vis.saveModel(gen_disc, "pictures/gan_gen_disc")
+

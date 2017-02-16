@@ -91,11 +91,11 @@ class DcganEncoder(Encoder):
         self.batch_size = batch_size
         self.original_shape = original_shape
         print original_shape
-        assert original_shape == (64, 64, 3)
+        assert original_shape[:2] == (64, 64)
         self.wd = wd
 
     def __call__(self, x):
-        layers = encoder_layers_wgan(self.latent_dim, self.batch_size, self.wd)
+        layers = encoder_layers_wgan(self.latent_dim, self.batch_size, self.wd, self.original_shape[2])
         h = x
         for layer in layers:
             h = layer(h)
@@ -110,11 +110,11 @@ class DcganDecoder(Decoder):
         self.batch_size = batch_size
         self.original_shape = original_shape
         print original_shape
-        assert original_shape == (64, 64, 3)
+        assert original_shape[:2] == (64, 64)
         self.wd = wd
 
     def __call__(self, recons_input):
-        layers = generator_layers_wgan(self.latent_dim, self.batch_size, self.wd)
+        layers = generator_layers_wgan(self.latent_dim, self.batch_size, self.wd, self.original_shape[2])
 
         generator_input = Input(batch_shape=(self.batch_size,self.latent_dim))
         generator_output = generator_input

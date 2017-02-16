@@ -32,6 +32,16 @@ ndf = 128         # # of discrim filters in first conv layer
 nbatch = 100      # # of examples in batch
 niter = 20000
 
+# limit memory usage
+import keras
+print "Keras version: ", keras.__version__
+if keras.backend._BACKEND == "tensorflow":
+    import tensorflow as tf
+    from keras.backend.tensorflow_backend import set_session
+    config = tf.ConfigProto()
+    config.gpu_options.per_process_gpu_memory_fraction = 0.45
+    set_session(tf.Session(config=config))
+
 
 # Ported from https://github.com/Newmu/dcgan_code/blob/master/faces/train_uncond_dcgan.py
 # 64x64
@@ -131,7 +141,7 @@ def discriminator_layer_mnist():
 
 ############################################
 print "loading data"
-(x_train, x_test) = data.load("celeba", trainSize=10000, testSize=500, shape=(64,64), color=1)
+(x_train, x_test) = data.load("mnist", trainSize=10000, testSize=500, shape=(64,64), color=1)
 imageGenerator = ImageDataGenerator()
 x_true_flow = imageGenerator.flow(x_train, batch_size = nbatch)
 

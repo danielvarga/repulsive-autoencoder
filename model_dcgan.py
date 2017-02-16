@@ -10,9 +10,10 @@ import keras.backend as K
 
 from keras.engine.topology import Layer
 
-#channels = (3, 512, 1024, 2048, 4096) # latent_dim is missing from the end of this tuple
-channels = (3, 128, 256, 512, 1024) # latent_dim is missing from the end of this tuple
-#channels = (3, 64, 128, 256, 512) # latent_dim is missing from the end of this tuple
+# image_dim is missing from the beginning, latent_dim is missing from the end
+#channels = (512, 1024, 2048, 4096)
+channels = (128, 256, 512, 1024)
+#channels = (64, 128, 256, 512)
 
 sizes = (64, 32, 16, 8, 4, 1)
 strides = (2, 2, 2, 2, 2, 1)

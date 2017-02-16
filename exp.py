@@ -35,10 +35,10 @@ def heuristicCast(s):
 def paramsFromConf(f):
     params = AttrDict()
     for l in f:
-        if l.startswith("#"):
+        if l.strip().startswith("#"):
             continue
         try:
-            k, v = l.strip("\n").split("\t")
+            k, v = l.strip().split(None, 1)
         except:
             assert False, "Malformed config line " + l.strip()
         try:

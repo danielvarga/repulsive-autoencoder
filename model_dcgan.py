@@ -12,14 +12,14 @@ from keras.engine.topology import Layer
 
 # image_dim is missing from the beginning, latent_dim is missing from the end
 #channels = (512, 1024, 2048, 4096)
-channels = (128, 256, 512, 1024)
-#channels = (64, 128, 256, 512)
+#channels = (128, 256, 512, 1024)
+channels = (64, 128, 256, 512)
 
 sizes = (64, 32, 16, 8, 4, 1)
 strides = (2, 2, 2, 2, 2, 1)
 
 encoder_activations = ("relu", "relu", "relu", "relu", "linear")
-generator_activations = ("relu", "relu", "relu", "relu", "tanh")
+generator_activations = ("relu", "relu", "relu", "relu", "sigmoid")
 use_bns = (True, True, True, True, False)
 
 bn_epsilon = 0.00005

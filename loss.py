@@ -80,6 +80,10 @@ def loss_factory(model, encoder, loss_features, args):
         z_centered = z - K.mean(z, axis=0)
         cov = K.dot(K.transpose(z_centered), z_centered)
         loss = K.mean(K.square(K.eye(K.int_shape(z_centered)[1]) * args.batch_size - cov))
+        diag = K.maximum(tf.diag_part(cov), 0.01)
+        print "Adding extra diagonal penalty term to covariance_loss"
+        extra_diag_loss = K.mean(diag - K.log(diag) - 1)
+        loss += extra_diag_loss
         return loss
 
     def intermediary_loss(x, x_decoded):

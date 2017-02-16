@@ -70,7 +70,7 @@ def load_celeba(shape=(72, 60),color=False):
         assert False, "We don't have a celeba dataset with this size. Maybe you forgot about height x width order?"
 
     trainSize = 50000
-    testSize = 5000
+    testSize = 4800 # It was 5000 for a long time, but Daniel wanted batch_size 400.
     if os.path.isfile(cacheFile):
         input = np.load(cacheFile)
     else:
@@ -94,6 +94,7 @@ def load_celeba(shape=(72, 60),color=False):
         np.save(cacheFile,input)
 
     if shape==(64, 64):
+        print "Truncated faces to get shape", shape
         input = input[:,4:68,:,:]
 
     x_train = input[:trainSize]

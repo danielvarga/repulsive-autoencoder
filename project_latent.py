@@ -125,13 +125,6 @@ print np.histogram(mean_variances, 100)
 
 latent_dim = latent_train.shape[1]
 
-print "origo"
-print origo
-print "cov"
-print np.cov(latent_train_mean.T)[:10, :10]
-
-sys.exit()
-
 vis.displayNearest(x_train, latent_train, generator, batch_size, name=prefix+"-nearest", origo = latent_train[6])
 vis.displayNearest(x_train, latent_train, generator, batch_size, name=prefix+"-nearest-masked", origo = latent_train[6], working_mask=working_mask)
 vis.displayNearest(x_train, latent_train_mean, generator, batch_size, name=prefix+"-nearest-mean", origo = latent_train[6])

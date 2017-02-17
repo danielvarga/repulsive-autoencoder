@@ -69,6 +69,15 @@ else:
     encoder_var =encoder
     latent_train = latent_train_mean
 
+
+cov_train_mean = np.cov(latent_train_mean.T)
+
+print "cov_train_mean[:10, :10] :"
+print cov_train_mean[:10, :10]
+
+print "===="
+
+
 projector = np.random.normal(size=(args.latent_dim,))
 projector /= np.linalg.norm(projector)
 projected_z = latent_train.dot(projector)
@@ -223,7 +232,6 @@ if do_latent_variances:
 
 
 
-cov_train_mean = np.cov(latent_train_mean.T)
 eigVals, eigVects = np.linalg.eigh(cov_train_mean)
 print "cov_train_mean eigvals (latent means) = ", list(reversed(eigVals))
 

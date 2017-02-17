@@ -78,13 +78,23 @@ def loss_factory(model, encoder, loss_features, args):
     def covariance_loss(x, x_decoded):
         z = loss_features[1]
         z_centered = z - K.mean(z, axis=0)
-        cov = K.dot(K.transpose(z_centered), z_centered)
-        loss = K.mean(K.square(K.eye(K.int_shape(z_centered)[1]) * args.batch_size - cov))
-        diag = K.maximum(tf.diag_part(cov), 0.01)
-        print "Adding extra diagonal penalty term to covariance_loss"
-        extra_diag_loss = K.mean(diag - K.log(diag) - 1)
-        loss += extra_diag_loss
+        cov = K.dot(K.transpose(z_centered), z_centered) / args.batch_size
+        # The (args.batch_size ** 2) is there to keep it in sync
+        # with previous version, will get rid of it TODO:
+        loss = K.mean(K.square(K.eye(K.int_shape(z_centered)[1]) - cov)) * (args.batch_size ** 2)
+        use_diag_loss = False
+        if use_diag_loss:
+            print "Adding extra diagonal penalty term to covariance_loss"
+            diag = K.maximum(tf.diag_part(cov), 0.01)
+            extra_diag_loss = K.mean(diag - K.log(diag) - 1)
+            loss += extra_diag_loss
         return loss
+
+    def covariance_monitor(x, x_decoded):
+        z = loss_features[1]
+        z_centered = z - K.mean(z, axis=0)
+        cov = K.dot(K.transpose(z_centered), z_centered) / args.batch_size
+        return K.mean(tf.diag_part(cov))
 
     def intermediary_loss(x, x_decoded):
         assert len(loss_features) >= 8
@@ -115,10 +125,10 @@ def loss_factory(model, encoder, loss_features, args):
         return loss
 
     def kstest_loss(x, x_decoded):
-#        z_projected = loss_features[6]
-#        return eigen.kstest_tf(z_projected, args.batch_size)
         z = loss_features[0]
-        return eigen.kstest_loss(z, args.latent_dim, args.batch_size)
+        aggregator = lambda diff: K.mean(K.square(diff)) # That's the default anyway.
+        loss = eigen.kstest_loss(z, args.latent_dim, args.batch_size, aggregator)
+        return loss
 
     def layerwise_loss(x, x_decoded):
         model_nodes = model.nodes_by_depth
@@ -175,7 +185,7 @@ def loss_factory(model, encoder, loss_features, args):
     weightDict = {}
     for schedule in args.weight_schedules:
         weightDict[schedule[0]] = schedule[5]
-    print weightDict
+    print "weight dict", weightDict
 
     def lossFun(x, x_decoded):
         lossValue = 0
@@ -183,8 +193,9 @@ def loss_factory(model, encoder, loss_features, args):
             loss = losses[i]
             lossName = args.losses[i]
             currentLoss = loss(x, x_decoded)
-            if weightDict.has_key(lossName):
-                currentLoss *= weightDict[lossName]
+            weight = weightDict.get(lossName, 1.0)
+            currentLoss *= weight
+            print lossName, "weight", weight
             lossValue += currentLoss
         return lossValue
     return lossFun, metrics

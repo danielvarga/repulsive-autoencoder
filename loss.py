@@ -5,7 +5,7 @@ import numpy as np
 
 import eigen
 
-# loss_features = [z, z_mean, z_log_var, sparse_input, sparse_output]
+# loss_features is an AttrDict with z_sampled, z_mean, z_log_var, sparse_input, sparse_output.
 def loss_factory(model, encoder, loss_features, args):
     original_dim = np.float32(np.prod(args.original_shape))
 
@@ -29,19 +29,19 @@ def loss_factory(model, encoder, loss_features, args):
         return K.mean(loss)
 
     def arm_loss(x, x_decoded):
-        loss = original_dim * objectives.mean_absolute_error(loss_features[4], loss_features[4])
+        loss = original_dim * objectives.mean_absolute_error(loss_features.sparse_input, loss_features.sparse_output)
         return K.mean(loss)
 
     def size_loss(x, x_decoded): # pushing the means towards the origo
-        loss = 0.5 * K.sum(K.square(loss_features[1]), axis=-1)
+        loss = 0.5 * K.sum(K.square(loss_features.z_mean), axis=-1)
         return K.mean(loss)
 
-    def sampled_size_loss(x, x_decoded): # pushing the samples towards the origo
-        loss = 0.5 * K.sum(K.square(loss_features[0]), axis=-1)
+    def sampled_size_loss(x, x_decoded): # pushing the sampleds towards the origo
+        loss = 0.5 * K.sum(K.square(loss_features.z_sampled), axis=-1)
         return K.mean(loss)
 
     def variance_loss(x, x_decoded): # pushing the variance towards 1
-        loss = 0.5 * K.sum(-1 - loss_features[2] + K.exp(loss_features[2]), axis=-1)
+        loss = 0.5 * K.sum(-1 - loss_features.z_log_var + K.exp(loss_features.z_log_var), axis=-1)
         return K.mean(loss)
 
     def edge_loss(x, x_decoded):
@@ -52,19 +52,19 @@ def loss_factory(model, encoder, loss_features, args):
 
     # pushing latent points towards unit sphere surface, both from inside and out.
     def sphere_loss(x, x_decoded):
-        z_mean = loss_features[1]
-        average_distances = K.mean(K.square(z_mean), axis=1)
+        # pre sampling!
+        average_distances = K.mean(K.square(loss_features.z_mean), axis=1)
         FUDGE = 0.01
         loss = -1 -K.log(average_distances + FUDGE) + FUDGE + average_distances
         return args.latent_dim * K.mean(loss)
 
     def mean_loss(x, x_decoded): # pushing the average of the points to zero
-        z_mean = loss_features[1]
-        loss = K.abs(K.mean(z_mean, axis = 0))
+        # pre sampling!
+        loss = K.abs(K.mean(loss_features.z_mean, axis = 0))
         return args.latent_dim * K.mean(loss)
 
     def repulsive_loss(x, x_decoded): # pushing points away from each other
-        z_normed = loss_features[3]
+        z_normed = loss_features.z_normed
         epsilon = 0.0001
         distances = (2 + epsilon - 2.0 * K.dot(z_normed, K.transpose(z_normed))) ** 0.5
         loss = K.mean(-distances)
@@ -76,7 +76,7 @@ def loss_factory(model, encoder, loss_features, args):
         return 0.01 * K.mean(loss)
 
     def covariance_loss(x, x_decoded):
-        z = loss_features[1]
+        z = loss_features.z_sampled # post sampling
         z_centered = z - K.mean(z, axis=0)
         cov = K.dot(K.transpose(z_centered), z_centered) / args.batch_size
         # The (args.batch_size ** 2) is there to keep it in sync
@@ -91,14 +91,13 @@ def loss_factory(model, encoder, loss_features, args):
         return loss
 
     def covariance_monitor(x, x_decoded):
-        z = loss_features[1]
+        z = loss_features.z_sampled # post sampling
         z_centered = z - K.mean(z, axis=0)
         cov = K.dot(K.transpose(z_centered), z_centered) / args.batch_size
         return K.mean(tf.diag_part(cov))
 
     def intermediary_loss(x, x_decoded):
-        assert len(loss_features) >= 8
-        intermediary_outputs = loss_features[7]
+        intermediary_outputs = loss_features.intermediary_outputs
         loss = 0
         for intermediary_output in intermediary_outputs:
             loss += mse_loss(x, intermediary_output)
@@ -110,22 +109,20 @@ def loss_factory(model, encoder, loss_features, args):
     # Note: the eigenvector calculation assumes that the latent minibatch is zero-centered.
     # We do not do this zero-centering.
     def dominant_eigenvector_loss(x, x_decoded):
-        z = loss_features[0] # after sampling, if there was one
+        z = loss_features.z_sampled # post sampling
         domineigvec, domineigval = eigen.eigvec_of_cov(z, args.batch_size, latent_dim=args.latent_dim, iterations=3, inner_normalization=False)
         loss = K.square(K.dot(z, domineigvec))
         return K.mean(loss)
 
     def eigenvalue_gap_loss(x, x_decoded):
-        EIGENVALUE_GAP_LOSS_WEIGHT = 100.0
-        z = loss_features[0] # after sampling, if there was one
+        z = loss_features.z_sampled # post sampling
         WW = K.dot(K.transpose(z), z)
         mineigval, maxeigval = eigen.extreme_eigvals(WW, args.batch_size, latent_dim=args.latent_dim, iterations=3, inner_normalization=False)
         loss = K.square(maxeigval-1) + K.square(mineigval-1)
-        loss *= EIGENVALUE_GAP_LOSS_WEIGHT
         return loss
 
     def kstest_loss(x, x_decoded):
-        z = loss_features[0]
+        z = loss_features.z_sampled # post sampling
         aggregator = lambda diff: K.mean(K.square(diff)) # That's the default anyway.
         loss = eigen.kstest_loss(z, args.latent_dim, args.batch_size, aggregator)
         return loss
@@ -164,14 +161,14 @@ def loss_factory(model, encoder, loss_features, args):
         loss = K.mean(loss, axis=-1)
         return original_dim * K.mean(loss)
     def min_loss(x, x_decoded):
-        z = loss_features[1]
+        z = loss_features.z_mean # pre sampling!
         loss = 0.5 * K.sum(K.square(z), axis=-1)
         return K.min(loss)
     def max_loss(x, x_decoded):
-        z = loss_features[1]
+        z = loss_features.z_mean # pre sampling!
         return K.max(z)
     def dummy_loss(x, x_decoded):
-        z = loss_features[1]
+        z = loss_features.z_mean # pre sampling!
         loss = K.mean(z, axis=1)
         return K.mean(loss)
 

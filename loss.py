@@ -76,12 +76,16 @@ def loss_factory(model, encoder, loss_features, args):
         return 0.01 * K.mean(loss)
 
     def covariance_loss(x, x_decoded):
-        z = loss_features.z_sampled # post sampling
+        print "pre-sampling covariance loss!"
+        z = loss_features.z_mean # pre sampling!
         z_centered = z - K.mean(z, axis=0)
         cov = K.dot(K.transpose(z_centered), z_centered) / args.batch_size
         # The (args.batch_size ** 2) is there to keep it in sync
         # with previous version, will get rid of it TODO:
-        loss = K.mean(K.square(K.eye(K.int_shape(z_centered)[1]) - cov)) * (args.batch_size ** 2)
+
+        SCALE_HACK = 1.53
+        print "Hey hey hey, hacked scaling of covariance loss!"
+        loss = K.mean(K.square(K.eye(K.int_shape(z_centered)[1])*SCALE_HACK - cov)) * (args.batch_size ** 2)
         use_diag_loss = False
         if use_diag_loss:
             print "Adding extra diagonal penalty term to covariance_loss"
@@ -91,7 +95,7 @@ def loss_factory(model, encoder, loss_features, args):
         return loss
 
     def covariance_monitor(x, x_decoded):
-        z = loss_features.z_sampled # post sampling
+        z = loss_features.z_mean # pre sampling!
         z_centered = z - K.mean(z, axis=0)
         cov = K.dot(K.transpose(z_centered), z_centered) / args.batch_size
         return K.mean(tf.diag_part(cov))

@@ -44,7 +44,7 @@ def encoder_layers_wgan(latent_dim, batch_size, wd, image_channel):
         else:
             border_mode = "same"
         layers.append(Convolution2D(channel, 4, 4, subsample=(stride, stride), border_mode=border_mode, init=normal_init, bias=False, W_regularizer=l2(wd)))
-        if use_bn: layers.append(BatchNormalization(epsilon=bn_epsilon))
+#        if use_bn: layers.append(BatchNormalization(epsilon=bn_epsilon))
         layers.append(Activation(activation, name="encoder_{}".format(size)))
     layers.append(Reshape((latent_dim,)))
     return layers
@@ -58,9 +58,9 @@ def generator_layers_wgan(latent_dim, batch_size, wd, image_channel):
     import time
     for channel, size, stride, use_bn, activation in zip(generator_channels, generator_sizes, generator_strides, use_bns, generator_activations):
         if size == 4:
-	    #layers.append(Dense(4*4*latent_dim))
-	    #layers.append(Reshape((4,4,latent_dim)))
-	    layers.append(UpSampling2D(size=(4,4)))
+	    layers.append(Dense(4*4*latent_dim))
+	    layers.append(Reshape((4,4,latent_dim)))
+	    #layers.append(UpSampling2D(size=(4,4)))
 	    #layers.append(UnPooling2D(poolsize=(4,4)))
 
             border_mode = "valid"
@@ -78,7 +78,7 @@ def generator_layers_wgan(latent_dim, batch_size, wd, image_channel):
                                       subsample=(1, 1), border_mode="same", W_regularizer=l2(wd)))
 	
 
-        if use_bn: layers.append(BatchNormalization(epsilon=bn_epsilon))
+#        if use_bn: layers.append(BatchNormalization(epsilon=bn_epsilon))
         layers.append(Activation(activation, name="generator_{}".format(size)))
     return layers
 
@@ -125,8 +125,8 @@ class DcganDecoder(Decoder):
 
         return generator_input, recons_output, generator_output
 
-#disc_channels = (64, 128, 256, 512, 1) 
-disc_channels = (8, 16, 32, 64, 1) 
+disc_channels = (64, 128, 256, 512, 1) 
+#disc_channels = (8, 16, 32, 64, 1) 
 disc_use_bns = (False, True, True, True, False)
 disc_strides = (2, 2, 2, 2, 1)
 
@@ -139,7 +139,8 @@ def discriminator_layers_wgan(latent_dim, wd):
         else:
             border_mode = "same"
         layers.append(Convolution2D(channel, 4, 4, subsample=(stride, stride), border_mode=border_mode, init=normal_init, bias=False, W_regularizer=l2(wd)))
-        if use_bn: layers.append(BatchNormalization(epsilon=bn_epsilon))
-        if stride != 1: layers.append(LeakyReLU(alpha=alpha))
+#        if use_bn: layers.append(BatchNormalization(epsilon=bn_epsilon))
+        if stride != 1: 
+            layers.append(LeakyReLU(alpha=alpha))
     layers.append(Reshape((1,)))
     return layers

@@ -7,7 +7,7 @@ from keras.layers.convolutional import UpSampling2D
 from keras.layers.convolutional import Convolution2D, MaxPooling2D, Deconvolution2D
 from keras.layers.advanced_activations import LeakyReLU
 from keras.models import Model
-from keras.optimizers import Adam, RMSprop
+from keras.optimizers import Adam, RMSprop, SGD
 from keras.regularizers import WeightRegularizer
 from keras.preprocessing.image import ImageDataGenerator
 
@@ -18,6 +18,7 @@ import data
 import vis
 import model_dcgan
 
+lr = 0.00005
 l2 = 1e-5         # l2 weight decay
 
 nc = 3            # # of channels in image
@@ -173,14 +174,15 @@ def D_loss(y_true, y_pred):
     #return - ( tf.reduce_mean((y_true+1.0) * y_pred * 0.5) - tf.reduce_mean((y_true-1.0) * y_pred *0.5) )
     # ELSO PROBLEM itt atlagolva nem ment nekem
     return - y_true * y_pred
+#    return np.abs(1 - y_true * y_pred)
 
     #real = K.sum(y_pred * y_true) / K.sum(y_true)
     #fake = K.sum(y_pred * (1 - y_true)) / K.sum(1 - y_true)
     #return fake - real
 
 # y_true is irrelevant, the generator tries to make its output as large as possible
-def G_loss(y_true, y_pred):
-    return - y_pred
+#def G_loss(y_true, y_pred):
+#    return np.abs(-1 - y_pred)
 
 
 
@@ -193,13 +195,12 @@ def make_trainable(net, val):
 
 
 generator = Model(input=gen_input, output=gen_output)
-#generator.compile(optimizer=RMSprop(lr=0.0005), loss=G_loss)
-generator.compile(optimizer=RMSprop(), loss=G_loss)
+generator.compile(optimizer=RMSprop(lr=lr), loss=D_loss)
 print "Generator:"
 generator.summary()
 
 discriminator = Model(disc_input, disc_output)
-discriminator.compile(optimizer=RMSprop(lr=0.0005), loss=D_loss)
+discriminator.compile(optimizer=RMSprop(lr=lr), loss=D_loss)
 print "Discriminator"
 discriminator.summary()
 
@@ -210,14 +211,14 @@ x = discriminator(x)
 gen_disc = Model(input=gen_disc_input, output=x)
 """
 gen_disc = Model(input=gen_input, output=gen_disc_output)
-gen_disc.compile(loss=G_loss, optimizer=RMSprop(lr=0.0005))
+gen_disc.compile(loss=D_loss, optimizer=RMSprop(lr=lr))
 print "combined net"
 gen_disc.summary()
 
-#make_trainable(discriminator, True)
-
+#make_trainable(discriminator, False)
 
 def ndisc(gen_iters):
+    return 5
     if gen_iters < 25:
         return 100
     elif gen_iters % 500 == 0:
@@ -263,6 +264,7 @@ def randomize(a, b):
     shuffled_b = b[permutation]
     return shuffled_a, shuffled_b
 
+gen_out = np.array([1.0] *  nbatch)
 for iter in range(niter):
     # update discriminator
     disc_epoch_size = ndisc(iter) * nbatch
@@ -272,40 +274,44 @@ for iter in range(niter):
     xs = np.concatenate((x_predicted, x_true), axis=0)
     ys = np.concatenate((-1.0 * np.ones(disc_epoch_size), np.ones(disc_epoch_size)), axis=0)
 
-    #make_trainable(discriminator, True)
-    #make_trainable(generator, False)
-    
-    #disc_r = discriminator.fit(xs, ys, verbose=0, batch_size=nbatch, nb_epoch=1, shuffle=True, callbacks=[clipper])
-    #xs, ys = randomize(xs, ys)
+#    xs, ys = randomize(xs, ys)
+    make_trainable(discriminator, True)
+    disc_r = discriminator.fit(xs, ys, verbose=0, batch_size=nbatch, nb_epoch=1, shuffle=True)#, callbacks=[clipper])
 
-    ii = ndisc(iter)
-    for i in range(ii):
-	clipper.on_batch_end(None)
 
-        disc_r = discriminator.train_on_batch(xs[i*nbatch:(i+1)*nbatch], ys[i*nbatch:(i+1)*nbatch])
-        disc_r = discriminator.train_on_batch(xs[(i+ii)*nbatch:(ii+i+1)*nbatch], ys[(ii+i)*nbatch:(ii+i+1)*nbatch])
+    # ii = ndisc(iter)
+    # for i in range(ii):
+    #     clipper.on_batch_end(None)
+
+#        disc_r = discriminator.train_on_batch(xs[i*nbatch:(i+1)*nbatch], ys[i*nbatch:(i+1)*nbatch])
+#        disc_r = discriminator.train_on_batch(xs[(i+ii)*nbatch:(ii+i+1)*nbatch], ys[(ii+i)*nbatch:(ii+i+1)*nbatch])
+        # # TODO ONLY WORKS IF nbatch IS DIVISIBLE BY 2
+        # curr_xs = xs[i*nbatch:(i+1)*nbatch]
+        # curr_xs[:nbatch/2] = xs[(i+ii)*nbatch:int((ii+i+0.5)*nbatch)]
+        # curr_ys = ys[i*nbatch:(i+1)*nbatch]
+        # curr_ys[:nbatch/2] = ys[(i+ii)*nbatch:int((ii+i+0.5)*nbatch)]
+        # disc_r = discriminator.train_on_batch(curr_xs, curr_ys)
 	#clipper.on_batch_end(None)
 
     # update generator
     gen_in = np.random.normal(size=(nbatch, nz))
-    gen_out = np.array([1.0] *  nbatch)
     
     make_trainable(discriminator, False)
-
-    #gen_r= gen_disc.fit(gen_in, gen_out, verbose=0, batch_size=nbatch, nb_epoch=1)
+#    gen_r= gen_disc.fit(gen_in, gen_out, verbose=0, batch_size=nbatch, nb_epoch=1)
+#    gen_loss = gen_r.history["loss"][0]
     gen_r = gen_disc.train_on_batch(gen_in, gen_out)
-    
+    gen_loss = gen_r
+    pred = gen_disc.predict(gen_in, batch_size=nbatch)
+    gen_loss2 = np.mean(D_loss(gen_out, pred))
     gen_iters += 1
 
-    make_trainable(discriminator, True)
-
-    disc_loss = disc_r
-    gen_loss = gen_r
-
+#    disc_loss = disc_r
+    disc_loss = disc_r.history["loss"][0]
     
-    print "Iter: {}, Generator: {}, Discriminator: {}, Sum: {}".format(iter, gen_loss, disc_loss, gen_loss+disc_loss)
-    if gen_iters % 5 == 0:
-        vis.displayRandom(10, x_train, nz, gaussian_sampler, generator, "pictures/gan-random-enloss-after-batch-batch-notshuffled{}".format(iter), batch_size=nbatch)
+
+    print "Iter: {}, Generator: {} - {}, Discriminator: {}, Sum: {}".format(iter, gen_loss, gen_loss2, disc_loss, gen_loss+disc_loss)
+    if gen_iters % 20 == 0:
+        vis.displayRandom(10, x_train, nz, gaussian_sampler, generator, "pictures/gan-random-{}".format(iter), batch_size=nbatch)
         vis.displayRandom(10, x_train, nz, gaussian_sampler, generator, "pictures/gan-random", batch_size=nbatch)
         vis.saveModel(discriminator, "pictures/gan_discriminator")
         vis.saveModel(generator, "pictures/gan_generator")

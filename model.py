@@ -15,9 +15,12 @@ from keras import backend as K
 from keras.datasets import mnist
 from keras.optimizers import *
 from keras.regularizers import l2
+
 import activations
 from loss import loss_factory
 from arm import ArmLayer
+from exp import AttrDict
+
 
 def build_model(args):
     x = Input(batch_shape=([args.batch_size] + list(args.original_shape)))
@@ -79,9 +82,17 @@ def build_model(args):
     sparse_input = armLayer(sparse_input)
     sparse_output = Flatten()(recons_output)
     sparse_output = armLayer(sparse_output)
-    loss_features = [z, z_mean, z_log_var, z_normed, sparse_input, sparse_output, z_projected]
+    loss_features = AttrDict({
+        "z_sampled": z,
+        "z_mean": z_mean,
+        "z_log_var": z_log_var,
+        "z_normed": z_normed,
+        "sparse_input": sparse_input,
+        "sparse_output": sparse_output,
+        "z_projected": z_projected
+    })
     if args.decoder == "resnet":
-        loss_features.append(decoder_fun_output[3]) # intermediary outputs
+        loss_features.intermediary_outputs = decoder_fun_output[3]
     loss, metrics = loss_factory(ae, encoder, loss_features, args)
 
     if args.optimizer == "rmsprop":

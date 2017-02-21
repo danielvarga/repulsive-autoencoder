@@ -33,7 +33,7 @@ def bn_beta_init(shape, name=None):
 def bn_gamma_init(shape, name=None):
     return initializations.normal(shape, scale=0.02, name=name) + K.ones(shape)
 
-def encoder_layers_wgan(latent_dim, batch_size, wd, image_channel):
+def encoder_layers_wgan(latent_dim, batch_size, wd, bn_allowed, image_channel):
     encoder_channels = list(channels) + [latent_dim]
     encoder_sizes = sizes[1:]
     encoder_strides = strides[1:]
@@ -44,12 +44,41 @@ def encoder_layers_wgan(latent_dim, batch_size, wd, image_channel):
         else:
             border_mode = "same"
         layers.append(Convolution2D(channel, 4, 4, subsample=(stride, stride), border_mode=border_mode, init=normal_init, bias=False, W_regularizer=l2(wd)))
-#        if use_bn: layers.append(BatchNormalization(epsilon=bn_epsilon))
+        if bn_allowed and use_bn: 
+            layers.append(BatchNormalization(epsilon=bn_epsilon))
         layers.append(Activation(activation, name="encoder_{}".format(size)))
     layers.append(Reshape((latent_dim,)))
     return layers
 
-def generator_layers_wgan(latent_dim, batch_size, wd, image_channel):
+def generator_layers_simple(latent_dim, batch_size, wd, bn_allowed, image_channel):
+    layers = []
+    layers.append(Dense(latent_dim, activation="relu"))
+    layers.append(Dense(latent_dim, activation="relu"))
+    layers.append(Dense(sizes[0] * sizes[0] * image_channel, activation="sigmoid"))
+    layers.append(Reshape((sizes[0], sizes[0], image_channel)))
+    return layers
+
+"""    
+DCGAN_G (
+  (main): Sequential (
+    (initial.100-4096.convt): ConvTranspose2d(100, 4096, kernel_size=(4, 4), stride=(1, 1), bias=False)
+    (initial.4096.batchnorm): BatchNorm2d(4096, eps=1e-05, momentum=0.1, affine=True)
+    (initial.4096.relu): ReLU (inplace)
+    (pyramid.4096-2048.convt): ConvTranspose2d(4096, 2048, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1), bias=False)
+    (pyramid.2048.batchnorm): BatchNorm2d(2048, eps=1e-05, momentum=0.1, affine=True)
+    (pyramid.2048.relu): ReLU (inplace)
+    (pyramid.2048-1024.convt): ConvTranspose2d(2048, 1024, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1), bias=False)
+    (pyramid.1024.batchnorm): BatchNorm2d(1024, eps=1e-05, momentum=0.1, affine=True)
+    (pyramid.1024.relu): ReLU (inplace)
+    (pyramid.1024-512.convt): ConvTranspose2d(1024, 512, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1), bias=False)
+    (pyramid.512.batchnorm): BatchNorm2d(512, eps=1e-05, momentum=0.1, affine=True)
+    (pyramid.512.relu): ReLU (inplace)
+    (final.512-3.convt): ConvTranspose2d(512, 3, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1), bias=False)
+    (final.3.tanh): Tanh ()
+  )
+)
+"""
+def generator_layers_wgan(latent_dim, batch_size, wd, bn_allowed, image_channel):
     generator_channels = list(reversed(channels)) + [image_channel]
     generator_sizes = reversed(sizes[:-1])
     generator_strides = reversed(strides[:-1])
@@ -70,15 +99,16 @@ def generator_layers_wgan(latent_dim, batch_size, wd, image_channel):
 
             border_mode = "same"
 
-	"""
-        layers.append(Deconvolution2D(channel, 4, 4, output_shape=(batch_size, size, size, channel), init=normal_init, bias=False,
-                                      subsample=(stride, stride), border_mode=border_mode, W_regularizer=l2(wd)))
-	"""
+	
+#        layers.append(Deconvolution2D(channel, 4, 4, output_shape=(batch_size, size, size, channel), init=normal_init, bias=False,
+#                                      subsample=(stride, stride), border_mode=border_mode, W_regularizer=l2(wd)))
+	
         layers.append(Convolution2D(channel, 4, 4, init=normal_init, bias=False,
                                       subsample=(1, 1), border_mode="same", W_regularizer=l2(wd)))
 	
 
-#        if use_bn: layers.append(BatchNormalization(epsilon=bn_epsilon))
+        if bn_allowed and use_bn: 
+            layers.append(BatchNormalization(epsilon=bn_epsilon))
         layers.append(Activation(activation, name="generator_{}".format(size)))
     return layers
 
@@ -130,7 +160,33 @@ disc_channels = (64, 128, 256, 512, 1)
 disc_use_bns = (False, True, True, True, False)
 disc_strides = (2, 2, 2, 2, 1)
 
-def discriminator_layers_wgan(latent_dim, wd):
+def discriminator_layers_simple(latent_dim, wd, bn_allowed):
+    layers = []
+    layers.append(Flatten())
+    layers.append(Dense(100, activation="relu"))
+    layers.append(Dense(100, activation="relu"))
+    layers.append(Dense(1))
+    return layers
+
+"""
+DCGAN_D (
+  (main): Sequential (
+    (initial.conv.3-64): Conv2d(3, 64, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1), bias=False)
+    (initial.relu.64): LeakyReLU (0.2, inplace)
+    (pyramid.64-128.conv): Conv2d(64, 128, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1), bias=False)
+    (pyramid.128.batchnorm): BatchNorm2d(128, eps=1e-05, momentum=0.1, affine=True)
+    (pyramid.128.relu): LeakyReLU (0.2, inplace)
+    (pyramid.128-256.conv): Conv2d(128, 256, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1), bias=False)
+    (pyramid.256.batchnorm): BatchNorm2d(256, eps=1e-05, momentum=0.1, affine=True)
+    (pyramid.256.relu): LeakyReLU (0.2, inplace)
+    (pyramid.256-512.conv): Conv2d(256, 512, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1), bias=False)
+    (pyramid.512.batchnorm): BatchNorm2d(512, eps=1e-05, momentum=0.1, affine=True)
+    (pyramid.512.relu): LeakyReLU (0.2, inplace)
+    (final.512-1.conv): Conv2d(512, 1, kernel_size=(4, 4), stride=(1, 1), bias=False)
+  )
+)
+"""
+def discriminator_layers_wgan(latent_dim, wd, bn_allowed):
     alpha = 0.2
     layers=[]
     for channel, stride, use_bn in zip(disc_channels, disc_strides, disc_use_bns):
@@ -139,8 +195,115 @@ def discriminator_layers_wgan(latent_dim, wd):
         else:
             border_mode = "same"
         layers.append(Convolution2D(channel, 4, 4, subsample=(stride, stride), border_mode=border_mode, init=normal_init, bias=False, W_regularizer=l2(wd)))
-#        if use_bn: layers.append(BatchNormalization(epsilon=bn_epsilon))
+        if bn_allowed and use_bn:
+            layers.append(BatchNormalization(epsilon=bn_epsilon))
         if stride != 1: 
             layers.append(LeakyReLU(alpha=alpha))
     layers.append(Reshape((1,)))
     return layers
+
+
+
+### TODO: see if we need any of this code
+# nc = 3            # # of channels in image
+# npx = 64
+# npy = 64          # # of pixels width/height of images
+# nx = npx*npy*nc   # # of dimensions in X
+
+# ngf = 512         # # of gen filters in first conv layer
+# ndf = 128         # # of discrim filters in first conv layer
+# # Ported from https://github.com/Newmu/dcgan_code/blob/master/faces/train_uncond_dcgan.py
+# # 64x64
+# def generator_layers():
+#     layers = []
+#     wd = WeightRegularizer(l2=args.wd)
+#     assert npx % 16 == 0
+#     assert npy % 16 == 0
+#     layers.append(Dense(output_dim=ngf*8*(npx/16)*(npy/16), W_regularizer=wd))
+#     layers.append(BatchNormalization())
+#     layers.append(Activation('relu'))
+#     layers.append(Reshape((npx/16, npy/16, ngf*8)))
+#     deconv = False
+#     for wide  in (4, 2, 1):
+#         wd = WeightRegularizer(l2=args.wd)
+#         if deconv:
+#             layers.append(Deconvolution2D(ngf*wide, 5, 5,
+#                                           output_shape=(args.batch_size, npx/wide/2, npy/wide/2, ngf*wide),
+#                                           subsample=(2, 2), border_mode='same',
+#                                           W_regularizer=wd))
+#         else:
+#             layers.append(UpSampling2D(size=(2, 2)))
+#             layers.append(Convolution2D(ngf*wide, 5, 5, border_mode='same', W_regularizer=wd))
+#             layers.append(BatchNormalization())
+#             layers.append(Activation('relu'))
+
+#     if deconv:
+#         wd = WeightRegularizer(l2=args.wd)
+#         layers.append(Deconvolution2D(nc, 5, 5, output_shape=(args.batch_size, nc, npx, npx),
+#                                       subsample=(2, 2), border_mode='same', W_regularizer=wd))
+#     else:
+#         wd = WeightRegularizer(l2=args.wd)
+#         layers.append(UpSampling2D(size=(2, 2)))
+#         layers.append(Convolution2D(nc, 5, 5, border_mode='same', W_regularizer=wd))
+#         layers.append(Activation('tanh'))
+#     return layers
+
+
+# # 64x64
+# def discriminator_layers():
+#     alpha = 0.2
+#     layers=[]
+#     wd = WeightRegularizer(l2=args.wd)
+#     layers.append(Convolution2D(ndf, 5, 5, border_mode='same', W_regularizer=wd))
+#     layers.append(LeakyReLU(alpha=alpha))
+#     layers.append(BatchNormalization())
+#     layers.append(Activation('relu'))
+#     for wide in [2, 4, 8]:
+#         wd = WeightRegularizer(l2=args.wd)
+#         print "hey", ndf*wide
+#         layers.append(Convolution2D(ndf*wide, 5, 5,
+#                                     border_mode='same', subsample=(2, 2), W_regularizer=wd))
+#         layers.append(BatchNormalization())
+#         layers.append(LeakyReLU(alpha=alpha))
+#     layers.append(Flatten())
+#     wd = WeightRegularizer(l2=args.wd)
+#     layers.append(Dense(1, activation='sigmoid', W_regularizer=wd))
+#     return layers
+
+# # From https://github.com/jacobgil/keras-dcgan/blob/master/dcgan.py
+# def generator_layer_mnist():
+#     input = Input(shape=(100,))
+#     net = input
+#     net = Dense(input_dim=100, output_dim=1024)(net)
+#     net = Activation('tanh')(net)
+#     net = Dense(128*7*7)(net)
+#     net = BatchNormalization()(net)
+#     net = Activation('tanh')(net)
+#     net = Reshape((128, 7, 7), input_shape=(128*7*7,))(net)
+#     net = UpSampling2D(size=(2, 2))(net)
+#     net = Convolution2D(64, 5, 5, border_mode='same')(net)
+#     net = Activation('tanh')(net)
+#     net = UpSampling2D(size=(2, 2))(net)
+#     net = Convolution2D(1, 5, 5, border_mode='same')(net)
+#     net = Activation('tanh')(net)
+#     return input, net
+
+
+# # https://github.com/jacobgil/keras-dcgan/blob/master/dcgan.py
+# def discriminator_layer_mnist():
+#     input = Input(shape=(1, 28, 28))
+#     net = input
+#     net = Convolution2D(64, 5, 5,
+#                         border_mode='same',
+#                         input_shape=(1, 28, 28))(net)
+#     net = Activation('tanh')(net)
+#     net = MaxPooling2D(pool_size=(2, 2))(net)
+#     net = Convolution2D(128, 5, 5)(net)
+#     net = Activation('tanh')(net)
+#     net = MaxPooling2D(pool_size=(2, 2))(net)
+#     net = Flatten()(net)
+#     net = Dense(1024)(net)
+#     net = Activation('tanh')(net)
+#     net = Dense(1)(net)
+#     net = Activation('sigmoid')(net)
+#     return input, net

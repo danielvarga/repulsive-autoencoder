@@ -99,7 +99,6 @@ def load_celeba(shape=(72, 60),color=False):
 
     x_train = input[:trainSize]
     x_test = input[trainSize:trainSize+testSize]
-    np.random.seed(10) # TODO Not the right place to do this.
     x_train = np.random.permutation(x_train)
     x_test = np.random.permutation(x_test)
     return (x_train, x_test)

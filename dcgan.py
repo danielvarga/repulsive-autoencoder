@@ -10,6 +10,7 @@ from keras.models import Model
 from keras.optimizers import Adam, RMSprop, SGD
 from keras.regularizers import WeightRegularizer
 from keras.preprocessing.image import ImageDataGenerator
+from keras.utils import generic_utils
 
 import keras.backend as K
 import tensorflow as tf
@@ -66,66 +67,58 @@ for layer in disc_layers:
     disc_output = layer(disc_output)
     gen_disc_output = layer(gen_disc_output)
 
-# y_true = 1 (real_image) or -10 (generated_image)
+# y_true = 1 (real_image) or -1 (generated_image)
 # we push the real examples up, the false examples down
 def D_loss(y_true, y_pred):
-    return - y_true * y_pred
+    x = y_true * y_pred
+    zeros = K.zeros(y_pred.shape)
+    x_correct = K.maximum(x, zeros)
+    x_false = K.minimum(x, zeros)
+    loss = - args.falseWeight * K.sum(x_false) - K.sum(x_correct)
+    return loss
 
-# the generator tries to make its output as large as possible
-def G_loss(y_true, y_pred):
-    return np.abs(-1 - y_pred)
+def D_acc(y_true, y_pred):
+    x = y_true * y_pred
+    return 100 * K.mean(x > 0)
+def D_acc_np(y_true, y_pred):
+    x = y_true * y_pred
+    return 100 * np.mean(x > 0)
 
 
-
-# Freeze weights in the discriminator for stacked training
-def make_trainable(net, val):
-    net.trainable = val
-    for l in net.layers:
-        l.trainable = val
-
-
-
-generator = Model(input=gen_input, output=gen_output)
-if args.optimizer == "adam":
-    optimizer = Adam(lr=args.lr)
-elif args.optimizer == "rmsprop":
-    optimizer = RMSprop(lr=args.lr)
-elif args.optimizer == "sgd":
-    args.optimizer = SGD(lr=args.lr)
-generator.compile(optimizer=optimizer, loss=D_loss)
-print "Generator:"
-generator.summary()
 
 discriminator = Model(disc_input, disc_output)
 if args.optimizer == "adam":
-    optimizer = Adam(lr=args.lr)
+    optimizer_d = Adam(lr=args.lr)
 elif args.optimizer == "rmsprop":
-    optimizer = RMSprop(lr=args.lr)
+    optimizer_d = RMSprop(lr=args.lr)
 elif args.optimizer == "sgd":
-    args.optimizer = SGD(lr=args.lr)
-discriminator.compile(optimizer=optimizer, loss=D_loss)
+    optimizer_d = SGD(lr=args.lr)
+discriminator.compile(optimizer=optimizer_d, loss=D_loss, metrics=[D_acc])
 print "Discriminator"
 discriminator.summary()
 
+generator = Model(input=gen_input, output=gen_output)
 gen_disc = Model(input=gen_input, output=gen_disc_output)
 if args.optimizer == "adam":
-    optimizer = Adam(lr=args.lr)
+    optimizer_g = Adam(lr=args.lr)
 elif args.optimizer == "rmsprop":
-    optimizer = RMSprop(lr=args.lr)
+    optimizer_g = RMSprop(lr=args.lr)
 elif args.optimizer == "sgd":
-    args.optimizer = SGD(lr=args.lr)
-gen_disc.compile(loss=D_loss, optimizer=optimizer)
+    optimizer_g = SGD(lr=args.lr)
+generator.compile(optimizer=optimizer_g, loss="mse")
+print "Generator:"
+generator.summary()
+gen_disc.compile(loss=D_loss, optimizer=optimizer_g)
 print "combined net"
 gen_disc.summary()
 
 def ndisc(gen_iters):
-#    return 1
     if gen_iters < 25:
         return 100
     elif gen_iters % 500 == 0:
 	return 100
     else:
-        return 20
+        return 5
 
 
 def gaussian_sampler(batch_size, latent_dim):
@@ -139,7 +132,10 @@ class ClipperCallback(Callback):
 	self.layers = layers
         self.clipValue = clipValue
 
-    def on_epoch_begin(self, batch, logs={}):
+    def on_batch_begin(self):
+        self.clip()
+
+    def clip(self):
 	for layer in self.layers:
 #            if layer.__class__.__name__ not in ("Convolution2D", "BatchNormalization"): continue
             weights = layer.get_weights()
@@ -161,38 +157,64 @@ def randomize(a, b):
     shuffled_b = b[permutation]
     return shuffled_a, shuffled_b
 
-gen_out = np.array([1.0] *  args.batch_size).reshape((-1,1))
+y_generated = np.array([-1.0] *  args.batch_size).reshape((-1,1)).astype("float32")
+y_true = np.array([1.0] *  args.batch_size).reshape((-1,1)).astype("float32")
+ys = np.concatenate((y_generated, y_true), axis=0)
 
 print "starting training"
 startTime = time.clock()
 for iter in range(args.nb_iter):
     # update discriminator
-    disc_epoch_size = ndisc(iter) * args.batch_size
+    discriminator.trainable = True
+    for disc_iter in range(ndisc(iter)):
+        x_true = x_true_flow.next()
+        gen_in = np.random.normal(size=(args.batch_size, args.latent_dim))
+        x_generated = generator.predict([gen_in], batch_size=args.batch_size)
+        clipper.clip()
+        disc_loss1 = discriminator.train_on_batch(x_true, y_true)
+        disc_loss2 = discriminator.train_on_batch(x_generated, y_generated)
+        disc_loss = disc_loss1[0] + disc_loss2[0]
 
-    x_true = np.concatenate([x_true_flow.next() for i in range(ndisc(iter))], axis=0)
-    x_predicted = generator.predict([np.random.normal(size=(disc_epoch_size, args.latent_dim))], batch_size=args.batch_size)
-    xs = np.concatenate((x_predicted, x_true), axis=0)
-    ys = np.concatenate((-1.0 * np.ones(disc_epoch_size), np.ones(disc_epoch_size)), axis=0).reshape((-1,1))
-
-    make_trainable(discriminator, True)
-    disc_r = discriminator.fit(xs, ys, verbose=args.verbose, batch_size=args.batch_size, nb_epoch=1, shuffle=True, callbacks=callbacks)
-    disc_loss = disc_r.history["loss"][0]
+    xs = np.concatenate((x_generated, x_true), axis=0)
     disc_pred = discriminator.predict(xs, batch_size=args.batch_size)
-    disc_loss2 = 100 * np.mean(0 > D_loss(ys, disc_pred))
+    disc_acc = D_acc_np(ys, disc_pred)
+
+#     disc_epoch_size = ndisc(iter) * args.batch_size
+#     while (disc_acc < 90) and (disc_iter < 1):
+#         disc_iter += 1
+#         x_true = np.concatenate([x_true_flow.next() for i in range(ndisc(iter))], axis=0)
+#         x_predicted = generator.predict([np.random.normal(size=(disc_epoch_size, args.latent_dim))], batch_size=args.batch_size)
+#         y_true = np.ones(x_true.shape[0]).reshape((-1,1)).astype("float32")
+#         y_predicted = -np.ones(x_true.shape[0]).reshape((-1,1)).astype("float32")
+#         xs = np.concatenate((x_predicted, x_true), axis=0)
+#         ys = np.concatenate((y_predicted, y_true), axis=0)
+
+#         discriminator.trainable = True
+#         clipper.on_batch_begin()
+#         disc_loss1 = discriminator.train_on_batch(x_true, y_true)
+#         disc_loss2 = discriminator.train_on_batch(x_predicted, y_predicted)
+#         disc_loss = (disc_loss1[0] + disc_loss2[0]) / 2
+
+# #        disc_r = discriminator.fit(xs, ys, verbose=args.verbose, batch_size=args.batch_size, nb_epoch=1, shuffle=True, callbacks=callbacks)
+# #        disc_loss = disc_r.history["loss"][0]
+#         disc_pred = discriminator.predict(xs, batch_size=args.batch_size)
+#         disc_acc = D_acc_np(ys, disc_pred)
 
     # update generator
+    discriminator.trainable = False
     gen_in = np.random.normal(size=(args.batch_size, args.latent_dim))
-    make_trainable(discriminator, False)
-    gen_r = gen_disc.train_on_batch(gen_in, gen_out)
-    gen_loss = gen_r
+    gen_loss = gen_disc.train_on_batch(gen_in, y_true)
     gen_pred = gen_disc.predict(gen_in, batch_size=args.batch_size)
-    gen_loss2 = 100 * np.mean(0 > D_loss(gen_out, gen_pred))
+    gen_acc = D_acc_np(y_true, gen_pred)
 
-    print "Iter: {}, Generator: {} - {:.1f}%, Discriminator: {} - {:.1f}%".format(iter, gen_loss, gen_loss2, disc_loss, disc_loss2)
-    if iter % args.frequency == 0:
+    print "Iter: {}, Generator: {} - {:.1f}%, Discriminator: {} - {:.1f}%".format(iter, gen_loss, gen_acc, disc_loss, disc_acc)
+    if (iter+1) % args.frequency == 0:
         currTime = time.clock()
-        print "Elapsed time: {:.1f} sec".format(currTime-startTime)
-        vis.displayRandom(10, x_train, args.latent_dim, gaussian_sampler, generator, "{}-random-{}".format(args.prefix, iter), batch_size=args.batch_size)
+        elapsed = currTime - startTime
+        second = elapsed % 60
+        minute = int(elapsed / 60)
+        print "Elapsed time: {}:{:.0f}".format(minute, second)
+        vis.displayRandom(10, x_train, args.latent_dim, gaussian_sampler, generator, "{}-random-{}".format(args.prefix, iter+1), batch_size=args.batch_size)
         vis.displayRandom(10, x_train, args.latent_dim, gaussian_sampler, generator, "{}-random".format(args.prefix), batch_size=args.batch_size)
         vis.saveModel(discriminator, args.prefix + "-disciminator")
         vis.saveModel(generator, args.prefix + "-generator")

@@ -24,6 +24,7 @@ parser.add_argument('--optimizer', dest="optimizer", type=str, default="adam", h
 parser.add_argument('--clipValue', dest="clipValue", type=float, default=0.01, help="Critic clipping range is (-clipValue, clipValue)")
 parser.add_argument('--use_bn_gen', dest="use_bn_gen", type=int, default=0, help="Use batch normalization in generator 0/1")
 parser.add_argument('--use_bn_disc', dest="use_bn_disc", type=int, default=0, help="Use batch normalization in discriminator 0/1")
+parser.add_argument('--falseWeight', dest="falseWeight", type=float, default=1.0, help="Weight of false discriminator guesses in D_loss")
 
 args_param = parser.parse_args()
 args = exp.mergeParamsWithInis(args_param)

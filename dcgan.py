@@ -45,6 +45,9 @@ if keras.backend._BACKEND == "tensorflow":
 print "loading data"
 (x_train, x_test) = data.load(args.dataset, trainSize=args.trainSize, testSize=args.testSize, shape=args.shape, color=args.color)
 imageGenerator = ImageDataGenerator()
+x_train_size = args.batch_size * (x_train.shape[0] // args.batch_size)
+x_train = x_train[:x_train_size]
+print "Train set size: ", x_train_size 
 x_true_flow = imageGenerator.flow(x_train, batch_size = args.batch_size)
 
 
@@ -75,7 +78,7 @@ def D_loss(y_true, y_pred):
     x_correct = K.maximum(x, zeros)
     x_false = K.minimum(x, zeros)
     loss = - args.falseWeight * K.sum(x_false) - K.sum(x_correct)
-    return loss
+    return loss / args.batch_size
 
 def D_acc(y_true, y_pred):
     x = y_true * y_pred

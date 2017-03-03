@@ -11,9 +11,9 @@ import keras.backend as K
 from keras.engine.topology import Layer
 
 # image_dim is missing from the beginning, latent_dim is missing from the end
-channels = (512, 1024, 2048, 4096)
+#channels = (512, 1024, 2048, 4096)
 #channels = (128, 256, 512, 1024)
-#channels = (64, 128, 256, 512)
+channels = (64, 128, 256, 512)
 
 sizes = (64, 32, 16, 8, 4, 1)
 strides = (2, 2, 2, 2, 2, 1)
@@ -160,9 +160,9 @@ disc_channels = (64, 128, 256, 512, 1)
 disc_use_bns = (False, True, True, True, False)
 disc_strides = (2, 2, 2, 2, 1)
 
-def discriminator_layers_simple(latent_dim, wd, bn_allowed):
+def discriminator_layers_dense(wd, bn_allowed):
     layers = []
-    layers.append(Flatten())
+#    layers.append(Flatten())
     layers.append(Dense(100, activation="relu"))
     layers.append(Dense(100, activation="relu"))
     layers.append(Dense(1))
@@ -186,7 +186,7 @@ DCGAN_D (
   )
 )
 """
-def discriminator_layers_wgan(latent_dim, wd, bn_allowed):
+def discriminator_layers_wgan(wd, bn_allowed):
     alpha = 0.2
     layers=[]
     for channel, stride, use_bn in zip(disc_channels, disc_strides, disc_use_bns):

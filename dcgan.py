@@ -52,7 +52,7 @@ x_true_flow = imageGenerator.flow(x_train, batch_size = args.batch_size)
 
 
 print "building networks"
-disc_layers = model_dcgan.discriminator_layers_wgan(latent_dim=args.latent_dim, wd=args.wd, bn_allowed=args.use_bn_disc)
+disc_layers = model_dcgan.discriminator_layers_wgan(wd=args.wd, bn_allowed=args.use_bn_disc)
 gen_layers = model_dcgan.generator_layers_wgan(latent_dim=args.latent_dim, batch_size=args.batch_size, wd=args.wd, bn_allowed=args.use_bn_gen, image_channel=x_train.shape[3])
 
 gen_input = Input(batch_shape=(args.batch_size,args.latent_dim), name="gen_input")

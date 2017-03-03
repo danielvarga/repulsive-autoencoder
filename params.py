@@ -30,6 +30,7 @@ parser.add_argument('--activation', dest="activation", default="relu", help="act
 parser.add_argument('--decoder_wd', dest="decoder_wd", type=float, default=0.0, help="Weight decay param for the decoder")
 parser.add_argument('--encoder_wd', dest="encoder_wd", type=float, default=0.0, help="Weight decay param for the encoder")
 parser.add_argument('--decoder_use_bn', dest="decoder_use_bn", type=int, default=0, help="Use batch norm in decoder")
+parser.add_argument('--encoder_use_bn', dest="encoder_use_bn", type=int, default=0, help="Use batch norm in encoder")
 parser.add_argument('--optimizer', dest="optimizer", type=str, default="adam", help="Optimizer, adam or rmsprop.")
 parser.add_argument('--verbose', dest="verbose", type=int, default=2, help="Logging verbosity: 0-silent, 1-verbose, 2-perEpoch (default)")
 parser.add_argument('--weight_schedules', dest="weight_schedules", default='', help="Comma separated list of loss schedules, ex size_loss|5|1|0.2|0.8 means that size_loss has has initial weight 5, final weight 1 and the weight is adjusted linearly after finishing the first 20% of the training and before finishing the 80% of training")
@@ -68,6 +69,10 @@ def getArgs():
         args.decoder_use_bn = True
     else:
         args.decoder_use_bn = False
+    if args.encoder_use_bn == 1:
+        args.encoder_use_bn = True
+    else:
+        args.encoder_use_bn = False
     if type(args.intermediate_dims) is int:
         args.intermediate_dims = [args.intermediate_dims]
     elif len(args.intermediate_dims) > 0:

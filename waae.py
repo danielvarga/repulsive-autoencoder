@@ -34,9 +34,18 @@ x_true_flow = imageGenerator.flow(x_train, batch_size = args.batch_size)
 
 
 import model_dcgan
+encoder_channels = model_dcgan.default_channels("encoder", "small", args.latent_dim)
+generator_channels = model_dcgan.default_channels("generator", "small", args.original_shape[2])
+
+reduction = 2 ** (len(generator_channels)+1)
+assert args.original_shape[0] % reduction == 0
+assert args.original_shape[1] % reduction == 0
+gen_firstX = args.original_shape[0] // reduction
+gen_firstY = args.original_shape[1] // reduction
+
 disc_layers = model_dcgan.discriminator_layers_dense(wd=args.encoder_wd, bn_allowed=args.decoder_use_bn)
-gen_layers = model_dcgan.generator_layers_wgan(latent_dim=args.latent_dim, batch_size=args.batch_size, wd=args.decoder_wd, bn_allowed=args.decoder_use_bn, image_channel=x_train.shape[3])
-enc_layers = model_dcgan.encoder_layers_wgan(latent_dim=args.latent_dim, batch_size=args.batch_size, wd=args.encoder_wd, bn_allowed=args.decoder_use_bn, image_channel=x_train.shape[3])
+gen_layers = model_dcgan.generator_layers_wgan(generator_channels, args.latent_dim, args.decoder_wd, args.decoder_use_bn, args.batch_size, gen_firstX, gen_firstY)
+enc_layers = model_dcgan.encoder_layers_wgan(encoder_channels, args.encoder_wd, args.encoder_use_bn)
 
 enc_input = Input(batch_shape=([args.batch_size] + list(args.original_shape)), name="enc_input")
 disc_input = Input(batch_shape=(args.batch_size, args.latent_dim), name="disc_input")

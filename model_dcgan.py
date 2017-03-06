@@ -170,14 +170,13 @@ class DcganDecoder(Decoder):
 
         return generator_input, recons_output, generator_output
 
-disc_channels = (64, 128, 256, 512, 1) 
-#disc_channels = (8, 16, 32, 64, 1) 
-disc_use_bns = (False, True, True, True, False)
-disc_strides = (2, 2, 2, 2, 1)
 
 def discriminator_layers_dense(wd, bn_allowed):
     layers = []
 #    layers.append(Flatten())
+    layers.append(Dense(100, activation="relu"))
+    layers.append(Dense(100, activation="relu"))
+    layers.append(Dense(100, activation="relu"))
     layers.append(Dense(100, activation="relu"))
     layers.append(Dense(100, activation="relu"))
     layers.append(Dense(1))
@@ -201,7 +200,7 @@ DCGAN_D (
   )
 )
 """
-def discriminator_layers_wgan2(channels, wd, bn_allowed):
+def discriminator_layers_wgan(channels, wd, bn_allowed):
     alpha = 0.2
     layers=[]
     for idx, channel in enumerate(channels):
@@ -226,18 +225,3 @@ def discriminator_layers_wgan2(channels, wd, bn_allowed):
     layers.append(Reshape((1,)))
     return layers
 
-def discriminator_layers_wgan(wd, bn_allowed):
-    alpha = 0.2
-    layers=[]
-    for channel, stride, use_bn in zip(disc_channels, disc_strides, disc_use_bns):
-        if stride == 1:
-            border_mode = "valid"
-        else:
-            border_mode = "same"
-        layers.append(Convolution2D(channel, 4, 4, subsample=(stride, stride), border_mode=border_mode, bias=False, W_regularizer=l2(wd)))
-        if bn_allowed and use_bn:
-            layers.append(BatchNormalization(mode=2, axis=-1))
-        if stride != 1: 
-            layers.append(LeakyReLU(alpha=alpha))
-    layers.append(Reshape((1,)))
-    return layers

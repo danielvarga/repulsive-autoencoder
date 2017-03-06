@@ -112,12 +112,12 @@ def load_bedroom(shape=(64, 64), trainSize=0, testSize=0):
         input = np.load(cacheFile)
     else:
         assert False, "Missing cache file: {}".format(cacheFile)
-    if trainSize > 0:
-        x_train = input[:trainSize]
-    if testSize > 0:
-        x_test = input[trainSize:trainSize+testSize]
-    else:
-        x_test = input[-200:] # TODO
+    print "Bedroom dataset size: ", input.shape
+    if trainSize == 0: trainSize = 100000
+    if testSize == 0: testSize = 200
+
+    x_train = input[:trainSize]
+    x_test = input[trainSize:trainSize+testSize]
     x_train = x_train.astype('float32') / 255.
     x_test = x_test.astype('float32') / 255.
     return (x_train, x_test)

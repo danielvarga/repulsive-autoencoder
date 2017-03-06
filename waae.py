@@ -34,8 +34,8 @@ x_true_flow = imageGenerator.flow(x_train, batch_size = args.batch_size)
 
 
 import model_dcgan
-encoder_channels = model_dcgan.default_channels("encoder", "small", args.latent_dim)
-generator_channels = model_dcgan.default_channels("generator", "small", args.original_shape[2])
+encoder_channels = model_dcgan.default_channels("encoder", "large", args.latent_dim)
+generator_channels = model_dcgan.default_channels("generator", "large", args.original_shape[2])
 
 reduction = 2 ** (len(generator_channels)+1)
 assert args.original_shape[0] % reduction == 0
@@ -87,9 +87,16 @@ elif args.optimizer == "sgd":
 def D_loss(y_true, y_pred):
     return - K.mean(y_true * y_pred)
 
+# Freeze weights in the discriminator for stacked training
+def make_trainable(net, val):
+    net.trainable = val
+    for l in net.layers:
+        l.trainable = val
+
 ae.compile(optimizer=ae_optimizer, loss="mse")
-enc_disc.compile(optimizer=enc_disc_optimizer, loss = D_loss)
 disc.compile(optimizer=disc_optimizer, loss = D_loss)
+make_trainable(disc, False)
+enc_disc.compile(optimizer=enc_disc_optimizer, loss = D_loss)
 
 print "Discriminator"
 disc.summary()
@@ -138,14 +145,12 @@ startTime = time.clock()
 for iter in range(args.nb_epoch):
 
     # update autoencoder
-#    encoder.trainable = False # TODO does it make sense to freeze the encoder when minimizing reconstruction loss?
     recons_iters = nrecons(iter)
     images = np.concatenate([x_true_flow.next() for i in range(recons_iters)], axis=0)
     r = ae.fit(images, images, verbose=args.verbose, batch_size=args.batch_size, nb_epoch=1)
     recons_loss = r.history["loss"][0]
 
     # update discriminator
-    disc.trainable = True
     disc_iters = ndisc(iter)
     images = np.concatenate([x_true_flow.next() for i in range(disc_iters)], axis=0)
     x_generated = encoder.predict(images, batch_size=args.batch_size)
@@ -157,8 +162,6 @@ for iter in range(args.nb_epoch):
     disc_loss = r.history["loss"][0]
 
     # update encoder
-    encoder.trainable = True
-    disc.trainable = False
     image_batch = x_true_flow.next()
     enc_loss = enc_disc.train_on_batch(image_batch, y_gaussian)
 
@@ -171,8 +174,10 @@ for iter in range(args.nb_epoch):
         print "Elapsed time: {}:{:.0f}".format(minute, second)
         vis.displayRandom(10, x_train, args.latent_dim, gaussian_sampler, generator, "{}-random-{}".format(args.prefix, iter+1), batch_size=args.batch_size)
         vis.displayRandom(10, x_train, args.latent_dim, gaussian_sampler, generator, "{}-random".format(args.prefix), batch_size=args.batch_size)
-        vis.displaySet(x_test[:args.batch_size], args.batch_size, 100, ae, "%s-test" % args.prefix)
-        vis.displaySet(x_train[:args.batch_size], args.batch_size, 100, ae, "%s-train" % args.prefix)
+        vis.plotMVhist(x_train, encoder, args.batch_size, "{}-mvhist-{}.png".format(args.prefix, iter+1))
+        vis.plotMVhist(x_train, encoder, args.batch_size, "{}-mvhist.png".format(args.prefix))
+        vis.displaySet(x_test[:args.batch_size], args.batch_size, args.batch_size, ae, "%s-test" % args.prefix)
+        vis.displaySet(x_train[:args.batch_size], args.batch_size, args.batch_size, ae, "%s-train" % args.prefix)
         vis.saveModel(disc, args.prefix + "-discriminator")
         vis.saveModel(encoder, args.prefix + "-encoder")
         vis.saveModel(generator, args.prefix + "-generator")

@@ -1,4 +1,5 @@
 import keras.backend as K
+from keras import objectives
 from keras.preprocessing.image import ImageDataGenerator
 from keras.layers import Input
 from keras.models import Model
@@ -64,6 +65,21 @@ for layer in disc_layers:
     enc_disc_output = layer(enc_disc_output)
     disc_output = layer(disc_output)
 
+def mse_loss(x, x_decoded):
+    return K.mean(objectives.mean_squared_error(x, x_decoded))
+
+def critic_loss(x, x_decoded):
+    return - K.mean(enc_disc_output)
+
+def ae_loss(x, x_decoded):
+    return mse_loss(x, x_decoded) + critic_loss(x, x_decoded)
+
+def covariance_monitor(x, x_decoded):
+    z = enc_output
+    z_centered = z - K.mean(z, axis=0)
+    cov = K.dot(K.transpose(z_centered), z_centered) / args.batch_size
+    return K.mean(tf.diag_part(cov))
+
 encoder = Model(enc_input, enc_output)
 generator = Model(disc_input, gen_output)
 ae = Model(enc_input, ae_output)
@@ -93,10 +109,11 @@ def make_trainable(net, val):
     for l in net.layers:
         l.trainable = val
 
-ae.compile(optimizer=ae_optimizer, loss="mse")
 disc.compile(optimizer=disc_optimizer, loss = D_loss)
 make_trainable(disc, False)
 enc_disc.compile(optimizer=enc_disc_optimizer, loss = D_loss)
+make_trainable(encoder, False) # TODO this is not  going to work as the inference model is not guided at all by the reconstruction
+ae.compile(optimizer=ae_optimizer, loss=ae_loss, metrics = [mse_loss, critic_loss, covariance_monitor])
 
 print "Discriminator"
 disc.summary()
@@ -149,6 +166,9 @@ for iter in range(args.nb_epoch):
     images = np.concatenate([x_true_flow.next() for i in range(recons_iters)], axis=0)
     r = ae.fit(images, images, verbose=args.verbose, batch_size=args.batch_size, nb_epoch=1)
     recons_loss = r.history["loss"][0]
+    cov_monitor = r.history["covariance_monitor"][0]
+    mse_monitor = np.float32(np.prod(args.original_shape)) * r.history["mse_loss"][0]
+    critic_monitor = r.history["critic_loss"][0]
 
     # update discriminator
     disc_iters = ndisc(iter)
@@ -161,11 +181,12 @@ for iter in range(args.nb_epoch):
     r = disc.fit(xs, ys, verbose=args.verbose, batch_size=args.batch_size, shuffle=True, nb_epoch=1)
     disc_loss = r.history["loss"][0]
 
-    # update encoder
-    image_batch = x_true_flow.next()
-    enc_loss = enc_disc.train_on_batch(image_batch, y_gaussian)
+    # # update encoder
+    # image_batch = x_true_flow.next()
+    # enc_loss = enc_disc.train_on_batch(image_batch, y_gaussian)
+    enc_loss = 0
 
-    print "Iter: {}, Disc: {}, Enc: {}, Recons: {}".format(iter+1, disc_loss, enc_loss, recons_loss)
+    print "Iter: {}, Disc: {}, Enc: {}, Ae: {}, Cov: {}, Mse: {}, Critic: {}".format(iter+1, disc_loss, enc_loss, recons_loss, cov_monitor, mse_monitor, critic_monitor)
     if (iter+1) % args.frequency == 0:
         currTime = time.clock()
         elapsed = currTime - startTime
@@ -174,12 +195,13 @@ for iter in range(args.nb_epoch):
         print "Elapsed time: {}:{:.0f}".format(minute, second)
         vis.displayRandom(10, x_train, args.latent_dim, gaussian_sampler, generator, "{}-random-{}".format(args.prefix, iter+1), batch_size=args.batch_size)
         vis.displayRandom(10, x_train, args.latent_dim, gaussian_sampler, generator, "{}-random".format(args.prefix), batch_size=args.batch_size)
-        vis.plotMVhist(x_train, encoder, args.batch_size, "{}-mvhist-{}.png".format(args.prefix, iter+1))
-        vis.plotMVhist(x_train, encoder, args.batch_size, "{}-mvhist.png".format(args.prefix))
-        vis.displaySet(x_test[:args.batch_size], args.batch_size, args.batch_size, ae, "%s-test" % args.prefix)
-        vis.displaySet(x_train[:args.batch_size], args.batch_size, args.batch_size, ae, "%s-train" % args.prefix)
-        vis.saveModel(disc, args.prefix + "-discriminator")
-        vis.saveModel(encoder, args.prefix + "-encoder")
-        vis.saveModel(generator, args.prefix + "-generator")
-        vis.saveModel(enc_disc, args.prefix + "-enc_disc")
+        if (iter+1) % 200 == 0: 
+            vis.plotMVhist(x_train, encoder, args.batch_size, "{}-mvhist-{}.png".format(args.prefix, iter+1))
+            vis.plotMVhist(x_train, encoder, args.batch_size, "{}-mvhist.png".format(args.prefix))
+            vis.displaySet(x_test[:args.batch_size], args.batch_size, args.batch_size, ae, "%s-test" % args.prefix)
+            vis.displaySet(x_train[:args.batch_size], args.batch_size, args.batch_size, ae, "%s-train" % args.prefix)
+            vis.saveModel(disc, args.prefix + "-discriminator")
+            vis.saveModel(encoder, args.prefix + "-encoder")
+            vis.saveModel(generator, args.prefix + "-generator")
+            vis.saveModel(enc_disc, args.prefix + "-enc_disc")
 

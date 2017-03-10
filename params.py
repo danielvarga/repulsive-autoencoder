@@ -38,6 +38,8 @@ parser.add_argument('--trainSize', dest="trainSize", type=int, default=0, help="
 parser.add_argument('--testSize', dest="testSize", type=int, default=0, help="Test set size (0 means default size)")
 parser.add_argument('--gaussianParams', dest="gaussianParams", default="10,1,10", help="main_channel,dots,side_channel - this overrides latent_dim param")
 parser.add_argument('--shape', dest="shape", default="72,64", help="image shape")
+parser.add_argument('--clipValue', dest="clipValue", type=float, default=0.01, help="Clipping value for Wgan")
+parser.add_argument('--network_size', dest="network_size", default="large", help="network size for wgan: large/small")
 
 
 args_param = parser.parse_args()

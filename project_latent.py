@@ -5,7 +5,8 @@ import numpy.linalg
 from sklearn.random_projection import GaussianRandomProjection
 import matplotlib.pyplot as plt
 import os.path
-import seaborn as sns
+# import seaborn as sns
+import sklearn.preprocessing
 
 import vis
 import data
@@ -68,6 +69,28 @@ if do_latent_variances:
 else:
     encoder_var =encoder
     latent_train = latent_train_mean
+
+# check how overlapping the latent ellipsoids are
+if do_latent_variances:
+    latent_train_mean = latent_train_mean[:1000]
+    latent_train_logvar = latent_train_logvar[:1000]
+    dist = vis.distanceMatrix(latent_train_mean, latent_train_mean)
+    # find the nearest point that is not itself
+    distSorter = np.argsort(dist, axis=0)
+    nearestIndex = distSorter[1]
+    nearestPoint = latent_train_mean[nearestIndex]
+    nearestDist = np.diag(dist[nearestIndex])
+    nearestDirection = np.abs(latent_train_mean - nearestPoint)
+    sklearn.preprocessing.normalize(nearestDirection, norm='l2', copy=False)
+    sigma = np.exp(latent_train_logvar/2)
+    nearestSigma = sigma[nearestIndex]
+    sigma = np.sum(sigma * nearestDirection, axis=1)
+    nearestSigma = np.sum(nearestSigma * nearestDirection, axis=1)
+    extraSpace = nearestDist - 2 * (sigma + nearestSigma)
+    print "Extra avg space {}, avg nearest {}, avg distance {}".format(np.mean(extraSpace), np.mean(nearestDist), np.mean(dist))
+    plt.hist(extraSpace, bins = 30)
+    plt.savefig(prefix + "_extraSpace.png")
+    plt.close()
 
 
 cov_train_mean = np.cov(latent_train_mean.T)

@@ -78,6 +78,7 @@ def loss_factory(model, encoder, loss_features, args):
     def covariance_loss(x, x_decoded):
         print "pre-sampling covariance loss!"
         z = loss_features.z_mean # pre sampling!
+#        z = loss_features.z_sampled
         z_centered = z - K.mean(z, axis=0)
         cov = K.dot(K.transpose(z_centered), z_centered) / args.batch_size
         # The (args.batch_size ** 2) is there to keep it in sync

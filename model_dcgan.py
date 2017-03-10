@@ -173,7 +173,6 @@ class DcganDecoder(Decoder):
 
 def discriminator_layers_dense(wd, bn_allowed):
     layers = []
-#    layers.append(Flatten())
     layers.append(Dense(100, activation="relu"))
     layers.append(Dense(100, activation="relu"))
     layers.append(Dense(100, activation="relu"))

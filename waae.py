@@ -11,7 +11,6 @@ import vis
 
 
 args = params.getArgs()
-args.clipValue = 0.01 #TODO
 print(args)
 
 # limit memory usage
@@ -35,8 +34,8 @@ x_true_flow = imageGenerator.flow(x_train, batch_size = args.batch_size)
 
 
 import model_dcgan
-encoder_channels = model_dcgan.default_channels("encoder", "large", args.latent_dim)
-generator_channels = model_dcgan.default_channels("generator", "large", args.original_shape[2])
+encoder_channels = model_dcgan.default_channels("encoder", args.network_size, args.latent_dim)
+generator_channels = model_dcgan.default_channels("generator", args.network_size, args.original_shape[2])
 
 reduction = 2 ** (len(generator_channels)+1)
 assert args.original_shape[0] % reduction == 0
@@ -72,7 +71,7 @@ def critic_loss(x, x_decoded):
     return - K.mean(enc_disc_output)
 
 def ae_loss(x, x_decoded):
-    return mse_loss(x, x_decoded) + critic_loss(x, x_decoded)
+    return mse_loss(x, x_decoded) + 100 * critic_loss(x, x_decoded)
 
 def covariance_monitor(x, x_decoded):
     z = enc_output
@@ -112,8 +111,7 @@ def make_trainable(net, val):
 disc.compile(optimizer=disc_optimizer, loss = D_loss)
 make_trainable(disc, False)
 enc_disc.compile(optimizer=enc_disc_optimizer, loss = D_loss)
-make_trainable(encoder, False) # TODO this is not  going to work as the inference model is not guided at all by the reconstruction
-ae.compile(optimizer=ae_optimizer, loss=ae_loss, metrics = [mse_loss, critic_loss, covariance_monitor])
+ae.compile(optimizer=ae_optimizer, loss=ae_loss, metrics = [ae_loss, mse_loss, critic_loss, covariance_monitor])
 
 print "Discriminator"
 disc.summary()
@@ -166,8 +164,9 @@ for iter in range(args.nb_epoch):
     images = np.concatenate([x_true_flow.next() for i in range(recons_iters)], axis=0)
     r = ae.fit(images, images, verbose=args.verbose, batch_size=args.batch_size, nb_epoch=1)
     recons_loss = r.history["loss"][0]
+    loss_monitor = r.history["ae_loss"][0]
     cov_monitor = r.history["covariance_monitor"][0]
-    mse_monitor = np.float32(np.prod(args.original_shape)) * r.history["mse_loss"][0]
+    mse_monitor = r.history["mse_loss"][0]
     critic_monitor = r.history["critic_loss"][0]
 
     # update discriminator
@@ -181,12 +180,7 @@ for iter in range(args.nb_epoch):
     r = disc.fit(xs, ys, verbose=args.verbose, batch_size=args.batch_size, shuffle=True, nb_epoch=1)
     disc_loss = r.history["loss"][0]
 
-    # # update encoder
-    # image_batch = x_true_flow.next()
-    # enc_loss = enc_disc.train_on_batch(image_batch, y_gaussian)
-    enc_loss = 0
-
-    print "Iter: {}, Disc: {}, Enc: {}, Ae: {}, Cov: {}, Mse: {}, Critic: {}".format(iter+1, disc_loss, enc_loss, recons_loss, cov_monitor, mse_monitor, critic_monitor)
+    print "Iter: {}, Disc: {}, Ae: {}-{}, Cov: {}, Mse: {}, Critic: {}".format(iter+1, disc_loss, recons_loss, loss_monitor, cov_monitor, mse_monitor, critic_monitor)
     if (iter+1) % args.frequency == 0:
         currTime = time.clock()
         elapsed = currTime - startTime
@@ -195,11 +189,10 @@ for iter in range(args.nb_epoch):
         print "Elapsed time: {}:{:.0f}".format(minute, second)
         vis.displayRandom(10, x_train, args.latent_dim, gaussian_sampler, generator, "{}-random-{}".format(args.prefix, iter+1), batch_size=args.batch_size)
         vis.displayRandom(10, x_train, args.latent_dim, gaussian_sampler, generator, "{}-random".format(args.prefix), batch_size=args.batch_size)
+        vis.displaySet(x_test[:args.batch_size], args.batch_size, args.batch_size, ae, "%s-test" % args.prefix)
+        vis.displaySet(x_train[:args.batch_size], args.batch_size, args.batch_size, ae, "%s-train" % args.prefix)
         if (iter+1) % 200 == 0: 
-            vis.plotMVhist(x_train, encoder, args.batch_size, "{}-mvhist-{}.png".format(args.prefix, iter+1))
-            vis.plotMVhist(x_train, encoder, args.batch_size, "{}-mvhist.png".format(args.prefix))
-            vis.displaySet(x_test[:args.batch_size], args.batch_size, args.batch_size, ae, "%s-test" % args.prefix)
-            vis.displaySet(x_train[:args.batch_size], args.batch_size, args.batch_size, ae, "%s-train" % args.prefix)
+            vis.plotMVhist(x_train, encoder, args.batch_size, ["{}-mvhist-{}.png".format(args.prefix, iter+1), "{}-mvhist.png".format(args.prefix)])
             vis.saveModel(disc, args.prefix + "-discriminator")
             vis.saveModel(encoder, args.prefix + "-encoder")
             vis.saveModel(generator, args.prefix + "-generator")

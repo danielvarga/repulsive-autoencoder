@@ -311,7 +311,7 @@ def plotMVVM(x_train, encoder, encoder_var, batch_size, name):
     plt.savefig(name)
     plt.close()
 
-def plotMVhist(x_train, encoder, batch_size, name):
+def plotMVhist(x_train, encoder, batch_size, names):
     latent_train_mean = encoder.predict(x_train, batch_size = batch_size)
     mean_variances = np.var(latent_train_mean, axis=0)
     histogram = np.histogram(mean_variances, 30)
@@ -323,8 +323,11 @@ def plotMVhist(x_train, encoder, batch_size, name):
     plt.scatter(mean_variances, variance_means)
     plt.xlim(xlim[0], xlim[1])
     plt.ylim(ylim[0], ylim[1])
-    print "Creating file " + name
-    plt.savefig(name)
+    if type(names) == str:
+        names = [names]
+    for name in names:
+        print "Creating file " + name
+        plt.savefig(name)
     plt.close()
 
 def plot2Dprojections(dataset, indices, name):

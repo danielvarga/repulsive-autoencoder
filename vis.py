@@ -293,7 +293,8 @@ def distanceMatrix(x, y):
     xL2SM = np.tile(xL2S, (len(y), 1))
     yL2SM = np.tile(yL2S, (len(x), 1))
     squaredDistances = xL2SM + yL2SM.T - 2.0*y.dot(x.T)
-    distances = np.sqrt(squaredDistances+1e-6) # elementwise. +1e-6 is to supress sqrt-of-negative warning.
+    squaredDistances = np.maximum(squaredDistances, 0.0)
+    distances = np.sqrt(squaredDistances)
     return distances
 
 def plotMVVM(x_train, encoder, encoder_var, batch_size, name):

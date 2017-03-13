@@ -35,6 +35,10 @@ import data
 (x_train, x_test) = data.load(args.dataset, args.trainSize, args.testSize, color=args.color, shape=args.shape)
 args.original_shape = x_train.shape[1:]
 
+# delete duplicate elements
+x_train = np.delete(x_train, [36439, 48561], axis=0)
+x_train = x_train[:(x_train.shape[0] // args.batch_size) * args.batch_size]
+
 sampler = model.sampler_factory(args, x_train)
 
 try:
@@ -72,25 +76,33 @@ else:
 
 # check how overlapping the latent ellipsoids are
 if do_latent_variances:
-    latent_train_mean = latent_train_mean[:1000]
-    latent_train_logvar = latent_train_logvar[:1000]
-    dist = vis.distanceMatrix(latent_train_mean, latent_train_mean)
-    # find the nearest point that is not itself
+    sigma_all = np.exp(latent_train_logvar/2)
+    sigma_all = np.maximum(sigma_all, 0.0001)
+    sample_size = 10000
+
+    ellipsoid_sizes = [1, 2, 3, 4, 5]
+    latent_small = latent_train_mean[:sample_size]
+    dist = vis.distanceMatrix(latent_small, latent_train_mean)
+    # make the diagonal the greatest, to find the nearest non-identical point
+    dist[:sample_size,:sample_size] += np.eye(sample_size) * 1000.0
+    # find the nearest point
     distSorter = np.argsort(dist, axis=0)
-    nearestIndex = distSorter[1]
+    nearestIndex = distSorter[0]
     nearestPoint = latent_train_mean[nearestIndex]
     nearestDist = np.diag(dist[nearestIndex])
-    nearestDirection = np.abs(latent_train_mean - nearestPoint)
+    nearestDirection = np.abs(latent_small - nearestPoint)
     sklearn.preprocessing.normalize(nearestDirection, norm='l2', copy=False)
-    sigma = np.exp(latent_train_logvar/2)
-    nearestSigma = sigma[nearestIndex]
-    sigma = np.sum(sigma * nearestDirection, axis=1)
-    nearestSigma = np.sum(nearestSigma * nearestDirection, axis=1)
-    extraSpace = nearestDist - 2 * (sigma + nearestSigma)
-    print "Extra avg space {}, avg nearest {}, avg distance {}".format(np.mean(extraSpace), np.mean(nearestDist), np.mean(dist))
-    plt.hist(extraSpace, bins = 30)
-    plt.savefig(prefix + "_extraSpace.png")
-    plt.close()
+
+    sigma = sigma_all[:sample_size]
+    nearestSigma = sigma_all[nearestIndex]
+    for ellipsoid_size in ellipsoid_sizes:
+        ellipsoid_dist = 1 / np.sqrt(np.sum(np.square(nearestDirection / (ellipsoid_size * sigma)), axis=1))
+        nearest_ellipsoid_dist = 1 / np.sqrt(np.sum(np.square(nearestDirection / (ellipsoid_size * nearestSigma)), axis=1))
+        extraSpace = nearestDist - (ellipsoid_dist + nearest_ellipsoid_dist)
+        print "Sigma {}, Extra avg space {}, avg nearest {}, avg distance {}".format(ellipsoid_size, np.mean(extraSpace), np.mean(nearestDist), np.mean(dist))
+        plt.hist(extraSpace, bins = 30)
+        plt.savefig("{}-extraSpace_{}.png".format(prefix, ellipsoid_size))
+        plt.close()
 
 
 cov_train_mean = np.cov(latent_train_mean.T)
@@ -194,13 +206,14 @@ plt.close()
 # Set up the matplotlib figure
 f, axes = plt.subplots(2, 2, figsize=(7, 7), sharex=True)
 
-variance = np.mean(np.square(latent_train_mean - origo), axis=1)
-variance2 = np.mean(np.square(latent_train_mean), axis=1)
-sns.kdeplot(np.mean(latent_train_mean-origo, axis=1), bw=0.5, ax=axes[0, 0])
-sns.kdeplot(np.mean(latent_train_mean, axis=1), bw=0.5, ax=axes[0, 1])
-target = np.random.normal(0.0, 1.0, latent_train_mean.shape)
-variance_target = np.mean(np.square(target), axis=1)
-sns.kdeplot(np.mean(target, axis=1), bw=0.5, ax=axes[1, 0])
+if False:
+    variance = np.mean(np.square(latent_train_mean - origo), axis=1)
+    variance2 = np.mean(np.square(latent_train_mean), axis=1)
+    sns.kdeplot(np.mean(latent_train_mean-origo, axis=1), bw=0.5, ax=axes[0, 0])
+    sns.kdeplot(np.mean(latent_train_mean, axis=1), bw=0.5, ax=axes[0, 1])
+    target = np.random.normal(0.0, 1.0, latent_train_mean.shape)
+    variance_target = np.mean(np.square(target), axis=1)
+    sns.kdeplot(np.mean(target, axis=1), bw=0.5, ax=axes[1, 0])
 
 plt.hist(variance, bins = 30, label="Squared distance from mean")
 plt.hist(variance2, bins = 30, label="Squared distance from origo")

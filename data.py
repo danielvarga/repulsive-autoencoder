@@ -99,6 +99,8 @@ def load_mnist(digit=None, shape=None):
     x_train = x_train.astype('float32') / 255.
     x_test = x_test.astype('float32') / 255.
 
+    np.savez("mnist-labels.npz", **{"train": y_train, "test": y_test})
+
     # add_feature_dimension (!!! only works with Tensorflow !!!)
     x_train = np.expand_dims(x_train, 3)
     x_test = np.expand_dims(x_test, 3)
@@ -123,7 +125,8 @@ def load_mnist(digit=None, shape=None):
 
     return (x_train, x_test)
 
-def load_celeba(shape=(72, 60),color=False):
+
+def load_celeba(shape=(72, 60), color=False):
     if shape==(72, 60):
         directory = "/home/daniel/autoencoding_beyond_pixels/datasets/celeba/img_align_celeba-60x72"
         if color:
@@ -171,9 +174,8 @@ def load_celeba(shape=(72, 60),color=False):
 
     x_train = input[:trainSize]
     x_test = input[trainSize:trainSize+testSize]
-    x_train = np.random.permutation(x_train)
-    x_test = np.random.permutation(x_test)
     return (x_train, x_test)
+
 
 def load_bedroom(shape=(64, 64), trainSize=0, testSize=0):
     if shape==(64, 64):

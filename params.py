@@ -40,6 +40,8 @@ parser.add_argument('--gaussianParams', dest="gaussianParams", default="10,1,10"
 parser.add_argument('--shape', dest="shape", default="72,64", help="image shape")
 parser.add_argument('--clipValue', dest="clipValue", type=float, default=0.01, help="Clipping value for Wgan")
 parser.add_argument('--network_size', dest="network_size", default="large", help="network size for wgan: large/small")
+parser.add_argument('--layers_to_monitor', dest="layers_to_monitor", default=1, help="comma separated list of layers to monitor")
+parser.add_argument('--monitor_frequency', dest="monitor_frequency", type=int, default=0, help="After how many batches should we save the activations of monitored layers (0 means no saving")
 
 
 args_param = parser.parse_args()
@@ -96,6 +98,14 @@ def getArgs():
             schedule_list.append(var)
             weight_schedules.append(schedule_list)
     args.weight_schedules = weight_schedules
+
+    if type(args.layers_to_monitor) is int:
+        args.layers_to_monitor = [args.layers_to_monitor]
+    elif len(args.layers_to_monitor) > 0:
+        args.layers_to_monitor = map(int, str(args.layers_to_monitor).split(","))
+    else:
+        args.layers_to_monitor = []
+
 
     # if the decoder is gaussian, update latent_dim
     args.gaussianParams = map(int, str(args.gaussianParams).split(","))

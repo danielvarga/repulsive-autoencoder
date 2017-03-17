@@ -4,6 +4,7 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from keras.callbacks import LearningRateScheduler, Callback
 from keras import backend as K
+from keras.models import Model
 import numpy as np
 import vis
 
@@ -99,3 +100,48 @@ class SaveModelsCallback(Callback):
 class FlushCallback(Callback):
     def on_epoch_end(self, epoch, logs):
         sys.stdout.flush()
+
+class CollectActivationCallback(Callback):
+    def __init__(self, nb_epoch, frequency, batch_size, batch_per_epoch, network, trainSet, testSet, layerIndices, prefix, **kwargs):
+        self.frequency = frequency
+        self.batch_size = batch_size
+        self.network = network
+        self.trainSet = trainSet
+        self.testSet = testSet
+        self.prefix = prefix
+        self.layerIndices = layerIndices
+        self.savedTrain = []
+        self.savedTest = []
+
+        self.iterations = batch_per_epoch * nb_epoch / frequency
+
+        outputs = []
+        for i in range(len(self.network.layers)):
+            if i in self.layerIndices:
+                output = self.network.layers[i].output
+                outputs.append(output)
+        self.activation_model = Model([self.network.layers[0].input], outputs)
+        train_activations = self.activation_model.predict([self.trainSet], batch_size=self.batch_size)
+        test_activations = self.activation_model.predict([self.testSet], batch_size=self.batch_size)
+
+        for train_activation, test_activation in zip(train_activations, test_activations):
+            self.savedTrain.append(np.zeros([self.iterations] + list(train_activation.shape)))
+            self.savedTest.append(np.zeros([self.iterations] + list(test_activation.shape)))
+        super(CollectActivationCallback, self).__init__(**kwargs)
+
+    def on_batch_end(self, batch, logs):
+        if (batch+1) % self.frequency == 0:
+            train_activations = self.activation_model.predict([self.trainSet], batch_size=self.batch_size)
+            test_activations = self.activation_model.predict([self.testSet], batch_size=self.batch_size)
+            for i in range(len(self.layerIndices)):
+                self.savedTrain[i][batch // self.frequency] = train_activations[i]
+                self.savedTest[i][batch // self.frequency] = test_activations[i]
+
+    def on_train_end(self, logs):
+        fileName = "{}_{}.npz".format(self.prefix, self.frequency)
+        outDict = {"train":self.trainSet, "test":self.testSet}
+        for i in range(len(self.layerIndices)):
+            outDict["train-{}".format(self.layerIndices[i])] = self.savedTrain[i]
+            outDict["test-{}".format(self.layerIndices[i])] = self.savedTest[i]
+        print "Saving activation history to file {}".format(fileName)
+        np.savez(fileName, **outDict)

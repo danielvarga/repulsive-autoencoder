@@ -47,6 +47,9 @@ for schedule in args.weight_schedules:
     if schedule[1] != schedule[2]:
         cbs.append(callbacks.WeightSchedulerCallback(args.nb_epoch, schedule[0], schedule[1], schedule[2], schedule[3], schedule[4], schedule[5]))
 
+if args.monitor_frequency > 0:
+    batch_per_epoch = x_train.shape[0] // args.batch_size
+    cbs.append(callbacks.CollectActivationCallback(args.nb_epoch, args.monitor_frequency, args.batch_size, batch_per_epoch, ae, x_train[:5000], x_test[:5000], args.layers_to_monitor, "{}_activation_history".format(args.prefix)))
 ae.fit(x_train, x_train,
        verbose=args.verbose,
        shuffle=True,

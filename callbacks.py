@@ -114,6 +114,7 @@ class CollectActivationCallback(Callback):
         self.savedTest = []
 
         self.iterations = batch_per_epoch * nb_epoch / frequency
+        self.batch_count = 0
 
         outputs = []
         for i in range(len(self.network.layers)):
@@ -129,13 +130,14 @@ class CollectActivationCallback(Callback):
             self.savedTest.append(np.zeros([self.iterations] + list(test_activation.shape)))
         super(CollectActivationCallback, self).__init__(**kwargs)
 
-    def on_batch_end(self, batch, logs):
-        if (batch+1) % self.frequency == 0:
+    def on_batch_begin(self, batch, logs):
+        if self.batch_count % self.frequency == 0:
             train_activations = self.activation_model.predict([self.trainSet], batch_size=self.batch_size)
             test_activations = self.activation_model.predict([self.testSet], batch_size=self.batch_size)
             for i in range(len(self.layerIndices)):
-                self.savedTrain[i][batch // self.frequency] = train_activations[i]
-                self.savedTest[i][batch // self.frequency] = test_activations[i]
+                self.savedTrain[i][self.batch_count // self.frequency] = train_activations[i]
+                self.savedTest[i][self.batch_count // self.frequency] = test_activations[i]
+        self.batch_count +=1
 
     def on_train_end(self, logs):
         fileName = "{}_{}.npz".format(self.prefix, self.frequency)

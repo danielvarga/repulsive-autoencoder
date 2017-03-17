@@ -44,8 +44,8 @@ sampler = model.sampler_factory(args, x_train)
 try:
     generator = vis.loadModel(prefix + "_generator")
     encoder = vis.loadModel(prefix + "_encoder")
-    encoder_var = vis.loadModel(prefix + "_encoder_var")
-    ae = vis.loadModel(prefix + "_model")
+    if do_latent_variances:
+        encoder_var = vis.loadModel(prefix + "_encoder_var")
 except:
     ae, encoder, encoder_var, generator = vis.rebuild_models(args)
 
@@ -123,7 +123,7 @@ vis.cumulative_view(latent_train[:,1], "CDF of 2nd coordinate of latent cloud", 
 
 # how normal is the input and the output?
 flat_input = x_train.reshape(x_train.shape[0], -1)
-flat_output = ae.predict(x_train, batch_size = batch_size).reshape(x_train.shape[0], -1)
+flat_output = generator.predict(latent_train, batch_size = batch_size).reshape(x_train.shape[0], -1)
 projector = np.random.normal(size=(flat_input.shape[1],))
 projector /= np.linalg.norm(projector)
 projected_input = flat_input.dot(projector)
@@ -173,14 +173,11 @@ vis.displayNearest(x_train, latent_train, generator, batch_size, name=prefix+"-n
 vis.displayNearest(x_train, latent_train, generator, batch_size, name=prefix+"-nearest-masked", origo = latent_train[6], working_mask=working_mask)
 vis.displayNearest(x_train, latent_train_mean, generator, batch_size, name=prefix+"-nearest-mean", origo = latent_train[6])
 
-np.random.seed(100)
-vis.displayMarkov(30, 30, latent_dim, sampler, generator, encoder, encoder_var, do_latent_variances, name=prefix+"-markov", batch_size=batch_size, x_train_latent=latent_train_mean)
-np.random.seed(100)
-vis.displayMarkov(30, 30, latent_dim, sampler, generator, encoder, encoder_var, do_latent_variances, name=prefix+"-markov-nosampling", batch_size=batch_size, variance_alpha=0.0)
-np.random.seed(100)
-vis.displayMarkov(30, 30, latent_dim, sampler, generator, encoder, encoder_var, do_latent_variances, name=prefix+"-markov-noise", batch_size=batch_size, noise_alpha=0.1)
-np.random.seed(100)
-vis.displayMarkov(30, 30, latent_dim, sampler, generator, encoder, encoder_var, do_latent_variances, name=prefix+"-markov-nosampling-noise", batch_size=batch_size, x_train_latent=latent_train_mean, variance_alpha=0.0, noise_alpha=0.3)
+if False:
+    vis.displayMarkov(30, 30, latent_dim, sampler, generator, encoder, encoder_var, do_latent_variances, name=prefix+"-markov", batch_size=batch_size, x_train_latent=latent_train_mean)
+    vis.displayMarkov(30, 30, latent_dim, sampler, generator, encoder, encoder_var, do_latent_variances, name=prefix+"-markov-nosampling", batch_size=batch_size, variance_alpha=0.0)
+    vis.displayMarkov(30, 30, latent_dim, sampler, generator, encoder, encoder_var, do_latent_variances, name=prefix+"-markov-noise", batch_size=batch_size, noise_alpha=0.1)
+    vis.displayMarkov(30, 30, latent_dim, sampler, generator, encoder, encoder_var, do_latent_variances, name=prefix+"-markov-nosampling-noise", batch_size=batch_size, x_train_latent=latent_train_mean, variance_alpha=0.0, noise_alpha=0.3)
 
 if do_latent_variances:
     variance_means = np.mean(np.exp(latent_train_logvar), axis=0)
@@ -215,9 +212,9 @@ if False:
     variance_target = np.mean(np.square(target), axis=1)
     sns.kdeplot(np.mean(target, axis=1), bw=0.5, ax=axes[1, 0])
 
-plt.hist(variance, bins = 30, label="Squared distance from mean")
-plt.hist(variance2, bins = 30, label="Squared distance from origo")
-plt.hist(variance_target, bins = 30, label="Target squared distance")
+    plt.hist(variance, bins = 30, label="Squared distance from mean")
+    plt.hist(variance2, bins = 30, label="Squared distance from origo")
+    plt.hist(variance_target, bins = 30, label="Target squared distance")
 
 plt.legend()
 plt.savefig(prefix+"_variance_hist.png")

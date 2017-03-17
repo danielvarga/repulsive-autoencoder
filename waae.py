@@ -193,8 +193,8 @@ for iter in range(args.nb_epoch):
         vis.displaySet(x_train[:args.batch_size], args.batch_size, args.batch_size, ae, "%s-train" % args.prefix)
         if (iter+1) % 200 == 0: 
             vis.plotMVhist(x_train, encoder, args.batch_size, ["{}-mvhist-{}.png".format(args.prefix, iter+1), "{}-mvhist.png".format(args.prefix)])
-            vis.saveModel(disc, args.prefix + "-discriminator")
-            vis.saveModel(encoder, args.prefix + "-encoder")
-            vis.saveModel(generator, args.prefix + "-generator")
-            vis.saveModel(enc_disc, args.prefix + "-enc_disc")
+            vis.saveModel(disc, args.prefix + "_discriminator")
+            vis.saveModel(encoder, args.prefix + "_encoder")
+            vis.saveModel(generator, args.prefix + "_generator")
+            vis.saveModel(enc_disc, args.prefix + "_enc_disc")
 

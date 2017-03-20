@@ -234,7 +234,7 @@ for iter in range(args.nb_iter):
         print "Elapsed time: {}:{:.0f}".format(minute, second)
         vis.displayRandom(10, x_train, args.latent_dim, gaussian_sampler, generator, "{}-random-{}".format(args.prefix, iter+1), batch_size=args.batch_size)
         vis.displayRandom(10, x_train, args.latent_dim, gaussian_sampler, generator, "{}-random".format(args.prefix), batch_size=args.batch_size)
-        vis.saveModel(discriminator, args.prefix + "-disciminator")
-        vis.saveModel(generator, args.prefix + "-generator")
-        vis.saveModel(gen_disc, args.prefix + "-gendisc")
+        vis.saveModel(discriminator, args.prefix + "_discriminator")
+        vis.saveModel(generator, args.prefix + "_generator")
+        vis.saveModel(gen_disc, args.prefix + "_gendisc")
 

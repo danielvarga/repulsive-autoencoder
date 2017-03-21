@@ -1,5 +1,10 @@
 from __future__ import print_function
 
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+
+
 from keras.preprocessing.image import load_img, img_to_array
 import numpy as np
 from scipy.misc import imsave
@@ -12,17 +17,19 @@ from keras import backend as K
 from keras.layers import Input
 
 import vis
+import data
+
 def image_data_format():
     return "channels_last"
 K.image_data_format = image_data_format
 
 parser = argparse.ArgumentParser(description='Deep Dreams with Keras.')
-parser.add_argument('--base_image_path', dest='base_image_path', type=str, help='Path to the image that we want to invert.')
+parser.add_argument('--image_path', dest='image_path', default=None, type=str, help='Path to the image that we want to invert.')
 parser.add_argument('--result_prefix', dest='result_prefix', type=str, help='Prefix for the saved results.')
 parser.add_argument('--generator_prefix', dest='generator_prefix', type=str, help='Prefix for the saved generator.')
 
 args = parser.parse_args()
-base_image_path = args.base_image_path
+image_path = args.image_path
 result_prefix = args.result_prefix
 generator_prefix = args.generator_prefix
 
@@ -31,6 +38,8 @@ img_height = 64
 img_width = 64
 channels = 3
 frequency = 10
+iterations = 50
+opt_iter = 50
 
 # some settings we found interesting
 saved_settings = {
@@ -50,7 +59,7 @@ saved_settings = {
                'dream_l2': 0.0,
                'jitter': 0},
     'generator': {'features': {},
-                  'continuity': 0.0,
+                  'continuity': 0.1,
                   'dream_l2': 0.0,
                   'jitter': 0},
 }
@@ -100,13 +109,13 @@ batch_size = latent_shape[0]
 
 # this will contain our inverted image
 dream = Input(batch_shape=latent_shape)
-generated = model(dream)[0]
+generated = model(dream)
 
 # get the symbolic outputs of each "key" layer (we gave them unique names).
 layer_dict = dict([(layer.name, layer) for layer in model.layers])
 
 
-def continuity_loss(x):
+def continuity_loss(x, singleImage):
     # continuity loss util function
     assert K.ndim(x) == 4
     if K.image_data_format() == 'channels_first':
@@ -119,33 +128,23 @@ def continuity_loss(x):
                      x[:, 1:, :img_width - 1, :])
         b = K.square(x[:, :img_height - 1, :img_width - 1, :] -
                      x[:, :img_height - 1, 1:, :])
+        if singleImage:
+            a = a[0]
+            b = b[0]
     return K.sum(K.pow(a + b, 1.25))
 
-target_image = preprocess_image(base_image_path)
+if image_path is None:
+    (x_train, target_image) = data.load("celeba", batch_size, batch_size, shape=(img_height, img_width), color=True)
+    loss = K.sum(K.square(generated - target_image))
+    singleImage = False
+else:
+    target_image = preprocess_image(image_path)
+    loss = K.sum(K.square(generated[0] - target_image))
+    singleImage = True
 
-# define the loss
-loss = K.sum(K.square(generated - target_image))
-# loss = K.variable(0.)
-# for layer_name in settings['features']:
-#     # add the L2 norm of the features of a layer to the loss
-#     assert layer_name in layer_dict.keys(), 'Layer ' + layer_name + ' not found in model.'
-#     coeff = settings['features'][layer_name]
-#     x = layer_dict[layer_name].output
-#     shape = layer_dict[layer_name].output_shape
-#     print(shape)
-#     loss -= coeff * K.sum(K.square(x))
-#     # # we avoid border artifacts by only involving non-border pixels in the loss
-#     # if K.image_data_format() == 'channels_first':
-#     #     loss -= coeff * K.sum(K.square(x[:, :, 2: shape[2] - 2, 2: shape[3] - 2])) / np.prod(shape[1:])
-#     # else:
-#     #     loss -= coeff * K.sum(K.square(x[:, 2: shape[1] - 2, 2: shape[2] - 2, :])) / np.prod(shape[1:])
 
 # add continuity loss (gives image local coherence, can result in an artful blur)
-#loss += settings['continuity'] * continuity_loss(dream) / np.prod(img_size)
-# add image L2 norm to loss (prevents pixels from taking very high values, makes image darker)
-loss += settings['dream_l2'] * K.sum(K.square(dream)) / np.prod(img_size)
-
-# feel free to further modify the loss as you see fit, to achieve new effects...
+loss += settings['continuity'] * continuity_loss(generated, singleImage)
 
 # compute the gradients of the dream wrt the loss
 grads = K.gradients(loss, dream)
@@ -203,27 +202,46 @@ evaluator = Evaluator()
 # Run scipy-based optimization (L-BFGS) over the pixels of the generated image
 # so as to minimize the loss
 x = np.random.normal(size=latent_shape)
-for i in range(50):
+for i in range(iterations):
 #    print('Start of iteration', i)
-    start_time = time.time()
+    start_time = time.clock()
 
     # Add a random jitter to the latent_code
     # This will be reverted at decoding time
     random_jitter = (settings['jitter'] * 2) * (np.random.random(latent_shape) - 0.5)
     x += random_jitter
 
-    # Run L-BFGS for 7 steps
+    # Run L-BFGS for opt_iter steps
     x, min_val, info = fmin_l_bfgs_b(evaluator.loss, x.flatten(),
-                                     fprime=evaluator.grads, maxfun=7)
+                                     fprime=evaluator.grads, maxfun=opt_iter)
     x = x.reshape(latent_shape)
     x -= random_jitter
     if (i+1) % frequency == 0:        
-        print('Current loss value:', min_val)
         # Decode the dream and save it
         img = model.predict(x, batch_size=batch_size)
-        img = deprocess_image(img[0])
-        fname = result_prefix + '_at_iteration_%d.png' % (i+1)
-        imsave(fname, img)
-        end_time = time.time()
+        fname = result_prefix + '_at_iteration_%d' % (i+1)
+        loss_value = min_val / np.prod(img_size)
+        if image_path is None:
+            imgs = vis.mergeSets((target_image, img))
+            vis.plotImages(imgs, 2*10, batch_size//10, fname)
+            loss_value /= batch_size 
+        else:        
+            img = np.expand_dims(img[0], axis=0)
+            imgs = np.concatenate((target_image, img), axis=0)
+            vis.plotImages(imgs, 2, 1, fname)
+        print('Current loss value:', loss_value)
+        end_time = time.clock()
         print('Image saved as', fname)
         print('Iteration %d completed in %ds' % (i+1, end_time - start_time))
+
+
+if True:
+    from sklearn.manifold import TSNE
+    import sklearn
+    tsne = TSNE(n_components=2, random_state=42, perplexity=100, metric="euclidean")
+    reduced = tsne.fit_transform(x)
+
+    plt.figure(figsize=(12,12))
+    plt.scatter(reduced[:, 0], reduced[:, 1])
+    plt.savefig(result_prefix + "_tsne.png")
+    plt.close()

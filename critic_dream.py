@@ -31,6 +31,8 @@ img_height = 64
 img_width = 64
 channels = 3
 frequency = 10
+iterations = 50
+opt_iter = 100
 
 # some settings we found interesting
 saved_settings = {
@@ -46,9 +48,9 @@ saved_settings = {
                'dream_l2': 0.02,
                'jitter': 0},
     'critic': {'features': {},
-               'continuity': 0.0,
+               'continuity': 1.0,
                'dream_l2': 0.0,
-               'jitter': 0},
+               'jitter': 0.0},
 }
 # the settings we will use in this experiment
 settings = saved_settings['critic']
@@ -60,7 +62,7 @@ def preprocess_image(image_path):
     img = load_img(image_path, target_size=(img_height, img_width))
     img = img_to_array(img)
     img = np.expand_dims(img, axis=0)
-    img = vgg16.preprocess_input(img)
+    img /= 255.0
     return img
 
 
@@ -71,12 +73,7 @@ def deprocess_image(x):
         x = x.transpose((1, 2, 0))
     else:
         x = x.reshape((img_height, img_width, channels))
-    # Remove zero-center by mean pixel
-    x[:, :, 0] += 103.939
-    x[:, :, 1] += 116.779
-    x[:, :, 2] += 123.68
-    # 'BGR'->'RGB'
-    x = x[:, :, ::-1]
+    x *= 255
     x = np.clip(x, 0, 255).astype('uint8')
     return x
 
@@ -91,6 +88,7 @@ dream = Input(batch_shape=(1,) + img_size)
 # the model will be loaded with pre-trained ImageNet weights
 model = vis.loadModel(discriminator_prefix)
 print('Model loaded.')
+model.summary()
 
 #batch_size = K.int_shape(model.input)[0]
 #dream_repeated = K.repeat_elements(dream, rep=batch_size, axis=0)
@@ -117,30 +115,15 @@ def continuity_loss(x):
 
 # define the loss
 loss = - judgement
-# loss = K.variable(0.)
-# for layer_name in settings['features']:
-#     # add the L2 norm of the features of a layer to the loss
-#     assert layer_name in layer_dict.keys(), 'Layer ' + layer_name + ' not found in model.'
-#     coeff = settings['features'][layer_name]
-#     x = layer_dict[layer_name].output
-#     shape = layer_dict[layer_name].output_shape
-#     print(shape)
-#     loss -= coeff * K.sum(K.square(x))
-#     # # we avoid border artifacts by only involving non-border pixels in the loss
-#     # if K.image_data_format() == 'channels_first':
-#     #     loss -= coeff * K.sum(K.square(x[:, :, 2: shape[2] - 2, 2: shape[3] - 2])) / np.prod(shape[1:])
-#     # else:
-#     #     loss -= coeff * K.sum(K.square(x[:, 2: shape[1] - 2, 2: shape[2] - 2, :])) / np.prod(shape[1:])
 
 # add continuity loss (gives image local coherence, can result in an artful blur)
 loss += settings['continuity'] * continuity_loss(dream) / np.prod(img_size)
 # add image L2 norm to loss (prevents pixels from taking very high values, makes image darker)
-loss += settings['dream_l2'] * K.sum(K.square(dream)) / np.prod(img_size)
-
-# feel free to further modify the loss as you see fit, to achieve new effects...
+# loss += settings['dream_l2'] * K.sum(K.square(dream)) / np.prod(img_size)
 
 # compute the gradients of the dream wrt the loss
 grads = K.gradients(loss, dream)
+
 
 outputs = [loss]
 if isinstance(grads, (list, tuple)):
@@ -195,18 +178,18 @@ evaluator = Evaluator()
 # Run scipy-based optimization (L-BFGS) over the pixels of the generated image
 # so as to minimize the loss
 x = preprocess_image(base_image_path)
-for i in range(50):
+for i in range(iterations):
 #    print('Start of iteration', i)
-    start_time = time.time()
+    start_time = time.clock()
 
     # Add a random jitter to the initial image.
     # This will be reverted at decoding time
     random_jitter = (settings['jitter'] * 2) * (np.random.random(img_size) - 0.5)
     x += random_jitter
 
-    # Run L-BFGS for 7 steps
+    # Run L-BFGS for opt_iter steps
     x, min_val, info = fmin_l_bfgs_b(evaluator.loss, x.flatten(),
-                                     fprime=evaluator.grads, maxfun=700)
+                                     fprime=evaluator.grads, maxfun=opt_iter)
     x = x.reshape(img_size)
     x -= random_jitter
     if (i+1) % frequency == 0:        
@@ -215,6 +198,6 @@ for i in range(50):
         img = deprocess_image(np.copy(x))
         fname = result_prefix + '_at_iteration_%d.png' % (i+1)
         imsave(fname, img)
-        end_time = time.time()
-#        print('Image saved as', fname)
+        end_time = time.clock()
+        print('Image saved as', fname)
         print('Iteration %d completed in %ds' % (i+1, end_time - start_time))

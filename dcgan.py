@@ -53,8 +53,8 @@ x_true_flow = imageGenerator.flow(x_train, batch_size = args.batch_size)
 
 
 print "building networks"
-generator_channels = model_dcgan.default_channels("generator", "small", args.original_shape[2])
-discriminator_channels = model_dcgan.default_channels("discriminator", "large", None)
+generator_channels = model_dcgan.default_channels("generator", args.gen_size, args.original_shape[2])
+discriminator_channels = model_dcgan.default_channels("discriminator", args.disc_size, None)
 
 reduction = 2 ** (len(generator_channels)+1)
 assert args.original_shape[0] % reduction == 0

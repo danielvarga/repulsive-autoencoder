@@ -3,7 +3,9 @@ from __future__ import print_function
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-
+from matplotlib.offsetbox import OffsetImage, AnnotationBbox
+from matplotlib import cm
+from PIL import Image
 
 from keras.preprocessing.image import load_img, img_to_array
 import numpy as np
@@ -18,6 +20,9 @@ from keras.layers import Input
 
 import vis
 import data
+
+# set random seed
+np.random.seed(10)
 
 def image_data_format():
     return "channels_last"
@@ -40,6 +45,7 @@ channels = 3
 frequency = 10
 iterations = 50
 opt_iter = 50
+tsne_points = 100
 
 # some settings we found interesting
 saved_settings = {
@@ -219,7 +225,7 @@ for i in range(iterations):
     if (i+1) % frequency == 0:        
         # Decode the dream and save it
         img = model.predict(x, batch_size=batch_size)
-        fname = result_prefix + '_at_iteration_%d' % (i+1)
+        fname = result_prefix + '_inverted_%d' % (i+1)
         loss_value = min_val / np.prod(img_size)
         if image_path is None:
             imgs = vis.mergeSets((target_image, img))
@@ -234,6 +240,11 @@ for i in range(iterations):
         print('Image saved as', fname)
         print('Iteration %d completed in %ds' % (i+1, end_time - start_time))
 
+fig, ax = plt.subplots()
+
+if ax is None:
+    ax = plt.gca()
+
 
 if True:
     from sklearn.manifold import TSNE
@@ -241,7 +252,19 @@ if True:
     tsne = TSNE(n_components=2, random_state=42, perplexity=100, metric="euclidean")
     reduced = tsne.fit_transform(x)
 
-    plt.figure(figsize=(12,12))
+    target_image *= 255
+    target_image = np.clip(target_image, 0, 255).astype('uint8')
+
+    for i in range(tsne_points):
+        x = reduced[i, 0]
+        y = reduced[i, 1]
+        im_a = target_image[i]
+        image = Image.fromarray(im_a, mode="RGB")
+        im = OffsetImage(image, zoom=0.5)
+        ab = AnnotationBbox(im, (x, y), xycoords='data', frameon=False)
+        ax.add_artist(ab)
+
+#    plt.figure(figsize=(12,12))
     plt.scatter(reduced[:, 0], reduced[:, 1])
-    plt.savefig(result_prefix + "_tsne.png")
+    plt.savefig(result_prefix + "_inverted_tsne.png")
     plt.close()

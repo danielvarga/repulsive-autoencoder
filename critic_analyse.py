@@ -34,14 +34,30 @@ positive = discriminator.predict(x_train, batch_size=batch_size)
 noise = discriminator.predict(noise_samples, batch_size=batch_size)
 generated = discriminator.predict(generated_samples, batch_size=batch_size)
 
+# compare the discriminator with respect to the real images, generated images, random noise
 plt.figure(figsize=(12,12))
-plt.hist(positive, label='images', alpha=0.5)
-plt.hist(noise, label='noise', alpha=0.5)
-plt.hist(generated, label='generated', alpha=0.5)
-# for i in range(3):
-#     positive_noise = discriminator.predict(x_train + (i+1) / 3.0 * noise_samples, batch_size=batch_size)
-#     plt.hist(positive_noise, label="pos_noise_{}".format(i+1))
-
+plt.hist(positive, label='images', alpha=0.5, bins=100)
+plt.hist(noise, label='noise', alpha=0.5, bins=100)
+plt.hist(generated, label='generated', alpha=0.5, bins=100)
 plt.legend()
 plt.savefig(prefix + "_posneg.png")
 plt.close()
+
+# sort train and generated images according to their discriminator ranking
+positive_sorter = np.argsort(np.concatenate([positive[:,0], generated[:,0]]))
+x_train_sorted = np.concatenate([x_train, generated_samples])[positive_sorter]
+vis.plotImages(x_train_sorted[::5], 20, 20, prefix + "_discriminator_order")
+
+# check what happens if we transform the images
+x_train_upside_down = x_train[:,::-1]
+x_train_inverted = 1-x_train
+upside_down = discriminator.predict(x_train_upside_down, batch_size=batch_size)
+inverted = discriminator.predict(x_train_inverted, batch_size=batch_size)
+plt.figure(figsize=(12,12))
+plt.hist(positive, label='images', alpha=0.5, bins=100)
+plt.hist(upside_down, label='upside_down', alpha=0.5, bins=100)
+plt.hist(inverted, label='inverted', alpha=0.5, bins=100)
+plt.legend()
+plt.savefig(prefix + "_transformed.png")
+plt.close()
+

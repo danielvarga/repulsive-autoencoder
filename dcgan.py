@@ -51,35 +51,6 @@ args.original_shape = x_train.shape[1:]
 print "Train set size: ", x_train_size 
 x_true_flow = imageGenerator.flow(x_train, batch_size = args.batch_size)
 
-
-print "building networks"
-generator_channels = model_dcgan.default_channels("generator", args.gen_size, args.original_shape[2])
-discriminator_channels = model_dcgan.default_channels("discriminator", args.disc_size, None)
-
-reduction = 2 ** (len(generator_channels)+1)
-assert args.original_shape[0] % reduction == 0
-assert args.original_shape[1] % reduction == 0
-gen_firstX = args.original_shape[0] // reduction
-gen_firstY = args.original_shape[1] // reduction
-
-gen_layers = model_dcgan.generator_layers_wgan(generator_channels, args.latent_dim, args.wd, args.use_bn_gen, args.batch_size, gen_firstX, gen_firstY)
-disc_layers = model_dcgan.discriminator_layers_wgan(discriminator_channels, wd=args.wd, bn_allowed=args.use_bn_disc)
-
-gen_input = Input(batch_shape=(args.batch_size,args.latent_dim), name="gen_input")
-disc_input = Input(batch_shape=(args.batch_size, args.shape[0], args.shape[1], x_train.shape[3]), name="disc_input")
-
-gen_output = gen_input
-disc_output = disc_input
-gen_disc_output = gen_output
-
-for layer in gen_layers:
-    gen_output = layer(gen_output)
-    gen_disc_output = layer(gen_disc_output)
-
-for layer in disc_layers:
-    disc_output = layer(disc_output)
-    gen_disc_output = layer(gen_disc_output)
-
 # y_true = 1 (real_image) or -1 (generated_image)
 # we push the real examples up, the false examples down
 def D_loss(y_true, y_pred):
@@ -99,34 +70,63 @@ def make_trainable(net, val):
         l.trainable = val
 
 
+print "building networks"
+generator_channels = model_dcgan.default_channels("generator", args.gen_size, args.original_shape[2])
+discriminator_channels = model_dcgan.default_channels("discriminator", args.disc_size, None)
 
-discriminator = Model(disc_input, disc_output)
+reduction = 2 ** (len(generator_channels)+1)
+assert args.original_shape[0] % reduction == 0
+assert args.original_shape[1] % reduction == 0
+gen_firstX = args.original_shape[0] // reduction
+gen_firstY = args.original_shape[1] // reduction
+
+gen_layers = model_dcgan.generator_layers_wgan(generator_channels, args.latent_dim, args.wd, args.use_bn_gen, args.batch_size, gen_firstX, gen_firstY)
+disc_layers = model_dcgan.discriminator_layers_wgan(discriminator_channels, wd=args.wd, bn_allowed=args.use_bn_disc)
+
+gen_input = Input(batch_shape=(args.batch_size,args.latent_dim), name="gen_input")
+disc_input = Input(batch_shape=(args.batch_size, args.shape[0], args.shape[1], x_train.shape[3]), name="disc_input")
+
 if args.optimizer == "adam":
     optimizer_d = Adam(lr=args.lr)
-elif args.optimizer == "rmsprop":
-    optimizer_d = RMSprop(lr=args.lr)
-elif args.optimizer == "sgd":
-    optimizer_d = SGD(lr=args.lr)
-make_trainable(discriminator, True)
-discriminator.compile(optimizer=optimizer_d, loss=D_loss, metrics=[D_acc])
-print "Discriminator"
-discriminator.summary()
-
-generator = Model(input=gen_input, output=gen_output)
-gen_disc = Model(input=gen_input, output=gen_disc_output)
-if args.optimizer == "adam":
     optimizer_g = Adam(lr=args.lr)
 elif args.optimizer == "rmsprop":
+    optimizer_d = RMSprop(lr=args.lr)
     optimizer_g = RMSprop(lr=args.lr)
 elif args.optimizer == "sgd":
+    optimizer_d = SGD(lr=args.lr)
     optimizer_g = SGD(lr=args.lr)
-generator.compile(optimizer=optimizer_g, loss="mse")
-print "Generator:"
-generator.summary()
-make_trainable(discriminator, False)
-gen_disc.compile(loss=D_loss, optimizer=optimizer_g)
-print "combined net"
-gen_disc.summary()
+
+def build_networks(gen_layers, disc_layers):
+    gen_output = gen_input
+    disc_output = disc_input
+    gen_disc_output = gen_output
+
+    for layer in gen_layers:
+        gen_output = layer(gen_output)
+        gen_disc_output = layer(gen_disc_output)
+
+    for layer in disc_layers:
+        disc_output = layer(disc_output)
+        gen_disc_output = layer(gen_disc_output)
+
+    generator = Model(input=gen_input, output=gen_output)
+    gen_disc = Model(input=gen_input, output=gen_disc_output)
+    discriminator = Model(disc_input, disc_output)
+
+    make_trainable(discriminator, True)
+    discriminator.compile(optimizer=optimizer_d, loss=D_loss, metrics=[D_acc])
+    print "Discriminator"
+    discriminator.summary()
+    generator.compile(optimizer=optimizer_g, loss="mse")
+    print "Generator:"
+    generator.summary()
+    make_trainable(discriminator, False)
+    gen_disc.compile(loss=D_loss, optimizer=optimizer_g)
+    print "combined net"
+    gen_disc.summary()
+    return (generator, discriminator, gen_disc)
+
+(generator, discriminator, gen_disc) = build_networks(gen_layers, disc_layers)
 
 def ndisc(gen_iters):
     if gen_iters < 25:
@@ -135,6 +135,12 @@ def ndisc(gen_iters):
 	return 100
     else:
         return 5
+
+def restart_disc(gen_iters):
+    if (gen_iters + 1) in (500, 1000, 2000):
+        return True
+    else:
+        return False
 
 
 def gaussian_sampler(batch_size, latent_dim):
@@ -189,10 +195,18 @@ def evaluate():
     return divergence
 
 print "starting training"
+disc_offset = 0
 startTime = time.clock()
 for iter in range(args.nb_iter):
+    if restart_disc(iter): # restart discriminator
+        print "Restarting discriminator!!!!!!!!!"
+        disc_offset = iter
+        vis.saveModel(discriminator, args.prefix + "_discriminator_restarted_{}".format(iter+1))
+        disc_layers = model_dcgan.discriminator_layers_wgan(discriminator_channels, wd=args.wd, bn_allowed=args.use_bn_disc)
+        (generator, discriminator, gen_disc) = build_networks(gen_layers, disc_layers)
+
     # update discriminator
-    disc_iters = ndisc(iter)
+    disc_iters = ndisc(iter - disc_offset)
     if False:
         x_true = np.concatenate([x_true_flow.next() for i in range(disc_iters)], axis=0)
         gen_in = np.random.normal(size=(args.batch_size * disc_iters, args.latent_dim))

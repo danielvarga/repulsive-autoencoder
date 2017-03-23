@@ -1,5 +1,9 @@
 from __future__ import print_function
 
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+
 from keras.preprocessing.image import load_img, img_to_array
 import numpy as np
 from scipy.misc import imsave
@@ -114,7 +118,7 @@ def continuity_loss(x):
     return K.sum(K.pow(a + b, 1.25))
 
 # define the loss
-loss = - 10000 * judgement
+loss = - judgement
 
 # add continuity loss (gives image local coherence, can result in an artful blur)
 loss += settings['continuity'] * continuity_loss(dream) / np.prod(img_size)
@@ -193,7 +197,7 @@ for i in range(iterations):
     # Run L-BFGS for opt_iter steps
     x, min_val, info = fmin_l_bfgs_b(evaluator.loss, x.flatten(),
                                      fprime=evaluator.grads, maxfun=opt_iter, pgtol=1e-9)
-    print (info['task'])
+    print (info['funcalls'], info['task'])
     x = x.reshape(img_size)
 #    x -= random_jitter
     if (i+1) % frequency == 0:        
@@ -205,3 +209,14 @@ for i in range(iterations):
         end_time = time.clock()
         print('Image saved as', fname)
         print('Iteration %d completed in %ds' % (i+1, end_time - start_time))
+
+
+face = preprocess_image("face.png")
+noise = preprocess_image("noise.png")
+face_grads = eval_loss_and_grads(face)
+noise_grads = eval_loss_and_grads(noise)
+x_grads = eval_loss_and_grads(x)
+
+print (face_grads)
+print (noise_grads)
+print (x_grads)

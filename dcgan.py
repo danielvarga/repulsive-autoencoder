@@ -237,4 +237,8 @@ for iter in range(args.nb_iter):
         vis.saveModel(discriminator, args.prefix + "_discriminator")
         vis.saveModel(generator, args.prefix + "_generator")
         vis.saveModel(gen_disc, args.prefix + "_gendisc")
+    if (iter+1) % 100 == 0:        
+        vis.saveModel(discriminator, args.prefix + "_discriminator_{}".format(iter+1))
+        vis.saveModel(generator, args.prefix + "_generator_{}".format(iter+1))
+        vis.saveModel(gen_disc, args.prefix + "_gendisc_{}".format(iter+1))
 

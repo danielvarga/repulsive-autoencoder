@@ -48,7 +48,7 @@ saved_settings = {
                'dream_l2': 0.02,
                'jitter': 0},
     'critic': {'features': {},
-               'continuity': 1.0,
+               'continuity': 0.0,
                'dream_l2': 0.0,
                'jitter': 0.0},
 }
@@ -114,7 +114,7 @@ def continuity_loss(x):
     return K.sum(K.pow(a + b, 1.25))
 
 # define the loss
-loss = - judgement
+loss = - 10000 * judgement
 
 # add continuity loss (gives image local coherence, can result in an artful blur)
 loss += settings['continuity'] * continuity_loss(dream) / np.prod(img_size)
@@ -178,25 +178,29 @@ evaluator = Evaluator()
 # Run scipy-based optimization (L-BFGS) over the pixels of the generated image
 # so as to minimize the loss
 x = preprocess_image(base_image_path)
+img = deprocess_image(np.copy(x))
+fname = result_prefix + '_dream.png'
+imsave(fname, img)
 for i in range(iterations):
 #    print('Start of iteration', i)
     start_time = time.clock()
 
     # Add a random jitter to the initial image.
     # This will be reverted at decoding time
-    random_jitter = (settings['jitter'] * 2) * (np.random.random(img_size) - 0.5)
-    x += random_jitter
+#    random_jitter = (settings['jitter'] * 2) * (np.random.random(img_size) - 0.5)
+#    x += random_jitter
 
     # Run L-BFGS for opt_iter steps
     x, min_val, info = fmin_l_bfgs_b(evaluator.loss, x.flatten(),
-                                     fprime=evaluator.grads, maxfun=opt_iter)
+                                     fprime=evaluator.grads, maxfun=opt_iter, pgtol=1e-9)
+    print (info['task'])
     x = x.reshape(img_size)
-    x -= random_jitter
+#    x -= random_jitter
     if (i+1) % frequency == 0:        
-        print('Current loss value:', min_val)
+        print('Current loss value:', min_val, ' grad norm: ', np.sum(np.square(info['grad'])))
         # Decode the dream and save it
         img = deprocess_image(np.copy(x))
-        fname = result_prefix + '_at_iteration_%d.png' % (i+1)
+        fname = result_prefix + '_dream_%d.png' % (i+1)
         imsave(fname, img)
         end_time = time.clock()
         print('Image saved as', fname)

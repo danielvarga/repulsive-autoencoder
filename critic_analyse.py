@@ -61,3 +61,25 @@ plt.legend()
 plt.savefig(prefix + "_transformed.png")
 plt.close()
 
+# visualize weight magnitudes for conv and bn layers
+plt.figure(figsize=(12,12))
+conv_layers = [1, 3, 6, 9, 12]
+for i in conv_layers:
+    weights = discriminator.layers[i].get_weights()
+    w = np.array(weights)
+    w = w.reshape((np.prod(w.shape),))
+    plt.hist(w, label = "conv_layer_{}".format(i), alpha=0.5, bins=100)
+plt.legend()
+plt.savefig(prefix + "_conv_weight_hist.png")    
+plt.close()
+
+plt.figure(figsize=(12,12))
+bn_layers = [4, 7, 10]
+for i in bn_layers:
+    weights = discriminator.layers[i].get_weights()
+    w = np.array(weights)
+    w = w.reshape((np.prod(w.shape),))
+    plt.hist(w, label = "bn_layer_{}".format(i), alpha=0.5, bins=100)
+plt.legend()
+plt.savefig(prefix + "_bn_weight_hist.png")    
+plt.close()

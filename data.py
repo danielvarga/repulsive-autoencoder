@@ -27,6 +27,9 @@ def load(dataset, trainSize, testSize, shape=None, color=False, digit=None):
     elif dataset == "syn-circle-pairs":
         x_train = generate_several_circles(shape=(64,64), size=trainSize, circleCount=2)
         x_test  = generate_several_circles(shape=(64,64), size=testSize, circleCount=2)        
+    elif dataset == "syn-rectangles":
+        x_train = generate_rectangles(shape=(64,64), size=trainSize)
+        x_test  = generate_rectangles(shape=(64,64), size=testSize)
     else:
         raise Exception("Invalid dataset: ", dataset)
 
@@ -42,7 +45,6 @@ def generate_circles(shape, size):
     if size == 0: size = 1000
     assert len(shape)==2
     max_radius = min(shape) // 2
-    print size, shape, max_radius
     data = np.zeros((size, shape[0], shape[1]))
     for i in range(size):
         r = random.randrange(max_radius + 1) # yeah, randint, screw randint :)
@@ -91,6 +93,18 @@ def generate_several_circles(shape, size, circleCount):
                     if (x-center_x)**2 + (y-center_y)**2 < r**2:
                         data[i, y, x] = 1
                         break
+    return np.expand_dims(data, 3)
+
+
+def generate_rectangles(shape, size):
+    assert len(shape)==2
+    data = np.zeros((size, shape[0], shape[1]))
+    for i in range(size):
+        ys = np.random.randint(shape[0]+1, size=2)
+        ys = sorted(ys)
+        xs = np.random.randint(shape[1]+1, size=2)
+        xs = sorted(xs)
+        data[i, ys[0]:ys[1], xs[0]:xs[1]] = 1
     return np.expand_dims(data, 3)
 
 

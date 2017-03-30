@@ -5,6 +5,8 @@ import numpy as np
 import argparse
 import data
 import vis
+from keras import backend as K
+
 
 batch_size = 200
 latent_dim = 200
@@ -16,6 +18,7 @@ parser = argparse.ArgumentParser(description='Deep Dreams with Keras.')
 parser.add_argument('--prefix', dest='prefix', type=str, help='Prefix for the saved results.')
 parser.add_argument('--discriminator_prefix', dest='discriminator_prefix', type=str, help='Prefix for the saved discriminator.')
 parser.add_argument('--generator_prefix', dest='generator_prefix', type=str, help='Prefix for the saved generator.')
+parser.add_argument('--gendisc_prefix', dest='gendisc_prefix', type=str, help='Prefix for the saved gendisc.')
 
 args = parser.parse_args()
 prefix = args.prefix
@@ -25,6 +28,9 @@ generator_prefix = args.generator_prefix
 discriminator = vis.loadModel(discriminator_prefix)
 generator = vis.loadModel(generator_prefix)
 
+if args.gendisc_prefix:
+    gendisc_prefix = args.gendisc_prefix
+    gendisc = vis.loadModel(gendisc_prefix)
 
 
 (x_train, x_test) = data.load("celeba", train_size, batch_size, shape=(img_height, img_width), color=True)
@@ -79,6 +85,7 @@ print "Creating file: " + fileName
 plt.savefig(fileName)    
 plt.close()
 
+
 plt.figure(figsize=(12,12))
 bn_layers = [4, 7, 10]
 f, axarr = plt.subplots(len(bn_layers), 2)
@@ -100,3 +107,53 @@ fileName = prefix + "_bn_weight_hist.png"
 print "Creating file: " + fileName
 plt.savefig(fileName)    
 plt.close()
+
+
+# visualize activation magnitudes
+plt.figure(figsize=(12,12))
+#conv_layers = [1, 3, 6, 9, 12]
+i = 0
+for layer in discriminator.layers[1:]:
+    i += 1
+    ltype = layer.__class__.__name__
+    acts = layer.output
+    f = K.function([discriminator.input], [acts])
+
+    acts = f([x_train[:200]])[0]
+    acts_np = np.array(acts)
+    acts_np = acts_np.reshape((np.prod(acts_np.shape),))
+    plt.hist(acts_np, label = "layer_{}_{}_real".format(ltype, i), alpha=0.5, bins=100)
+
+    acts = f([generated_samples[:200]])[0]
+    acts_np = np.array(acts)
+    acts_np = acts_np.reshape((np.prod(acts_np.shape),))
+    plt.hist(acts_np, label = "layer_{}_{}_gen".format(ltype,i), alpha=0.5, bins=100)
+    plt.legend()
+    fileName = prefix + "_act_hist_layer_{}_{}.png".format(ltype,i)
+    print "Creating file: " + fileName
+    plt.savefig(fileName)
+    plt.close()
+
+
+if gendisc:
+    # visualize gradient magnitudes
+    plt.figure(figsize=(12,12))
+    i = 0
+    for layer in gendisc.layers[1:]:
+        i += 1
+        ltype = layer.__class__.__name__
+        acts = layer.output
+        random = np.random.normal(size=(x_train.shape[0], latent_dim))
+        f = K.function([gendisc.input], K.gradients(gendisc.output, [layer.output]))
+
+        acts = f([random[:200]])[0]
+        print(acts.shape)
+        acts_np = np.array(acts)
+        acts_np = acts_np.reshape((np.prod(acts_np.shape),))
+        plt.hist(acts_np, label = "layer_{}_{}_real".format(ltype, i), alpha=0.5, bins=100)
+
+        plt.legend()
+        fileName = prefix + "_grad_hist_layer_{}_{}.png".format(ltype,i)
+        print "Creating file: " + fileName
+        plt.savefig(fileName)
+        plt.close()

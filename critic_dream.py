@@ -21,14 +21,26 @@ def image_data_format():
 K.image_data_format = image_data_format
 
 parser = argparse.ArgumentParser(description='Deep Dreams with Keras.')
-parser.add_argument('--base_image_path', dest='base_image_path', type=str, help='Path to the image to transform.')
-parser.add_argument('--result_prefix', dest='result_prefix', type=str, help='Prefix for the saved results.')
-parser.add_argument('--discriminator_prefix', dest='discriminator_prefix', type=str, help='Prefix for the saved discriminator.')
+parser.add_argument('--image_path', dest='image_path', default=None, type=str, help='Path to the image to transform.')
+parser.add_argument('--prefix', dest='prefix', type=str, help='Prefix for the saved results and models.')
 
 args = parser.parse_args()
-base_image_path = args.base_image_path
-result_prefix = args.result_prefix
-discriminator_prefix = args.discriminator_prefix
+image_path = args.image_path
+prefix = args.prefix
+discriminator_prefix = args.prefix + "_discriminator"
+generator_prefix = args.prefix + "_generator"
+gendisc_prefix = args.prefix + "_gendisc"
+
+if image_path is not None:
+    image_given = True
+    batch_size = 1
+else:
+    generator = vis.loadModel(generator_prefix)
+    gendisc = vis.loadModel(gendisc_prefix)
+    batch_size = K.int_shape(generator.input)[0]
+    latent_dim = K.int_shape(generator.input)[1]
+    image_given = False
+
 
 # dimensions of the generated picture.
 img_height = 64
@@ -36,7 +48,7 @@ img_width = 64
 channels = 3
 frequency = 10
 iterations = 50
-opt_iter = 100
+opt_iter = 30
 
 # some settings we found interesting
 saved_settings = {
@@ -81,25 +93,34 @@ def deprocess_image(x):
     x = np.clip(x, 0, 255).astype('uint8')
     return x
 
+def save_image(x, image_given, name):
+    if image_given:
+       img = deprocess_image(np.copy(x))
+       imsave(name + ".png", img)
+    else:
+        y = generator.predict(x, batch_size = batch_size)
+        vis.plotImages(y, 20, batch_size // 20, name)
+        
 if K.image_data_format() == 'channels_first':
     img_size = (channels, img_height, img_width)
 else:
     img_size = (img_height, img_width, channels)
-# this will contain our generated image
-dream = Input(batch_shape=(1,) + img_size)
 
-# build the VGG16 network with our placeholder
-# the model will be loaded with pre-trained ImageNet weights
-model = vis.loadModel(discriminator_prefix)
-print('Model loaded.')
-model.summary()
 
-#batch_size = K.int_shape(model.input)[0]
-#dream_repeated = K.repeat_elements(dream, rep=batch_size, axis=0)
-judgement = model(dream)
+if image_given:
+    model = vis.loadModel(discriminator_prefix)
+    input_batch_size = (1,) + img_size
+    dream = Input(batch_shape=input_batch_size)
+    judgement = model(dream)
+else:
+    model = vis.loadModel(gendisc_prefix)
+    input_batch_size = (batch_size, latent_dim)
+    dream = Input(batch_shape=input_batch_size)
+    judgement = K.mean(model(dream))
+
 
 # get the symbolic outputs of each "key" layer (we gave them unique names).
-layer_dict = dict([(layer.name, layer) for layer in model.layers])
+# layer_dict = dict([(layer.name, layer) for layer in model.layers])
 
 
 def continuity_loss(x):
@@ -121,7 +142,7 @@ def continuity_loss(x):
 loss = - judgement
 
 # add continuity loss (gives image local coherence, can result in an artful blur)
-loss += settings['continuity'] * continuity_loss(dream) / np.prod(img_size)
+# loss += settings['continuity'] * continuity_loss(dream) / np.prod(img_size)
 # add image L2 norm to loss (prevents pixels from taking very high values, makes image darker)
 # loss += settings['dream_l2'] * K.sum(K.square(dream)) / np.prod(img_size)
 
@@ -139,7 +160,7 @@ f_outputs = K.function([dream], outputs)
 
 
 def eval_loss_and_grads(x):
-    x = x.reshape((1,) + img_size)
+    x = x.reshape(input_batch_size)
     outs = f_outputs([x])
     loss_value = outs[0]
     if len(outs[1:]) == 1:
@@ -181,10 +202,16 @@ evaluator = Evaluator()
 
 # Run scipy-based optimization (L-BFGS) over the pixels of the generated image
 # so as to minimize the loss
-x = preprocess_image(base_image_path)
-img = deprocess_image(np.copy(x))
-fname = result_prefix + '_dream.png'
-imsave(fname, img)
+if image_given:
+    x = preprocess_image(image_path)
+else:
+    x = np.random.normal(size=(batch_size, latent_dim))
+    
+fname = prefix + '_dream'
+save_image(x, image_given, fname)
+min_val = - np.mean(K.eval(model(x)))
+print("Initial loss: ", min_val)
+
 for i in range(iterations):
 #    print('Start of iteration', i)
     start_time = time.clock()
@@ -195,28 +222,15 @@ for i in range(iterations):
 #    x += random_jitter
 
     # Run L-BFGS for opt_iter steps
-    x, min_val, info = fmin_l_bfgs_b(evaluator.loss, x.flatten(),
-                                     fprime=evaluator.grads, maxfun=opt_iter, pgtol=1e-9)
-    print (info['funcalls'], info['task'])
-    x = x.reshape(img_size)
+    x, min_val, info = fmin_l_bfgs_b(evaluator.loss, x.flatten(), fprime=evaluator.grads, maxfun=opt_iter, pgtol=1e-9)
+
+    x = x.reshape(input_batch_size)
 #    x -= random_jitter
     if (i+1) % frequency == 0:        
         print('Current loss value:', min_val, ' grad norm: ', np.sum(np.square(info['grad'])))
         # Decode the dream and save it
-        img = deprocess_image(np.copy(x))
-        fname = result_prefix + '_dream_%d.png' % (i+1)
-        imsave(fname, img)
+        fname = prefix + '_dream_%d' % (i+1)
+        save_image(x, image_given, fname)
         end_time = time.clock()
         print('Image saved as', fname)
         print('Iteration %d completed in %ds' % (i+1, end_time - start_time))
-
-
-face = preprocess_image("face.png")
-noise = preprocess_image("noise.png")
-face_grads = eval_loss_and_grads(face)
-noise_grads = eval_loss_and_grads(noise)
-x_grads = eval_loss_and_grads(x)
-
-print (face_grads)
-print (noise_grads)
-print (x_grads)

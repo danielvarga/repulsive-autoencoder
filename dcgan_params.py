@@ -8,7 +8,8 @@ parser.add_argument('ini_file', nargs='*', help="Ini file to use for configurati
 
 parser.add_argument('--prefix', dest="prefix", default="dcgan/trash", help="File prefix for the output visualizations and models.")
 parser.add_argument('--lr', dest="lr", default="0.00005", type=float, help="Learning rate for RMS prop.")
-parser.add_argument('--wd', dest="wd", type=float, default=0.0, help="Weight decay param")
+parser.add_argument('--generator_wd', dest="generator_wd", type=float, default=0.0, help="Weight decay param for generator")
+parser.add_argument('--discriminator_wd', dest="discriminator_wd", type=float, default=0.0, help="Weight decay param for discriminator")
 parser.add_argument('--latent_dim', dest="latent_dim", type=int, default=100, help="Latent dimension")
 parser.add_argument('--batch_size', dest="batch_size", default=100, type=int, help="Batch size.")
 parser.add_argument('--nb_iter', dest="nb_iter", type=int, default=1300, help="Number of iterations")
@@ -26,6 +27,8 @@ parser.add_argument('--use_bn_gen', dest="use_bn_gen", type=int, default=0, help
 parser.add_argument('--use_bn_disc', dest="use_bn_disc", type=int, default=0, help="Use batch normalization in discriminator 0/1")
 parser.add_argument('--gen_size', dest="gen_size", default="small", help="small/large")
 parser.add_argument('--disc_size', dest="disc_size", default="large", help="small/large")
+parser.add_argument('--modelPath', dest="modelPath", default=None, help="Path to saved networks. If none, build networks from scratch.")
+
 
 args_param = parser.parse_args()
 args = exp.mergeParamsWithInis(args_param)

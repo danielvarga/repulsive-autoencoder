@@ -40,7 +40,9 @@ plt.hist(positive, label='images', alpha=0.5, bins=100)
 plt.hist(noise, label='noise', alpha=0.5, bins=100)
 plt.hist(generated, label='generated', alpha=0.5, bins=100)
 plt.legend()
-plt.savefig(prefix + "_posneg.png")
+fileName = prefix + "_posneg.png"
+print "Creating file: " + fileName
+plt.savefig(fileName)
 plt.close()
 
 # sort train and generated images according to their discriminator ranking
@@ -58,7 +60,9 @@ plt.hist(positive, label='images', alpha=0.5, bins=100)
 plt.hist(upside_down, label='upside_down', alpha=0.5, bins=100)
 plt.hist(inverted, label='inverted', alpha=0.5, bins=100)
 plt.legend()
-plt.savefig(prefix + "_transformed.png")
+fileName = prefix + "_transformed.png"
+print "Creating file: " + fileName
+plt.savefig(fileName)
 plt.close()
 
 # visualize weight magnitudes for conv and bn layers
@@ -70,16 +74,29 @@ for i in conv_layers:
     w = w.reshape((np.prod(w.shape),))
     plt.hist(w, label = "conv_layer_{}".format(i), alpha=0.5, bins=100)
 plt.legend()
-plt.savefig(prefix + "_conv_weight_hist.png")    
+fileName = prefix + "_conv_weight_hist.png"
+print "Creating file: " + fileName
+plt.savefig(fileName)    
 plt.close()
 
 plt.figure(figsize=(12,12))
 bn_layers = [4, 7, 10]
-for i in bn_layers:
-    weights = discriminator.layers[i].get_weights()
-    w = np.array(weights)
-    w = w.reshape((np.prod(w.shape),))
-    plt.hist(w, label = "bn_layer_{}".format(i), alpha=0.5, bins=100)
-plt.legend()
-plt.savefig(prefix + "_bn_weight_hist.png")    
+f, axarr = plt.subplots(len(bn_layers), 2)
+axarr[0,0].set_title("bn_layers_gamma")
+axarr[0,1].set_title("bn_layers_beta")
+for i, l in enumerate(bn_layers):
+    weights = discriminator.layers[l].get_weights()
+    axarr[i,0].hist(weights[0], alpha=0.5, bins=100)
+    axarr[i, 0].locator_params(nbins=3, axis='x')
+#    plt.xlim(-0.01, 0.01)
+
+    axarr[i,1].hist(weights[1], alpha=0.5, bins=100)
+    axarr[i, 1].locator_params(nbins=3, axis='x')
+#    plt.xlim(-0.01, 0.01)
+#    w = np.array(weights[:2])
+#    w = w.reshape((np.prod(w.shape),))
+# plt.legend()
+fileName = prefix + "_bn_weight_hist.png"
+print "Creating file: " + fileName
+plt.savefig(fileName)    
 plt.close()

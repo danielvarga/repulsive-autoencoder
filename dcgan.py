@@ -80,8 +80,8 @@ assert args.original_shape[1] % reduction == 0
 gen_firstX = args.original_shape[0] // reduction
 gen_firstY = args.original_shape[1] // reduction
 
-gen_layers = model_dcgan.generator_layers_wgan(generator_channels, args.latent_dim, args.wd, args.use_bn_gen, args.batch_size, gen_firstX, gen_firstY)
-disc_layers = model_dcgan.discriminator_layers_wgan(discriminator_channels, wd=args.wd, bn_allowed=args.use_bn_disc)
+gen_layers = model_dcgan.generator_layers_wgan(generator_channels, args.latent_dim, args.generator_wd, args.use_bn_gen, args.batch_size, gen_firstX, gen_firstY)
+disc_layers = model_dcgan.discriminator_layers_wgan(discriminator_channels, wd=args.discriminator_wd, bn_allowed=args.use_bn_disc)
 
 gen_input = Input(batch_shape=(args.batch_size,args.latent_dim), name="gen_input")
 disc_input = Input(batch_shape=(args.batch_size, args.shape[0], args.shape[1], x_train.shape[3]), name="disc_input")
@@ -95,6 +95,28 @@ elif args.optimizer == "rmsprop":
 elif args.optimizer == "sgd":
     optimizer_d = SGD(lr=args.lr)
     optimizer_g = SGD(lr=args.lr)
+
+from keras.callbacks import Callback
+
+class ClipperCallback(Callback):
+    def __init__(self, layers, clipValue):
+	self.layers = layers
+        self.clipValue = clipValue
+
+    def on_batch_begin(self):
+        self.clip()
+
+    def clip(self):
+        if self.clipValue == 0: return
+	for layer in self.layers:
+            if layer.__class__.__name__ not in ("Convolution2D"): continue
+#            if layer.__class__.__name__ not in ("BatchNormalization"): continue
+            weights = layer.get_weights()
+            for i in range(len(weights)):
+#            for i in range(2):
+                weights[i] = np.clip(weights[i], - self.clipValue, self.clipValue)
+            layer.set_weights(weights)
+		    
 
 def build_networks(gen_layers, disc_layers):
     gen_output = gen_input
@@ -124,10 +146,24 @@ def build_networks(gen_layers, disc_layers):
     gen_disc.compile(loss=D_loss, optimizer=optimizer_g)
     print "combined net"
     gen_disc.summary()
-    return (generator, discriminator, gen_disc)
+    clipper = ClipperCallback(disc_layers, args.clipValue)
 
-(generator, discriminator, gen_disc) = build_networks(gen_layers, disc_layers)
+    return (generator, discriminator, gen_disc, clipper)
 
+if args.modelPath is None:
+    (generator, discriminator, gen_disc, clipper) = build_networks(gen_layers, disc_layers)
+else:
+    print "Loading models from " +args.modelPath
+    generator = vis.loadModel(args.modelPath + "_generator")
+    discriminator = vis.loadModel(args.modelPath + "_discriminator")
+    gen_disc = vis.loadModel(args.modelPath + "_gendisc")
+    make_trainable(discriminator, True)
+    discriminator.compile(optimizer=optimizer_d, loss=D_loss, metrics=[D_acc])
+    generator.compile(optimizer=optimizer_g, loss="mse")
+    make_trainable(discriminator, False)
+    gen_disc.compile(loss=D_loss, optimizer=optimizer_g)
+    clipper = ClipperCallback(discriminator.layers, args.clipValue)
+    
 def ndisc(gen_iters):
     if gen_iters < 25:
         return 100
@@ -137,39 +173,34 @@ def ndisc(gen_iters):
         return 5
 
 def restart_disc(gen_iters):
+    return False
     if (gen_iters + 1) in (500, 1000, 2000):
         return True
     else:
         return False
 
+def update_lr(gen_iters):
+    phase = gen_iters * 1.0 / args.nb_iter
+    if phase == 0.0:
+        multiplier = 10
+    elif phase == 0.3:
+        multiplier = 1
+    elif phase == 0.6:
+        multiplier = 0.1
+    elif phase == 0.9:
+        multiplier = 0.01
+    else:
+        return
+    print "Setting generator learning rate to: ", args.lr * multiplier
+    K.set_value(optimizer_g.lr, args.lr * multiplier)
+
+sgd = SGD(lr=0.1, decay=0, momentum=0.9, nesterov=True)
+K.set_value(sgd.lr, 0.5 * K.get_value(sgd.lr))
 
 def gaussian_sampler(batch_size, latent_dim):
     return np.random.normal(size=(batch_size, latent_dim))
 vis.plotImages(x_train[:100], 10, 10, args.prefix + "-orig")
 
-from keras.callbacks import Callback
-
-class ClipperCallback(Callback):
-    def __init__(self, layers, clipValue):
-	self.layers = layers
-        self.clipValue = clipValue
-
-    def on_batch_begin(self):
-        self.clip()
-
-    def clip(self):
-	for layer in self.layers:
-#            if layer.__class__.__name__ not in ("Convolution2D", "BatchNormalization"): continue
-            weights = layer.get_weights()
-            for i in range(len(weights)):
-                weights[i] = np.clip(weights[i], - self.clipValue, self.clipValue)
-            layer.set_weights(weights)
-		    
-if args.clipValue > 0:
-    clipper = ClipperCallback(disc_layers, args.clipValue)
-    callbacks = [clipper]
-else:
-    callbacks = []
 
 def randomize(a, b):
     # Generate the permutation index array.
@@ -198,12 +229,15 @@ print "starting training"
 disc_offset = 0
 startTime = time.clock()
 for iter in range(args.nb_iter):
+
+#    update_lr(iter)
+
     if restart_disc(iter): # restart discriminator
         print "Restarting discriminator!!!!!!!!!"
         disc_offset = iter
         vis.saveModel(discriminator, args.prefix + "_discriminator_restarted_{}".format(iter+1))
-        disc_layers = model_dcgan.discriminator_layers_wgan(discriminator_channels, wd=args.wd, bn_allowed=args.use_bn_disc)
-        (generator, discriminator, gen_disc) = build_networks(gen_layers, disc_layers)
+        disc_layers = model_dcgan.discriminator_layers_wgan(discriminator_channels, wd=args.discriminator_wd, bn_allowed=args.use_bn_disc)
+        (generator, discriminator, gen_disc, clipper) = build_networks(gen_layers, disc_layers)
 
     # update discriminator
     disc_iters = ndisc(iter - disc_offset)
@@ -221,9 +255,10 @@ for iter in range(args.nb_iter):
             x_true = x_true_flow.next()
             gen_in = np.random.normal(size=(args.batch_size, args.latent_dim))
             x_generated = generator.predict(gen_in, batch_size=args.batch_size)
-            clipper.clip()
             disc_loss1 = discriminator.train_on_batch(x_true, y_true)
             disc_loss2 = discriminator.train_on_batch(x_generated, y_generated)
+            clipper.clip()
+            
         disc_loss = disc_loss1[0] + disc_loss2[0]
         xs = np.concatenate((x_generated, x_true), axis=0)
 

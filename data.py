@@ -1,6 +1,7 @@
 from keras.datasets import mnist
 import os
 import os.path
+import random
 from PIL import Image
 import numpy as np
 import scipy.misc
@@ -14,6 +15,9 @@ def load(dataset, trainSize, testSize, shape=None, color=False, digit=None):
         (x_train, x_test) = load_celeba(shape=shape, color=color)  if shape is not None else load_celeba(color=color)
     elif dataset == "bedroom":
         (x_train, x_test) = load_bedroom(shape=(64,64), trainSize=trainSize, testSize=testSize)
+    elif dataset == "syn-circles":
+        x_train = generate_circles(shape=(64,64), size=trainSize)
+        x_test  = generate_circles(shape=(64,64), size=testSize)
     else:
         raise Exception("Invalid dataset: ", dataset)
 
@@ -23,6 +27,21 @@ def load(dataset, trainSize, testSize, shape=None, color=False, digit=None):
         x_test = x_test[:testSize]
 
     return (x_train, x_test)
+
+
+def generate_circles(shape, size):
+    assert len(shape)==2
+    max_radius = min(shape) // 2
+    print size, shape, max_radius
+    data = np.zeros((size, shape[0], shape[1]))
+    for i in range(size):
+        r = random.randrange(max_radius + 1) # yeah, randint, screw randint :)
+        for y in range(shape[0]):
+            for x in range(shape[1]):
+                if (x-max_radius)**2 + (y-max_radius)**2 < r**2:
+                    data[i, y, x] = 1
+    return np.expand_dims(data, 3)
+
 
 def load_mnist(digit=None, shape=None):
     (x_train, y_train), (x_test, y_test) = mnist.load_data()

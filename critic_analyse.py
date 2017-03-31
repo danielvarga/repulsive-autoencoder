@@ -8,37 +8,35 @@ import vis
 from keras import backend as K
 
 
-batch_size = 200
-latent_dim = 200
-train_size = 1000
-img_height = 64
-img_width = 64
+import dcgan_params
+args = dcgan_params.getArgs()
+print(args)
 
-parser = argparse.ArgumentParser(description='Deep Dreams with Keras.')
-parser.add_argument('--prefix', dest='prefix', type=str, help='Prefix for the saved results.')
-parser.add_argument('--discriminator_prefix', dest='discriminator_prefix', type=str, help='Prefix for the saved discriminator.')
-parser.add_argument('--generator_prefix', dest='generator_prefix', type=str, help='Prefix for the saved generator.')
-parser.add_argument('--gendisc_prefix', dest='gendisc_prefix', type=str, help='Prefix for the saved gendisc.')
+# set random seed
+np.random.seed(10)
 
-args = parser.parse_args()
+sample_size = 1000
+
 prefix = args.prefix
-discriminator_prefix = args.discriminator_prefix
-generator_prefix = args.generator_prefix
+discriminator_prefix = args.prefix + "_discriminator"
+generator_prefix = args.prefix + "_generator"
+gendisc_prefix = args.prefix + "_gendisc"
 
 discriminator = vis.loadModel(discriminator_prefix)
 generator = vis.loadModel(generator_prefix)
+gendisc = vis.loadModel(gendisc_prefix)
 
-if args.gendisc_prefix:
-    gendisc_prefix = args.gendisc_prefix
-    gendisc = vis.loadModel(gendisc_prefix)
+# interpolate between latent points
+latent_samples = np.random.normal(size=(2, args.latent_dim))
+vis.interpBetween(latent_samples[0], latent_samples[1], generator, args.batch_size, prefix + "_interpBetween")
 
-
-(x_train, x_test) = data.load("celeba", train_size, batch_size, shape=(img_height, img_width), color=True)
+(x_train, x_test) = data.load(args.dataset, sample_size, sample_size, shape=args.shape, color=args.color)
 noise_samples = np.random.uniform(size=x_train.shape)
-generated_samples = generator.predict(np.random.normal(size=(x_train.shape[0], latent_dim)), batch_size=batch_size)
-positive = discriminator.predict(x_train, batch_size=batch_size)
-noise = discriminator.predict(noise_samples, batch_size=batch_size)
-generated = discriminator.predict(generated_samples, batch_size=batch_size)
+generated_samples = generator.predict(np.random.normal(size=(x_train.shape[0], args.latent_dim)), batch_size=args.batch_size)
+positive = discriminator.predict(x_train, batch_size=args.batch_size)
+noise = discriminator.predict(noise_samples, batch_size=args.batch_size)
+generated = discriminator.predict(generated_samples, batch_size=args.batch_size)
+
 
 # compare the discriminator with respect to the real images, generated images, random noise
 plt.figure(figsize=(12,12))
@@ -59,8 +57,8 @@ vis.plotImages(x_train_sorted[::5], 20, 20, prefix + "_discriminator_order")
 # check what happens if we transform the images
 x_train_upside_down = x_train[:,::-1]
 x_train_inverted = 1-x_train
-upside_down = discriminator.predict(x_train_upside_down, batch_size=batch_size)
-inverted = discriminator.predict(x_train_inverted, batch_size=batch_size)
+upside_down = discriminator.predict(x_train_upside_down, batch_size=args.batch_size)
+inverted = discriminator.predict(x_train_inverted, batch_size=args.batch_size)
 plt.figure(figsize=(12,12))
 plt.hist(positive, label='images', alpha=0.5, bins=100)
 plt.hist(upside_down, label='upside_down', alpha=0.5, bins=100)
@@ -108,7 +106,6 @@ print "Creating file: " + fileName
 plt.savefig(fileName)    
 plt.close()
 
-
 # visualize activation magnitudes
 plt.figure(figsize=(12,12))
 #conv_layers = [1, 3, 6, 9, 12]
@@ -143,7 +140,7 @@ if gendisc:
         i += 1
         ltype = layer.__class__.__name__
         acts = layer.output
-        random = np.random.normal(size=(x_train.shape[0], latent_dim))
+        random = np.random.normal(size=(x_train.shape[0], args.latent_dim))
         f = K.function([gendisc.input], K.gradients(gendisc.output, [layer.output]))
 
         acts = f([random[:200]])[0]

@@ -284,6 +284,16 @@ def displayInterp(x_train, x_test, batch_size, dim,
     grid = np.concatenate([prologGrid, predictedGrid])
     reshapedGrid = grid.reshape([grid.shape[0]] + list(x_train.shape[1:]))
     plotImages(reshapedGrid, gridSize, gridSize+1, name)
+
+def interpBetween(latent_x, latent_y, generator, batch_size, name):
+    assert latent_x.shape == latent_y.shape
+    shape = [batch_size] + list(latent_x.shape)
+    latent_set = np.zeros(shape=shape)
+    for i in range(batch_size):
+        ii = i * 1.0 / (batch_size-1)
+        latent_set[i] = latent_x * (1.0-ii) + latent_y * ii
+    predicted_set = generator.predict(latent_set, batch_size=batch_size)
+    plotImages(predicted_set, 20, batch_size // 20, name)
     
 
 # returns matrix M, such that M[i][j] is the distance between the j-th row in x and the i-th row in y

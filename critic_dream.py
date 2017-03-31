@@ -46,9 +46,9 @@ else:
 img_height = 64
 img_width = 64
 channels = 3
-frequency = 10
-iterations = 50
-opt_iter = 30
+frequency = 1
+iterations = 10
+opt_iter = 10
 
 # some settings we found interesting
 saved_settings = {

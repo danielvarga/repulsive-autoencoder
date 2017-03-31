@@ -80,8 +80,18 @@ assert args.original_shape[1] % reduction == 0
 gen_firstX = args.original_shape[0] // reduction
 gen_firstY = args.original_shape[1] // reduction
 
-gen_layers = model_dcgan.generator_layers_wgan(generator_channels, args.latent_dim, args.generator_wd, args.use_bn_gen, args.batch_size, gen_firstX, gen_firstY)
-disc_layers = model_dcgan.discriminator_layers_wgan(discriminator_channels, wd=args.discriminator_wd, bn_allowed=args.use_bn_disc)
+if args.generator == "dcgan":
+    gen_layers = model_dcgan.generator_layers_wgan(generator_channels, args.latent_dim, args.generator_wd, args.use_bn_gen, args.batch_size, gen_firstX, gen_firstY)
+elif args.generator == "dense":
+    gen_layers = model_dcgan.generator_layers_dense(args.latent_dim, args.batch_size, args.generator_wd, args.use_bn_gen, args.original_shape)
+else:
+    assert False, "Invalid generator type"
+if args.discriminator =="dcgan":
+    disc_layers = model_dcgan.discriminator_layers_wgan(discriminator_channels, wd=args.discriminator_wd, bn_allowed=args.use_bn_disc)
+elif args.discriminator == "dense":
+    disc_layers = model_dcgan.discriminator_layers_dense(args.discriminator_wd, args.use_bn_disc)
+else:
+    assert False, "Invalid discriminator type"
 
 gen_input = Input(batch_shape=(args.batch_size,args.latent_dim), name="gen_input")
 disc_input = Input(batch_shape=(args.batch_size, args.shape[0], args.shape[1], x_train.shape[3]), name="disc_input")
@@ -109,7 +119,7 @@ class ClipperCallback(Callback):
     def clip(self):
         if self.clipValue == 0: return
 	for layer in self.layers:
-            if layer.__class__.__name__ not in ("Convolution2D"): continue
+#            if layer.__class__.__name__ not in ("Convolution2D"): continue
 #            if layer.__class__.__name__ not in ("BatchNormalization"): continue
             weights = layer.get_weights()
             for i in range(len(weights)):
@@ -236,7 +246,12 @@ for iter in range(args.nb_iter):
         print "Restarting discriminator!!!!!!!!!"
         disc_offset = iter
         vis.saveModel(discriminator, args.prefix + "_discriminator_restarted_{}".format(iter+1))
-        disc_layers = model_dcgan.discriminator_layers_wgan(discriminator_channels, wd=args.discriminator_wd, bn_allowed=args.use_bn_disc)
+        if args.discriminator =="dcgan":
+            disc_layers = model_dcgan.discriminator_layers_wgan(discriminator_channels, wd=args.discriminator_wd, bn_allowed=args.use_bn_disc)
+        elif args.discriminator == "dense":
+            disc_layers = model_dcgan.discriminator_layers_dense(args.discriminator_wd, args.use_bn_disc)
+        else:
+            assert False, "Invalid discriminator type"
         (generator, discriminator, gen_disc, clipper) = build_networks(gen_layers, disc_layers)
 
     # update discriminator
@@ -283,6 +298,9 @@ for iter in range(args.nb_iter):
         print "Elapsed time: {}:{:.0f}".format(minute, second)
         vis.displayRandom(10, x_train, args.latent_dim, gaussian_sampler, generator, "{}-random-{}".format(args.prefix, iter+1), batch_size=args.batch_size)
         vis.displayRandom(10, x_train, args.latent_dim, gaussian_sampler, generator, "{}-random".format(args.prefix), batch_size=args.batch_size)
+        latent_samples = np.random.normal(size=(2, args.latent_dim))
+        vis.interpBetween(latent_samples[0], latent_samples[1], generator, args.batch_size, args.prefix + "_interpBetween-{}".format(iter+1))
+        vis.interpBetween(latent_samples[0], latent_samples[1], generator, args.batch_size, args.prefix + "_interpBetween")
         vis.saveModel(discriminator, args.prefix + "_discriminator")
         vis.saveModel(generator, args.prefix + "_generator")
         vis.saveModel(gen_disc, args.prefix + "_gendisc")

@@ -8,6 +8,8 @@ parser.add_argument('ini_file', nargs='*', help="Ini file to use for configurati
 
 parser.add_argument('--prefix', dest="prefix", default="dcgan/trash", help="File prefix for the output visualizations and models.")
 parser.add_argument('--lr', dest="lr", default="0.00005", type=float, help="Learning rate for RMS prop.")
+parser.add_argument('--generator', dest="generator", default="dcgan", help="generator type (dense/dcgan)")
+parser.add_argument('--discriminator', dest="discriminator", default="dcgan", help="discriminator type (dense/dcgan)")
 parser.add_argument('--generator_wd', dest="generator_wd", type=float, default=0.0, help="Weight decay param for generator")
 parser.add_argument('--discriminator_wd', dest="discriminator_wd", type=float, default=0.0, help="Weight decay param for discriminator")
 parser.add_argument('--latent_dim', dest="latent_dim", type=int, default=100, help="Latent dimension")

@@ -61,12 +61,12 @@ def encoder_layers_wgan(channels, wd, bn_allowed):
     layers.append(Flatten())
     return layers
 
-def generator_layers_simple(latent_dim, batch_size, wd, bn_allowed, image_channel):
+def generator_layers_dense(latent_dim, batch_size, wd, bn_allowed, image_shape):
     layers = []
     layers.append(Dense(latent_dim, activation="relu"))
     layers.append(Dense(latent_dim, activation="relu"))
-    layers.append(Dense(sizes[0] * sizes[0] * image_channel, activation="sigmoid"))
-    layers.append(Reshape((sizes[0], sizes[0], image_channel)))
+    layers.append(Dense(np.prod(image_shape), activation="sigmoid"))
+    layers.append(Reshape(image_shape))
     return layers
 
 """    
@@ -173,6 +173,7 @@ class DcganDecoder(Decoder):
 
 def discriminator_layers_dense(wd, bn_allowed):
     layers = []
+    layers.append(Flatten())
     layers.append(Dense(100, activation="relu"))
     layers.append(Dense(100, activation="relu"))
     layers.append(Dense(100, activation="relu"))

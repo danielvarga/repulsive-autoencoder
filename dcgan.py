@@ -63,6 +63,13 @@ def D_acc_np(y_true, y_pred):
     x = y_true * y_pred
     return 100 * np.mean(x > 0)
 
+def display_elapsed(startTime, endTime):
+    elapsed = endTime - startTime
+    second = elapsed % 60
+    minute = int(elapsed / 60)
+    print "Elapsed time: {}:{:.0f}".format(minute, second)
+
+
 # Freeze weights in the discriminator for stacked training
 def make_trainable(net, val):
     net.trainable = val
@@ -225,15 +232,22 @@ y_generated = np.array([-1.0] *  args.batch_size).reshape((-1,1)).astype("float3
 y_true = np.array([1.0] *  args.batch_size).reshape((-1,1)).astype("float32")
 ys = np.concatenate((y_generated, y_true), axis=0)
 
-test_true = x_test[:args.batch_size]
-test_gen_in = np.random.normal(size=(args.batch_size, args.latent_dim))
+count = 25 * args.batch_size
+test_true = x_test[:count]
+test_gen_in = np.random.normal(size=(count, args.latent_dim))
 def evaluate():
     test_generated = generator.predict(test_gen_in, batch_size=args.batch_size)
-    test_x = np.concatenate((test_generated, test_true), axis=0)
-    test_y = ys
-    pred = discriminator.predict(test_x, batch_size=args.batch_size)
-    divergence = np.mean(pred * test_y)
-    return divergence
+#    test_x = np.concatenate((test_generated, test_true), axis=0)
+#    test_y = ys
+#    pred = discriminator.predict(test_x, batch_size=args.batch_size)
+#    divergence = np.mean(pred * test_y)
+    emd = vis.dataset_emd(test_true, test_generated)
+    return emd
+eval_start_time = time.clock()
+initial_emd = evaluate()
+eval_end_time = time.clock()
+display_elapsed(eval_start_time, eval_end_time)
+print "initial emd: {}".format(initial_emd)
 
 print "starting training"
 disc_offset = 0
@@ -277,25 +291,20 @@ for iter in range(args.nb_iter):
         disc_loss = disc_loss1[0] + disc_loss2[0]
         xs = np.concatenate((x_generated, x_true), axis=0)
 
-    disc_eval = evaluate()
-    #disc_pred = discriminator.predict(xs, batch_size=args.batch_size)
-    #disc_acc = D_acc_np(ys, disc_pred)
-
     # update generator
 #    make_trainable(discriminator, False)
     gen_in = np.random.normal(size=(args.batch_size, args.latent_dim))
     gen_loss = gen_disc.train_on_batch(gen_in, y_true)
-    gen_eval = evaluate()
-    #gen_pred = gen_disc.predict(gen_in, batch_size=args.batch_size)
-    #gen_acc = D_acc_np(y_true, gen_pred)
 
-    print "Iter: {}, Generator: {} - {:.3f}, Discriminator: {} - {:.3f}".format(iter, gen_loss, gen_eval, disc_loss, disc_eval)
+    if iter % 10 == 0:
+        emd = evaluate()
+    else:
+        emd = -1
+
+    print "Iter: {}, Discriminator: {}, Generator: {}, EMD: {}".format(iter, disc_loss, gen_loss, emd)
     if (iter+1) % args.frequency == 0:
         currTime = time.clock()
-        elapsed = currTime - startTime
-        second = elapsed % 60
-        minute = int(elapsed / 60)
-        print "Elapsed time: {}:{:.0f}".format(minute, second)
+        display_elapsed(startTime, currTime)
         vis.displayRandom(10, x_train, args.latent_dim, gaussian_sampler, generator, "{}-random-{}".format(args.prefix, iter+1), batch_size=args.batch_size)
         vis.displayRandom(10, x_train, args.latent_dim, gaussian_sampler, generator, "{}-random".format(args.prefix), batch_size=args.batch_size)
         latent_samples = np.random.normal(size=(2, args.latent_dim))

@@ -18,6 +18,15 @@ def load(dataset, trainSize, testSize, shape=None, color=False, digit=None):
     elif dataset == "syn-circles":
         x_train = generate_circles(shape=(64,64), size=trainSize)
         x_test  = generate_circles(shape=(64,64), size=testSize)
+    elif dataset == "syn-moving-circles":
+        x_train = generate_moving_circles(shape=(64,64), size=trainSize)
+        x_test  = generate_moving_circles(shape=(64,64), size=testSize)
+    elif dataset == "syn-moving-changing-circles":
+        x_train = generate_several_circles(shape=(64,64), size=trainSize, circleCount=1)
+        x_test  = generate_several_circles(shape=(64,64), size=testSize, circleCount=1)        
+    elif dataset == "syn-circle-pairs":
+        x_train = generate_several_circles(shape=(64,64), size=trainSize, circleCount=2)
+        x_test  = generate_several_circles(shape=(64,64), size=testSize, circleCount=2)        
     else:
         raise Exception("Invalid dataset: ", dataset)
 
@@ -30,6 +39,7 @@ def load(dataset, trainSize, testSize, shape=None, color=False, digit=None):
 
 
 def generate_circles(shape, size):
+    if size == 0: size = 1000
     assert len(shape)==2
     max_radius = min(shape) // 2
     print size, shape, max_radius
@@ -40,6 +50,47 @@ def generate_circles(shape, size):
             for x in range(shape[1]):
                 if (x-max_radius)**2 + (y-max_radius)**2 < r**2:
                     data[i, y, x] = 1
+    return np.expand_dims(data, 3)
+
+# fixed radius circle but at moving location
+def generate_moving_circles(shape, size):
+    if size == 0: size = 1000
+    assert len(shape)==2
+    radius = min(shape) // 4
+    print size, shape, radius
+    data = np.zeros((size, shape[0], shape[1]))
+    for i in range(size):
+        center_x = random.randrange(radius, shape[1] - radius + 1) # yeah, randint, screw randint :)
+        center_y = random.randrange(radius, shape[0] - radius + 1) # yeah, randint, screw randint :)
+        for y in range(shape[0]):
+            for x in range(shape[1]):
+                if (x-center_x)**2 + (y-center_y)**2 < radius**2:
+                    data[i, y, x] = 1
+    return np.expand_dims(data, 3)
+    
+
+def generate_several_circles(shape, size, circleCount):
+    if size == 0: size = 1000
+    assert len(shape)==2
+    data = np.zeros((size, shape[0], shape[1]))
+    for i in range(size):
+        # first generate center points
+        centers = np.random.uniform(size=(circleCount,2)) * shape
+        # determine maximum radii such that each circle fits in the picture
+        distances_from_edge = np.concatenate([centers, shape-centers], axis=1)
+        max_radii = np.min(distances_from_edge, axis=1)
+        radii = np.random.uniform(size=circleCount, high=max_radii)
+
+        for y in range(shape[0]):
+            for x in range(shape[1]):
+                for j in range(circleCount):
+#                    r = radii[j]
+                    r = 5.0
+                    center_x = centers[j,0]
+                    center_y = centers[j,1]
+                    if (x-center_x)**2 + (y-center_y)**2 < r**2:
+                        data[i, y, x] = 1
+                        break
     return np.expand_dims(data, 3)
 
 

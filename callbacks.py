@@ -38,22 +38,37 @@ class ImageDisplayCallback(Callback):
         self.sampler = sampler
         self.name = args.callback_prefix
         self.frequency = args.frequency
+        self.latent_normal = np.random.normal(size=(self.x_train.shape[0], self.latent_dim))
         super(ImageDisplayCallback, self).__init__(**kwargs)
 
     def on_epoch_end(self, epoch, logs):
         if (epoch+1) % self.frequency != 0:
             return
 
-        vis.displayGaussian(self.args, self.ae, self.x_train, "%s-dots-%i" % (self.name, epoch+1))
+#        vis.displayGaussian(self.args, self.ae, self.x_train, "%s-dots-%i" % (self.name, epoch+1))
         vis.displayRandom(10, self.x_train, self.latent_dim, self.sampler, self.generator, "%s-random-%i" % (self.name, epoch+1), batch_size=self.batch_size)
-        vis.displaySet(self.x_test[:self.batch_size], self.batch_size, self.batch_size, self.model, "%s-test-%i" % (self.name,epoch+1))
-        vis.displaySet(self.x_train[:self.batch_size], self.batch_size, self.batch_size, self.model, "%s-train-%i" % (self.name,epoch+1))
-        if self.args.decoder != "gaussian":
-            vis.displayInterp(self.x_train, self.x_test, self.batch_size, self.latent_dim, self.encoder, self.encoder_var, self.is_sampling, self.generator, 10, "%s-interp-%i" % (self.name,epoch+1))
-        if self.encoder != self.encoder_var:
-            vis.plotMVVM(self.x_train, self.encoder, self.encoder_var, self.batch_size, "{}-mvvm-{}.png".format(self.name, epoch+1))
-        vis.plotMVhist(self.x_train, self.encoder, self.batch_size, "{}-mvhist-{}.png".format(self.name, epoch+1))
+        vis.displayRandom(10, self.x_train, self.latent_dim, self.sampler, self.generator, "%s-random" % (self.name), batch_size=self.batch_size)
+#        vis.displaySet(self.x_test[:self.batch_size], self.batch_size, self.batch_size, self.model, "%s-test-%i" % (self.name,epoch+1))
+#        vis.displaySet(self.x_train[:self.batch_size], self.batch_size, self.batch_size, self.model, "%s-train-%i" % (self.name,epoch+1))
+#        if self.args.decoder != "gaussian":
+#            vis.displayInterp(self.x_train, self.x_test, self.batch_size, self.latent_dim, self.encoder, self.encoder_var, self.is_sampling, self.generator, 10, "%s-interp-%i" % (self.name,epoch+1))
+#        if self.encoder != self.encoder_var:
+#            vis.plotMVVM(self.x_train, self.encoder, self.encoder_var, self.batch_size, "{}-mvvm-{}.png".format(self.name, epoch+1))
+#        vis.plotMVhist(self.x_train, self.encoder, self.batch_size, "{}-mvhist-{}.png".format(self.name, epoch+1))
 
+        count = 5 * self.batch_size
+        generated_samples = self.generator.predict(self.latent_normal[:count], batch_size = self.batch_size)
+        emd = vis.dataset_emd(self.x_train[:count], generated_samples)
+        print "Earth Mover distance between real and generated images: {}".format(emd)
+
+        latent_train_mean = self.encoder.predict(self.x_train[:count], batch_size = self.batch_size)
+        if self.is_sampling:
+            latent_train_logvar = self.encoder_var.predict(self.x_train[:count], batch_size = self.batch_size)
+            latent_train = np.random.normal(size=latent_train_mean.shape) * np.exp(latent_train_logvar/2) + latent_train_mean
+        else:
+            latent_train = latent_train_mean
+        emd = vis.dataset_emd(self.latent_normal[:count], latent_train)
+        print "Earth Mover distance between latent points and standard normal: {}".format(emd)
 
 class WeightSchedulerCallback(Callback):
     # weight should be a Keras variable

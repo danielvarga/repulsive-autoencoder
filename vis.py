@@ -2,6 +2,7 @@ import matplotlib
 matplotlib.use('Agg')
 from PIL import Image
 import matplotlib.pyplot as plt
+from emd import emd
 
 import numpy as np
 import math
@@ -443,3 +444,8 @@ def cumulative_view(projected_z, title, name):
     plt.close()
 #    plt.show()
     
+def dataset_emd(true_samples, generated_samples):
+    true_samples_flattened = np.reshape(true_samples, (true_samples.shape[0], -1))
+    generated_samples_flattened = np.reshape(generated_samples, (generated_samples.shape[0], -1))
+    distance = emd(true_samples_flattened, generated_samples_flattened)
+    return distance

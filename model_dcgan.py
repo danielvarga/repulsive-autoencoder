@@ -19,6 +19,9 @@ def default_channels(model_type, model_size, last_channel):
     elif model_size == "small":
         channels = [64, 128, 256, 512]
         disc_channels = [8, 16, 32, 64, 1] 
+    elif model_size == "tiny":
+        channels = [16, 32, 64, 128]
+        disc_channels = [8, 16, 32, 64, 1] 
     else:
         assert False, "unknown model size"
 

@@ -8,6 +8,7 @@ import os.path
 # import seaborn as sns
 import sklearn.preprocessing
 
+import evaluator
 import vis
 import data
 import model
@@ -73,6 +74,11 @@ if do_latent_variances:
 else:
     encoder_var =encoder
     latent_train = latent_train_mean
+
+# calculate earth mover distance between real and generated images 
+print "Calculating Earth Mover Distance between real and generated images: "
+emd = evaluator.eval_generator(x_train[:1000], generator, args.batch_size, args.latent_dim)
+print emd
 
 # check how overlapping the latent ellipsoids are
 if do_latent_variances:

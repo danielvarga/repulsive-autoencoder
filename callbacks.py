@@ -19,6 +19,29 @@ def get_lr_scheduler(nb_epoch, base_lr):
             return base_lr * 0.01
     return LearningRateScheduler(get_lr)
 
+class SaveGeneratedCallback(Callback):
+    def __init__(self, generator, dataset, sampler, prefix, batch_size, frequency, latent_dim, sample_size=100000, **kwargs):
+        self.generator = generator
+        self.dataset = dataset
+        self.sampler = sampler
+        self.prefix = prefix
+        self.batch_size = batch_size
+        self.frequency = frequency
+        self.latent_dim = latent_dim
+        self.sample_size = sample_size
+        super(SaveGeneratedCallback, self).__init__(**kwargs)
+
+    def save(self, iteration):
+        latent_sample = self.sampler(self.sample_size, self.latent_dim)
+        generated = self.generator.predict(latent_sample, batch_size = self.batch_size)
+        file = "{}***{}_{}.npy".format(self.prefix, self.dataset, iteration)
+        print "Saving generated samples to {}".format(file)
+        np.save(file, generated)
+        
+    def on_epoch_end(self, epoch, logs):
+        if (epoch+1) % self.frequency == 0:
+            self.save(epoch+1)
+
 class ImageDisplayCallback(Callback):
     def __init__(self, 
                  x_train, x_test, args,
@@ -162,3 +185,21 @@ class CollectActivationCallback(Callback):
             outDict["test-{}".format(self.layerIndices[i])] = self.savedTest[i]
         print "Saving activation history to file {}".format(fileName)
         np.savez(fileName, **outDict)
+
+class ClipperCallback(Callback):
+    def __init__(self, layers, clipValue):
+	self.layers = layers
+        self.clipValue = clipValue
+
+    def on_batch_begin(self):
+        self.clip()
+
+    def clip(self):
+        if self.clipValue == 0: return
+	for layer in self.layers:
+#            if layer.__class__.__name__ not in ("Convolution2D"): continue
+#            if layer.__class__.__name__ not in ("BatchNormalization"): continue
+            weights = layer.get_weights()
+            for i in range(len(weights)):
+                weights[i] = np.clip(weights[i], - self.clipValue, self.clipValue)
+            layer.set_weights(weights)

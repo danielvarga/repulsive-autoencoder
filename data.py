@@ -31,8 +31,8 @@ def load(dataset, trainSize, testSize, shape=None, color=False, digit=None):
         x_train = generate_rectangles(shape=(64,64), size=trainSize)
         x_test  = generate_rectangles(shape=(64,64), size=testSize)
     elif dataset == "syn-gradient":
-        x_train = generate_gradient(shape=(64,64), size=trainSize)
-        x_test  = generate_gradient(shape=(64,64), size=testSize)
+        x_train = generate_general((64, 64), trainSize, single_gradient, single_gradient_sampler)
+        x_test  = generate_general((64, 64), testSize,  single_gradient, single_gradient_sampler)
     else:
         raise Exception("Invalid dataset: ", dataset)
 
@@ -44,14 +44,15 @@ def load(dataset, trainSize, testSize, shape=None, color=False, digit=None):
     return (x_train, x_test)
 
 
+# single_*_sampler() functions return a scalar or a tuple
 def single_gradient_sampler():
     return np.random.uniform(0.0, 2*np.pi)
 
 
-def single_gradient(shape, direction):
-    h, w = shape
+# single_* generators modify data in place
+def single_gradient(data, direction):
+    h, w = data.shape
     assert h==w
-    data = np.zeros(shape)
     c, s = np.cos(direction), np.sin(direction)
     for y in range(h):
         for x in range(w):
@@ -60,15 +61,14 @@ def single_gradient(shape, direction):
             scalar_product = yy * s + xx * c
             normed = (scalar_product / np.sqrt(2) + 1) / 2 # even the 45 degree gradients are in [0, 1].
             data[y, x] = normed
-    return data
 
 
-def generate_gradient(shape, size):
+def generate_general(shape, size, generator, sampler):
     h, w = shape
     assert h==w
     data = np.zeros((size, h, w))
     for i in range(size):
-        data[i] = single_gradient(shape, single_gradient_sampler())
+        generator(data[i], sampler())
     return np.expand_dims(data, 3)
 
 

@@ -27,6 +27,12 @@ def load(dataset, trainSize, testSize, shape=None, color=False, digit=None):
     elif dataset == "syn-circle-pairs":
         x_train = generate_several_circles(shape=(64,64), size=trainSize, circleCount=2)
         x_test  = generate_several_circles(shape=(64,64), size=testSize, circleCount=2)        
+    elif dataset == "syn-rectangles":
+        x_train = generate_rectangles(shape=(64,64), size=trainSize)
+        x_test  = generate_rectangles(shape=(64,64), size=testSize)
+    elif dataset == "syn-gradient":
+        x_train = generate_general((64, 64), trainSize, single_gradient, single_gradient_sampler)
+        x_test  = generate_general((64, 64), testSize,  single_gradient, single_gradient_sampler)
     else:
         raise Exception("Invalid dataset: ", dataset)
 
@@ -38,11 +44,38 @@ def load(dataset, trainSize, testSize, shape=None, color=False, digit=None):
     return (x_train, x_test)
 
 
+# single_*_sampler() functions return a scalar or a tuple
+def single_gradient_sampler():
+    return np.random.uniform(0.0, 2*np.pi)
+
+
+# single_* generators modify data in place
+def single_gradient(data, direction):
+    h, w = data.shape
+    assert h==w
+    c, s = np.cos(direction), np.sin(direction)
+    for y in range(h):
+        for x in range(w):
+            yy = 2 * float(y) / h - 1
+            xx = 2 * float(x) / w - 1
+            scalar_product = yy * s + xx * c
+            normed = (scalar_product / np.sqrt(2) + 1) / 2 # even the 45 degree gradients are in [0, 1].
+            data[y, x] = normed
+
+
+def generate_general(shape, size, generator, sampler):
+    h, w = shape
+    assert h==w
+    data = np.zeros((size, h, w))
+    for i in range(size):
+        generator(data[i], sampler())
+    return np.expand_dims(data, 3)
+
+
 def generate_circles(shape, size):
     if size == 0: size = 1000
     assert len(shape)==2
     max_radius = min(shape) // 2
-    print size, shape, max_radius
     data = np.zeros((size, shape[0], shape[1]))
     for i in range(size):
         r = random.randrange(max_radius + 1) # yeah, randint, screw randint :)
@@ -94,10 +127,24 @@ def generate_several_circles(shape, size, circleCount):
     return np.expand_dims(data, 3)
 
 
+def generate_rectangles(shape, size):
+    assert len(shape)==2
+    data = np.zeros((size, shape[0], shape[1]))
+    for i in range(size):
+        ys = np.random.randint(shape[0]+1, size=2)
+        ys = sorted(ys)
+        xs = np.random.randint(shape[1]+1, size=2)
+        xs = sorted(xs)
+        data[i, ys[0]:ys[1], xs[0]:xs[1]] = 1
+    return np.expand_dims(data, 3)
+
+
 def load_mnist(digit=None, shape=None):
     (x_train, y_train), (x_test, y_test) = mnist.load_data()
     x_train = x_train.astype('float32') / 255.
     x_test = x_test.astype('float32') / 255.
+
+    np.savez("mnist-labels.npz", **{"train": y_train, "test": y_test})
 
     # add_feature_dimension (!!! only works with Tensorflow !!!)
     x_train = np.expand_dims(x_train, 3)
@@ -123,7 +170,8 @@ def load_mnist(digit=None, shape=None):
 
     return (x_train, x_test)
 
-def load_celeba(shape=(72, 60),color=False):
+
+def load_celeba(shape=(72, 60), color=False):
     if shape==(72, 60):
         directory = "/home/daniel/autoencoding_beyond_pixels/datasets/celeba/img_align_celeba-60x72"
         if color:
@@ -171,9 +219,8 @@ def load_celeba(shape=(72, 60),color=False):
 
     x_train = input[:trainSize]
     x_test = input[trainSize:trainSize+testSize]
-    x_train = np.random.permutation(x_train)
-    x_test = np.random.permutation(x_test)
     return (x_train, x_test)
+
 
 def load_bedroom(shape=(64, 64), trainSize=0, testSize=0):
     if shape==(64, 64):

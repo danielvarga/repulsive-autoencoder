@@ -8,7 +8,6 @@ import os.path
 # import seaborn as sns
 import sklearn.preprocessing
 
-import evaluator
 import vis
 import data
 import model
@@ -40,7 +39,8 @@ args.original_shape = x_train.shape[1:]
 x_train = np.delete(x_train, [36439, 48561], axis=0)
 x_train = x_train[:(x_train.shape[0] // args.batch_size) * args.batch_size]
 
-sampler = model.sampler_factory(args, x_train)
+import samplers
+sampler = samplers.sampler_factory(args, x_train)
 
 try:
     generator = vis.loadModel(prefix + "_generator")
@@ -74,11 +74,6 @@ if do_latent_variances:
 else:
     encoder_var =encoder
     latent_train = latent_train_mean
-
-# calculate earth mover distance between real and generated images 
-print "Calculating Earth Mover Distance between real and generated images: "
-emd = evaluator.eval_generator(x_train[:1000], generator, args.batch_size, args.latent_dim)
-print emd
 
 # check how overlapping the latent ellipsoids are
 if do_latent_variances:

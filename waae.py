@@ -24,14 +24,10 @@ if keras.backend._BACKEND == "tensorflow":
     set_session(tf.Session(config=config))
 
 import data
-(x_train, x_test) = data.load(args.dataset, args.trainSize, args.testSize, shape=args.shape, color=args.color)
+data_object = data.load(args.dataset, args.trainSize, args.testSize, shape=args.shape, color=args.color)
+(x_train, x_test) = data_object.get_data()
+x_true_flow = data_object.get_train_flow(args.batch_size)
 args.original_shape = x_train.shape[1:]
-imageGenerator = ImageDataGenerator()
-x_train_size = args.batch_size * (x_train.shape[0] // args.batch_size)
-x_train = x_train[:x_train_size]
-print "Train set size: ", x_train_size 
-x_true_flow = imageGenerator.flow(x_train, batch_size = args.batch_size)
-
 
 import model_dcgan
 encoder_channels = model_dcgan.default_channels("encoder", args.network_size, args.latent_dim)

@@ -32,7 +32,8 @@ batch_size = args.batch_size
 do_latent_variances = args.sampling
 
 import data
-(x_train, x_test) = data.load(args.dataset, args.trainSize, args.testSize, color=args.color, shape=args.shape)
+data_object = data.load(args.dataset, args.trainSize, args.testSize, color=args.color, shape=args.shape)
+(x_train, x_test) = data_object.get_data()
 args.original_shape = x_train.shape[1:]
 
 # delete duplicate elements
@@ -233,12 +234,12 @@ plt.figure()
 f, axarr = plt.subplots(2, 2)
 greatest = latent_train_mean[:, x1]
 smallest = latent_train_mean[:, x2]
-data = (greatest, smallest, np.square(greatest), np.square(smallest))
+d = (greatest, smallest, np.square(greatest), np.square(smallest))
 titles = ('Greatest dim', 'Smallest dim', 'Greatest dim squared', 'Smallest dim squared')
 for i in range(4):
     x = i / 2
     y = i % 2
-    axarr[x, y].hist(data[i], bins=100)
+    axarr[x, y].hist(d[i], bins=100)
     axarr[x, y].set_title(titles[i])
     axarr[x, y].locator_params(nbins=5, axis='x')
 plt.savefig(prefix + "_square_contribution.png")

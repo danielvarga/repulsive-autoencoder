@@ -32,8 +32,8 @@ batch_size = args.batch_size
 do_latent_variances = args.sampling
 
 import data
-data_object = data.load(args.dataset, args.trainSize, args.testSize, color=args.color, shape=args.shape)
-(x_train, x_test) = data_object.get_data()
+data_object = data.load(args.dataset, color=args.color, shape=args.shape)
+(x_train, x_test) = data_object.get_data(args.trainSize, args.testSize)
 args.original_shape = x_train.shape[1:]
 
 # delete duplicate elements

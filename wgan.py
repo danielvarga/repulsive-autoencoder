@@ -46,8 +46,8 @@ if keras.backend._BACKEND == "tensorflow":
 
 ############################################
 print "loading data"
-data_object = data.load(args.dataset, trainSize=args.trainSize, testSize=args.testSize, shape=args.shape, color=args.color)
-(x_train, x_test) = data_object.get_data()
+data_object = data.load(args.dataset, shape=args.shape, color=args.color)
+(x_train, x_test) = data_object.get_data(args.trainSize, args.testSize)
 x_true_flow = data_object.get_train_flow(args.batch_size)
 args.original_shape = x_train.shape[1:]
 

@@ -24,8 +24,8 @@ if keras.backend._BACKEND == "tensorflow":
     set_session(tf.Session(config=config))
 
 import data
-data_object = data.load(args.dataset, args.trainSize, args.testSize, shape=args.shape, color=args.color)
-(x_train, x_test) = data_object.get_data()
+data_object = data.load(args.dataset, shape=args.shape, color=args.color)
+(x_train, x_test) = data_object.get_data(args.trainSize, args.testSize)
 x_true_flow = data_object.get_train_flow(args.batch_size)
 args.original_shape = x_train.shape[1:]
 

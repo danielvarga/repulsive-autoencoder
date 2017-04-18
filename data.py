@@ -26,29 +26,27 @@ else:
 #    get_train_flow(self, batch_size): -> object with next() method to give batch_size number of samples
 # properties
 #    name
-#    trainSize
-#    testSize
 #    shape
 #    color
 #    finite
 #    synthetic
-def load(dataset, trainSize, testSize, shape=None, color=True):
+def load(dataset, shape=None, color=True):
     if dataset == "mnist":
-        return Dataset_mnist(trainSize, testSize, shape)
+        return Dataset_mnist(shape)
     elif dataset == "celeba":
-        return Dataset_celeba(trainSize, testSize, shape, color)
+        return Dataset_celeba(shape, color)
     elif dataset == "bedroom":
-        return Dataset_bedroom(trainSize, testSize, shape)
+        return Dataset_bedroom(shape)
         
     assert shape is not None, "Synthetic datasets must have a valid shape argument"
     if dataset == "syn-circles":
-        return Dataset_finite(trainSize, testSize, shape, finite_circles_centered, "syn-circles")
+        return Dataset_finite(shape, finite_circles_centered, "syn-circles")
     elif dataset == "syn-moving-circles":
-        return Dataset_finite(trainSize, testSize, shape, finite_circles_moving, "syn-moving-circles")
+        return Dataset_finite(shape, finite_circles_moving, "syn-moving-circles")
     elif dataset == "syn-rectangles":
-        return Dataset_general(trainSize, testSize, shape, single_rectangle, single_rectangle_sampler, "syn-rectangles")
+        return Dataset_general(shape, single_rectangle, single_rectangle_sampler, "syn-rectangles")
     elif dataset == "syn-gradient":
-        return Dataset_general(trainSize, testSize, shape, single_gradient, single_gradient_sampler, "syn-gradient")
+        return Dataset_general(shape, single_gradient, single_gradient_sampler, "syn-gradient")
     else:
         raise Exception("Invalid dataset: ", dataset)
 
@@ -60,8 +58,8 @@ def test(datasets, file):
     color = True
     result = []
     for dataset in datasets:
-        data_object = load(dataset, trainSize, testSize, shape, color)
-        x_train, x_test = data_object.get_data()
+        data_object = load(dataset, shape, color)
+        x_train, x_test = data_object.get_data(trainSize, testSize)
         if x_train.shape[feature_axis] == 1:
             x_train = np.concatenate([x_train, x_train, x_train], axis=feature_axis)
         result.append(x_train)
@@ -80,21 +78,14 @@ class FiniteGenerator(object):
         return self.finite_set[selected_indices]
 
 class Dataset(object):
-    def __init__(self, name, trainSize, testSize, shape, color=False, finite=False, synthetic=False):
+    def __init__(self, name, shape, color=False, finite=False, synthetic=False):
         self.name = name
-        self.trainSize = trainSize
-        self.testSize = testSize
         self.shape = shape
         self.color = color
         self.finite = finite
         self.synthetic = synthetic
-    def get_data(self):
-        if self.finite:
-            train_indices = np.random.choice(len(self.finite_set), self.trainSize)
-            test_indices = np.random.choice(len(self.finite_set), self.testSize)
-            self.x_train = self.finite_set[train_indices]
-            self.x_test = self.finite_set[test_indices]
-        return (self.x_train, self.x_test)
+    def get_data(self, trainSize, testSize):
+        assert False, "Not Yet Implemented"
     def get_train_flow(self, batch_size):
         if not self.finite:
             imageGenerator = ImageDataGenerator()
@@ -106,23 +97,29 @@ class Dataset(object):
             assert False, "This can only be called when the dataset is finite"
         else:
             return self.finite_set
-    def filter_data(self):
-        if self.trainSize > 0:
-            self.x_train = self.x_train[:self.trainSize]
-        if self.testSize > 0:
-            self.x_test = self.x_test[:self.testSize]
+    def get_normalized_image_data(self, input, trainSize, testSize):
+        assert trainSize > 0 and testSize > 0, "trainSize and testSize must be positive"            
+        x_train = input[:trainSize]
+        x_test = input[trainSize:trainSize+testSize]
+        x_train = x_train.astype('float32') / 255.
+        x_test = x_test.astype('float32') / 255.
+        return(x_train, x_test)
+
+    def limit_data(self, input, size):
+        if size > 0:
+            input = input[:size]
+        return input
 
 
 class Dataset_mnist(Dataset):
-    def __init__(self, trainSize, testSize, shape=(28,28)):
-        super(Dataset_mnist, self).__init__("mnist", trainSize, testSize, shape, color=False, finite=False, synthetic=False)
+    def __init__(self, shape=(28,28)):
+        super(Dataset_mnist, self).__init__("mnist", shape, color=False, finite=False, synthetic=False)
 
         cacheFile_64_64 = "/home/zombori/datasets/mnist_64_64.npz"
         if shape == (64, 64) and os.path.isfile(cacheFile_64_64):
             cache = np.load(cacheFile_64_64)
             self.x_train = cache["x_train"]
             self.x_test = cache["x_test"]
-            self.filter_data()
             return
 
         (x_train, y_train), (x_test, y_test) = mnist.load_data()
@@ -136,17 +133,17 @@ class Dataset_mnist(Dataset):
         if shape == (64, 64):
             x_train = resize_images(x_train, 64, 64, 1)
             x_test = resize_images(x_test, 64, 64, 1)
-            np.savez(cacheFile_64_64, x_train=x_train, x_test=x_test)
-        
+            np.savez(cacheFile_64_64, x_train=x_train, x_test=x_test)        
         self.x_train = x_train
         self.x_test = x_test
-        self.filter_data()
-
+    def get_data(self, trainSize, testSize):
+        x_train = self.limit_data(self.x_train, trainSize)
+        x_test = self.limit_data(self.x_test, testSize)
+        return (x_train, x_test)
 
 class Dataset_celeba(Dataset):
-    def __init__(self, trainSize, testSize, shape=(64,64), color=True):
-        assert trainSize > 0 and testSize > 0, "The whole celeba dataset does not fit into the memory, please provide both trainSize and testSize"
-        super(Dataset_celeba, self).__init__("celeba", trainSize, testSize, shape, color, finite=False, synthetic=False)
+    def __init__(self, shape=(64,64), color=True):
+        super(Dataset_celeba, self).__init__("celeba", shape, color, finite=False, synthetic=False)
 
         # determine cache file
         if shape==(72, 60):
@@ -166,7 +163,7 @@ class Dataset_celeba(Dataset):
 
         # load input
         if os.path.isfile(cacheFile):
-            input = np.load(cacheFile)
+            self.input = np.load(cacheFile)
         else:
             imgs = []
             height = None
@@ -183,62 +180,63 @@ class Dataset_celeba(Dataset):
                     else:
                         assert (height, width) == arr.shape[:2], "Bad size %s %s" % (f, str(arr.shape))
                     imgs.append(arr)
-            input = np.array(imgs)
-            np.save(cacheFile,input)
+            self.input = np.array(imgs)
+            np.save(cacheFile,self.input)
 
         if not color:
-            input = np.expand_dims(input, feature_axis)
+            self.input = np.expand_dims(self.input, feature_axis)
         if shape==(64, 64):
             print "Truncated faces to get shape", shape
-            input = input[:,4:68,:,:]
-
-        self.input = input
-        self.x_train = input[:trainSize]
-        self.x_test = input[trainSize:trainSize+testSize]
-        self.x_train = self.x_train.astype('float32') / 255.
-        self.x_test = self.x_test.astype('float32') / 255.
+            self.input = self.input[:,4:68,:,:]
+    def get_data(self, trainSize, testSize):
+        self.x_train, self.x_test = self.get_normalized_image_data(self.input, trainSize, testSize)
+        return (self.x_train, self.x_test)
 
 
 class Dataset_bedroom(Dataset):
-    def __init__(self, trainSize, testSize, shape=(64,64)):
-        assert trainSize > 0 and testSize > 0, "The whole bedroom dataset does not fit into the memory, please provide both trainSize and testSize"
-        super(Dataset_bedroom, self).__init__("bedroom", trainSize, testSize, shape=shape, color=True, finite=False, synthetic=False)
+    def __init__(self, shape=(64,64)):
+        super(Dataset_bedroom, self).__init__("bedroom", shape=shape, color=True, finite=False, synthetic=False)
 
         if shape==(64, 64):
             cacheFile = "/home/zombori/datasets/bedroom/bedroom_64_64.npy"
         else:
             assert False, "We don't have a bedroom dataset with size {}".format(shape)
-
         if os.path.isfile(cacheFile):
-            input = np.load(cacheFile)
+            self.input = np.load(cacheFile)
         else:
-            assert False, "Missing cache file: {}".format(cacheFile)
-        
-        self.input = input
-        self.x_train = input[:trainSize]
-        self.x_test = input[trainSize:trainSize+testSize]
-        self.x_train = self.x_train.astype('float32') / 255.
-        self.x_test = self.x_test.astype('float32') / 255.
+            assert False, "Missing cache file: {}".format(cacheFile)        
+    def get_data(self, trainSize, testSize):
+        self.x_train, self.x_test = self.get_normalized_image_data(self.input, trainSize, testSize)
+        return (self.x_train, self.x_test)
 
 class Dataset_finite(Dataset):
-    def __init__(self, trainSize, testSize, shape, finite_generator, name):
-        assert trainSize > 0 and testSize > 0, "Please specify trainSize and testSize"
+    def __init__(self, shape, finite_generator, name):
         assert len(shape)==2, "Expected shape of length 2"
         self.finite_set = finite_generator(shape)
         self.finite_set = np.expand_dims(self.finite_set, feature_axis)
-        super(Dataset_finite, self).__init__(name, trainSize, testSize, shape=shape, color=False, finite=True, synthetic=True)
+        super(Dataset_finite, self).__init__(name, shape=shape, color=False, finite=True, synthetic=True)
+    def get_data(self, trainSize, testSize):
+        assert trainSize > 0 and testSize > 0, "trainSize and testSize must be positive"            
+        train_indices = np.random.choice(len(self.finite_set), trainSize)
+        test_indices = np.random.choice(len(self.finite_set), testSize)
+        self.x_train = self.finite_set[train_indices]
+        self.x_test = self.finite_set[test_indices]
+        return (self.x_train, self.x_test)
 
 class Dataset_general(Dataset):
-    def __init__(self, trainSize, testSize, shape, generator, sampler, name):
-        assert trainSize > 0 and testSize > 0, "Please specify trainSize and testSize"
-        assert len(shape)==2        
-        data = np.zeros((trainSize + testSize, shape[0], shape[1]))
+    def __init__(self, shape, generator, sampler, name):
+        assert len(shape)==2
+        super(Dataset_general, self).__init__(name, shape=shape, color=False, finite=False, synthetic=True)
+        self.generator = generator
+        self.sampler = sampler        
+    def get_data(self, trainSize, testSize):
+        data = np.zeros((trainSize + testSize, self.shape[0], self.shape[1]))
         for i in range(len(data)):
-            generator(data[i], sampler())
+            self.generator(data[i], self.sampler())
         data = np.expand_dims(data, feature_axis)
         self.x_train = data[:trainSize]
         self.x_test = data[trainSize: trainSize+testSize]
-        super(Dataset_general, self).__init__(name, trainSize, testSize, shape=shape, color=False, finite=False, synthetic=True)
+        return (self.x_train, self.x_test)
 
 ############################################################
 

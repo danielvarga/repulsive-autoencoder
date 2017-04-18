@@ -36,7 +36,7 @@ def build_model(args):
             batch_size = args.batch_size,
             base_filter_num = args.base_filter_num)
     elif args.encoder == "dcgan":
-        encoder = model_dcgan.DcganEncoder(args.latent_dim, args.batch_size, args.original_shape, args.encoder_wd)
+        encoder = model_dcgan.DcganEncoder(args)
     hidden = encoder(x)
 
     z, z_mean, z_log_var = add_sampling(hidden, args.sampling, args.batch_size, args.latent_dim, args.encoder_wd)
@@ -63,7 +63,7 @@ def build_model(args):
     elif args.decoder == "resnet":
         decoder = model_resnet.ResnetDecoder(args)
     elif args.decoder =="dcgan":
-        decoder = model_dcgan.DcganDecoder(args.latent_dim, args.batch_size, args.original_shape, args.decoder_wd)
+        decoder = model_dcgan.DcganDecoder(args)
     decoder_fun_output = decoder(z)
     generator_input, recons_output, generator_output = decoder_fun_output[:3]
 

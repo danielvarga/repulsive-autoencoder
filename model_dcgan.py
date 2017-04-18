@@ -125,19 +125,19 @@ class Encoder(object):
     pass
 
 class DcganEncoder(Encoder):
-    def __init__(self, latent_dim, wd, bn_allowed, original_shape):
-        self.latent_dim = latent_dim
-        self.wd = wd
-        self.bn_allowed = bn_allowed
-        self.original_shape = original_shape
-        print original_shape
-        reduction = 2 ** (len(channels)+1)
-        assert original_shape[0] % reduction == 0
-        assert original_shape[1] % reduction == 0
+    def __init__(self, args):
+        self.latent_dim = args.latent_dim
+        self.wd = args.encoder_wd
+        self.bn_allowed = args.encoder_use_bn
+        self.original_shape = args.original_shape
+        self.dcgan_size = args.dcgan_size
+        self.channels = default_channels("encoder", self.dcgan_size, self.latent_dim)
+        reduction = 2 ** (len(self.channels)+1)
+        assert self.original_shape[0] % reduction == 0
+        assert self.original_shape[1] % reduction == 0
 
     def __call__(self, x):
-        channels = default_channels("encoder", "large", self.latent_dim)
-        layers = encoder_layers_wgan(channels, self.wd, self.bn_allowed)
+        layers = encoder_layers_wgan(self.channels, self.wd, self.bn_allowed)
         h = x
         for layer in layers:
             h = layer(h)
@@ -147,22 +147,23 @@ class Decoder(object):
     pass
 
 class DcganDecoder(Decoder):
-    def __init__(self, latent_dim, wd, bn_allowed, batch_size, original_shape):
-        self.latent_dim = latent_dim
-        self.wd = wd
-        self.bn_allowed = bn_allowed
-        self.batch_size = batch_size
-        self.original_shape = original_shape
-        reduction = 2 ** (len(channels)+1)
-        assert original_shape[0] % reduction == 0
-        assert original_shape[1] % reduction == 0
-        self.firstX = original_shape[0] // reduction
-        self.firstY = original_shape[1] // reduction
+    def __init__(self, args):
+        self.latent_dim = args.latent_dim
+        self.wd = args.decoder_wd
+        self.bn_allowed = args.decoder_use_bn
+        self.batch_size = args.batch_size
+        self.original_shape = args.original_shape
+        self.dcgan_size = args.dcgan_size
+        self.channels = default_channels("generator", self.dcgan_size, self.original_shape[2])
+        reduction = 2 ** (len(self.channels)+1)
+        assert self.original_shape[0] % reduction == 0
+        assert self.original_shape[1] % reduction == 0
+        self.firstX = self.original_shape[0] // reduction
+        self.firstY = self.original_shape[1] // reduction
 
 
     def __call__(self, recons_input):
-        channels = default_channels("generator", "large", self.original_shape[2])
-        layers = generator_layers_wgan(channels, self.latent_dim, self.wd, self.bn_allowed, self.batch_size, self.firstX, self.firstY)
+        layers = generator_layers_wgan(self.channels, self.latent_dim, self.wd, self.bn_allowed, self.batch_size, self.firstX, self.firstY)
 
         generator_input = Input(batch_shape=(self.batch_size,self.latent_dim))
         generator_output = generator_input

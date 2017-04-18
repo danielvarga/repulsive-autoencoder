@@ -174,7 +174,6 @@ else:
     clipper = callbacks.ClipperCallback(discriminator.layers, args.clipValue)
     
 def ndisc(gen_iters):
-    return 1
     if gen_iters <= 25:
         return 100
     elif gen_iters % 500 == 0:

@@ -27,8 +27,8 @@ parser.add_argument('--optimizer', dest="optimizer", type=str, default="adam", h
 parser.add_argument('--clipValue', dest="clipValue", type=float, default=0.01, help="Critic clipping range is (-clipValue, clipValue)")
 parser.add_argument('--use_bn_gen', dest="use_bn_gen", type=int, default=0, help="Use batch normalization in generator 0/1")
 parser.add_argument('--use_bn_disc', dest="use_bn_disc", type=int, default=0, help="Use batch normalization in discriminator 0/1")
-parser.add_argument('--gen_size', dest="gen_size", default="small", help="small/large")
-parser.add_argument('--disc_size', dest="disc_size", default="large", help="small/large")
+parser.add_argument('--gen_size', dest="gen_size", default="small", help="tiny/small/large")
+parser.add_argument('--disc_size', dest="disc_size", default="large", help="tiny/small/large")
 parser.add_argument('--modelPath', dest="modelPath", default=None, help="Path to saved networks. If none, build networks from scratch.")
 
 

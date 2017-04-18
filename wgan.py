@@ -46,13 +46,16 @@ if keras.backend._BACKEND == "tensorflow":
 
 ############################################
 print "loading data"
-(x_train, x_test) = data.load(args.dataset, trainSize=args.trainSize, testSize=args.testSize, shape=args.shape, color=args.color)
-imageGenerator = ImageDataGenerator()
-x_train_size = args.batch_size * (x_train.shape[0] // args.batch_size)
-x_train = x_train[:x_train_size]
+data_object = data.load(args.dataset, trainSize=args.trainSize, testSize=args.testSize, shape=args.shape, color=args.color)
+(x_train, x_test) = data_object.get_data()
+x_true_flow = data_object.get_train_flow(args.batch_size)
 args.original_shape = x_train.shape[1:]
-print "Train set size: ", x_train_size 
-x_true_flow = imageGenerator.flow(x_train, batch_size = args.batch_size)
+
+#imageGenerator = ImageDataGenerator()
+#x_train_size = args.batch_size * (x_train.shape[0] // args.batch_size)
+#x_train = x_train[:x_train_size]
+#print "Train set size: ", x_train_size 
+#x_true_flow = imageGenerator.flow(x_train, batch_size = args.batch_size)
 
 # y_true = 1 (real_image) or -1 (generated_image)
 # we push the real examples up, the false examples down
@@ -104,7 +107,7 @@ else:
     assert False, "Invalid discriminator type"
 
 gen_input = Input(batch_shape=(args.batch_size,args.latent_dim), name="gen_input")
-disc_input = Input(batch_shape=(args.batch_size, args.shape[0], args.shape[1], x_train.shape[3]), name="disc_input")
+disc_input = Input(batch_shape=[args.batch_size] + list(args.original_shape), name="disc_input")
 
 if args.optimizer == "adam":
     optimizer_d = Adam(lr=args.lr)
@@ -152,7 +155,7 @@ def build_networks(gen_layers, disc_layers):
     clipper = callbacks.ClipperCallback(disc_layers, args.clipValue)
 
     # callback for saving generated images
-    generated_saver = callbacks.SaveGeneratedCallback(generator, args.dataset, sampler, args.prefix, args.batch_size, args.frequency, args.latent_dim)
+    generated_saver = callbacks.SaveGeneratedCallback(generator, sampler, args.prefix, args.batch_size, args.frequency, args.latent_dim)
 
     return (generator, discriminator, gen_disc, clipper, generated_saver)
 

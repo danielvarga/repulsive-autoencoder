@@ -27,7 +27,8 @@ if keras.backend._BACKEND == "tensorflow":
     set_session(tf.Session(config=config))
 
 import data
-(x_train, x_test) = data.load(args.dataset, args.trainSize, args.testSize, shape=args.shape, color=args.color)
+data_object = data.load(args.dataset, args.trainSize, args.testSize, shape=args.shape, color=args.color)
+(x_train, x_test) = data_object.get_data()
 args.original_shape = x_train.shape[1:]
 
 import model
@@ -40,7 +41,7 @@ sampler = samplers.sampler_factory(args, x_train)
 import callbacks
 cbs = [callbacks.FlushCallback()]
 cbs.append(callbacks.get_lr_scheduler(args.nb_epoch, args.lr))
-cbs.append(callbacks.SaveGeneratedCallback(generator, args.dataset, sampler, args.prefix, args.batch_size, args.frequency, args.latent_dim))
+cbs.append(callbacks.SaveGeneratedCallback(generator, sampler, args.prefix, args.batch_size, args.frequency, args.latent_dim))
 cbs.append(callbacks.ImageDisplayCallback(
     x_train, x_test, args,
     ae, encoder, encoder_var, generator, sampler))

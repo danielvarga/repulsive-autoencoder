@@ -37,10 +37,10 @@ def plotImages(data, n_x, n_y, name):
     if channel == 1:
         mode = "L"
         data = data[:,:,:,0]
-        image_data = np.zeros((height_inc * n_y + 1, width_inc * n_x - 1), dtype='uint8')
+        image_data = 50 * np.ones((height_inc * n_y + 1, width_inc * n_x - 1), dtype='uint8')
     else:
         mode = "RGB"
-        image_data = np.zeros((height_inc * n_y + 1, width_inc * n_x - 1, channel), dtype='uint8')
+        image_data = 50 * np.ones((height_inc * n_y + 1, width_inc * n_x - 1, channel), dtype='uint8')
     for idx in xrange(n):
         x = idx % n_x
         y = idx / n_x

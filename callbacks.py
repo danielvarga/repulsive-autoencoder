@@ -20,9 +20,8 @@ def get_lr_scheduler(nb_epoch, base_lr):
     return LearningRateScheduler(get_lr)
 
 class SaveGeneratedCallback(Callback):
-    def __init__(self, generator, dataset, sampler, prefix, batch_size, frequency, latent_dim, sample_size=100000, **kwargs):
+    def __init__(self, generator, sampler, prefix, batch_size, frequency, latent_dim, sample_size=100000, **kwargs):
         self.generator = generator
-        self.dataset = dataset
         self.sampler = sampler
         self.prefix = prefix
         self.batch_size = batch_size
@@ -34,7 +33,7 @@ class SaveGeneratedCallback(Callback):
     def save(self, iteration):
         latent_sample = self.sampler(self.sample_size, self.latent_dim)
         generated = self.generator.predict(latent_sample, batch_size = self.batch_size)
-        file = "{}***{}_{}.npy".format(self.prefix, self.dataset, iteration)
+        file = "{}_generated_{}.npy".format(self.prefix, iteration)
         print "Saving generated samples to {}".format(file)
         np.save(file, generated)
         

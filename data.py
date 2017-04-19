@@ -8,6 +8,7 @@ import scipy.misc
 import scipy.ndimage
 from keras import backend as K
 from keras.preprocessing.image import ImageDataGenerator
+import annoy
 
 import vis
 
@@ -20,65 +21,80 @@ else:
 
 
 # returns an object with
-# methods
-#    get_data(self): -> (x_train, x_test)
-#    get_finite_set(self): -> x_train
-#    get_train_flow(self, batch_size): -> object with next() method to give batch_size number of samples
 # properties
 #    name
 #    shape
 #    color
 #    finite
 #    synthetic
+# guaranteed methods
+#    get_data(trainSize, testSize): -> (x_train, x_test)
+#    get_train_flow(batch_size): -> object with next() method to give batch_size number of samples
+#    get_nearest_samples(generated_samples)
+# guaranteed methods for finite subclasses
+#    get_finite_set(): -> x_train
+# guaranteed methods for infinte synthetic subclasses
+#    get_uniform_data():
+
 def load(dataset, shape=None, color=True):
     if dataset == "mnist":
         return Dataset_mnist(shape)
     elif dataset == "celeba":
         return Dataset_celeba(shape, color)
     elif dataset == "bedroom":
-        return Dataset_bedroom(shape)
-        
-    assert shape is not None, "Synthetic datasets must have a valid shape argument"
-    if dataset == "syn-circles":
-        return Dataset_finite(shape, finite_circles_centered, "syn-circles")
+        return Dataset_bedroom(shape)    
+    elif dataset == "syn-circles":
+        return Dataset_circles_centered(shape)
     elif dataset == "syn-moving-circles":
-        return Dataset_finite(shape, finite_circles_moving, "syn-moving-circles")
+        return Dataset_moving_circles(shape)
     elif dataset == "syn-rectangles":
-        return Dataset_general(shape, single_rectangle, single_rectangle_sampler, "syn-rectangles")
+        return Dataset_syn_rectangles(shape)
     elif dataset == "syn-gradient":
-        return Dataset_general(shape, single_gradient, single_gradient_sampler, "syn-gradient")
+        return Dataset_syn_gradient(shape)
     else:
         raise Exception("Invalid dataset: ", dataset)
 
-all_sets = ["mnist", "celeba", "bedroom", "syn-circles", "syn-moving-circles", "syn-rectangles", "syn-gradient"]
-def test(datasets, file):
+def test(file):
+    datasets ["mnist", "celeba", "bedroom", "syn-circles", "syn-moving-circles", "syn-rectangles", "syn-gradient"]
     shape=(64, 64)
     trainSize = 20
     testSize = 1
     color = True
     result = []
     for dataset in datasets:
+        print "Testing dataset: {}".format(dataset)
         data_object = load(dataset, shape, color)
         x_train, x_test = data_object.get_data(trainSize, testSize)
         if x_train.shape[feature_axis] == 1:
             x_train = np.concatenate([x_train, x_train, x_train], axis=feature_axis)
         result.append(x_train)
-    result = np.concatenate(result)
-    vis.plotImages(result, trainSize, len(datasets), file)
+        x_batch = data_object.get_train_flow(trainSize).next()
+        if x_batch.shape[feature_axis] == 1:
+            x_batch = np.concatenate([x_batch, x_batch, x_batch], axis=feature_axis)
+        result.append(x_batch)
 
-# An efficient alternative of imageDataGenerator for finite datasets
-class FiniteGenerator(object):
-    def __init__(self, finite_set, batch_size):
-        self.finite_set = finite_set
-        self.batch_size = batch_size
-        self.index_range = range(len(self.finite_set))
-            
-    def next(self):
-        selected_indices = np.random.choice(self.index_range, self.batch_size)
-        return self.finite_set[selected_indices]
+    result = np.concatenate(result)
+    vis.plotImages(result, trainSize, 2*len(datasets), file)
+
+
+def test_uniform(file):
+    datasets = ["syn-rectangles", "syn-gradient"]
+    shape = (64,64)
+    color = False
+    result = []
+    for dataset in datasets:
+        print "Testing dataset: {}".format(dataset)
+        data_object = load(dataset, shape, color)
+        x_uniform = data_object.get_uniform_data()
+        result.append(x_uniform[:400])
+
+    result = np.concatenate(result)
+    vis.plotImages(result, 20, 20*len(datasets), file)
+
 
 class Dataset(object):
     def __init__(self, name, shape, color=False, finite=False, synthetic=False):
+        assert len(shape)==2, "Expected shape of length 2"
         self.name = name
         self.shape = shape
         self.color = color
@@ -87,16 +103,39 @@ class Dataset(object):
     def get_data(self, trainSize, testSize):
         assert False, "Not Yet Implemented"
     def get_train_flow(self, batch_size):
-        if not self.finite:
-            imageGenerator = ImageDataGenerator()
-            return imageGenerator.flow(self.x_train, batch_size = batch_size)
-        else:
-            return FiniteGenerator(self.finite_set, batch_size)
-    def get_finite_set(self):
-        if not self.finite:
-            assert False, "This can only be called when the dataset is finite"
-        else:
-            return self.finite_set
+        assert False, "Not Yet Implemented"
+    def get_nearest_samples(self, generated_samples):
+        trainSize = 1000
+        x_train, x_test = self.get_data(trainSize, 1)
+        x_true = x_train.reshape(trainSize, -1)
+        x_generated = generated_samples.reshape(generated_samples.shape[0], -1)
+        
+        f = x_true.shape[1]
+        t = annoy.AnnoyIndex(f, metric="euclidean")
+        for i, v in enumerate(x_true):
+            t.add_item(i, v)
+        t.build(100)
+
+        hist = np.zeros(len(x_true))
+        result = []
+        for g in x_generated:
+            nearest_index = t.get_nns_by_vector(g, 1)[0]
+            result.append(x_generated[nearest_index])
+            hist[nearest_index] += 1
+        result = np.array(result)
+        return result, hist
+
+
+class Dataset_real(Dataset):
+    def __init__(self, name, shape, color=False):
+        super(Dataset_real, self).__init__(name, shape, color=color, finite=False, synthetic=False)
+    def get_train_flow(self, batch_size):
+        imageGenerator = ImageDataGenerator()
+        try:
+            flow_object = imageGenerator.flow(self.x_train, batch_size = batch_size)
+        except AttributeError:
+            assert False, "You need to call get_data to instantiate self.x_train"
+        return flow_object
     def get_normalized_image_data(self, input, trainSize, testSize):
         assert trainSize > 0 and testSize > 0, "trainSize and testSize must be positive"            
         x_train = input[:trainSize]
@@ -104,22 +143,20 @@ class Dataset(object):
         x_train = x_train.astype('float32') / 255.
         x_test = x_test.astype('float32') / 255.
         return(x_train, x_test)
-
     def limit_data(self, input, size):
         if size > 0:
             input = input[:size]
         return input
 
-
-class Dataset_mnist(Dataset):
+class Dataset_mnist(Dataset_real):
     def __init__(self, shape=(28,28)):
-        super(Dataset_mnist, self).__init__("mnist", shape, color=False, finite=False, synthetic=False)
+        super(Dataset_mnist, self).__init__("mnist", shape, color=False)
 
         cacheFile_64_64 = "/home/zombori/datasets/mnist_64_64.npz"
         if shape == (64, 64) and os.path.isfile(cacheFile_64_64):
             cache = np.load(cacheFile_64_64)
-            self.x_train = cache["x_train"]
-            self.x_test = cache["x_test"]
+            self.x_train_orig = cache["x_train"]
+            self.x_test_orig = cache["x_test"]
             return
 
         (x_train, y_train), (x_test, y_test) = mnist.load_data()
@@ -134,16 +171,16 @@ class Dataset_mnist(Dataset):
             x_train = resize_images(x_train, 64, 64, 1)
             x_test = resize_images(x_test, 64, 64, 1)
             np.savez(cacheFile_64_64, x_train=x_train, x_test=x_test)        
-        self.x_train = x_train
-        self.x_test = x_test
+        self.x_train_orig = x_train
+        self.x_test_orig = x_test
     def get_data(self, trainSize, testSize):
-        x_train = self.limit_data(self.x_train, trainSize)
-        x_test = self.limit_data(self.x_test, testSize)
-        return (x_train, x_test)
+        self.x_train = self.limit_data(self.x_train_orig, trainSize)
+        self.x_test = self.limit_data(self.x_test_orig, testSize)
+        return (self.x_train, self.x_test)
 
-class Dataset_celeba(Dataset):
+class Dataset_celeba(Dataset_real):
     def __init__(self, shape=(64,64), color=True):
-        super(Dataset_celeba, self).__init__("celeba", shape, color, finite=False, synthetic=False)
+        super(Dataset_celeba, self).__init__("celeba", shape, color)
 
         # determine cache file
         if shape==(72, 60):
@@ -192,10 +229,9 @@ class Dataset_celeba(Dataset):
         self.x_train, self.x_test = self.get_normalized_image_data(self.input, trainSize, testSize)
         return (self.x_train, self.x_test)
 
-
-class Dataset_bedroom(Dataset):
+class Dataset_bedroom(Dataset_real):
     def __init__(self, shape=(64,64)):
-        super(Dataset_bedroom, self).__init__("bedroom", shape=shape, color=True, finite=False, synthetic=False)
+        super(Dataset_bedroom, self).__init__("bedroom", shape, color=True)
 
         if shape==(64, 64):
             cacheFile = "/home/zombori/datasets/bedroom/bedroom_64_64.npy"
@@ -209,12 +245,15 @@ class Dataset_bedroom(Dataset):
         self.x_train, self.x_test = self.get_normalized_image_data(self.input, trainSize, testSize)
         return (self.x_train, self.x_test)
 
-class Dataset_finite(Dataset):
-    def __init__(self, shape, finite_generator, name):
-        assert len(shape)==2, "Expected shape of length 2"
-        self.finite_set = finite_generator(shape)
-        self.finite_set = np.expand_dims(self.finite_set, feature_axis)
-        super(Dataset_finite, self).__init__(name, shape=shape, color=False, finite=True, synthetic=True)
+class Dataset_synthetic(Dataset):
+    def __init__(self, name, shape, finite):
+        assert shape is not None, "Synthetic datasets must have a valid shape argument"
+        super(Dataset_synthetic, self).__init__(name, shape=shape, color=False, finite=finite, synthetic=True)
+
+class Dataset_syn_finite(Dataset_synthetic):
+    def __init__(self, name, shape):
+        super(Dataset_syn_finite, self).__init__(name, shape=shape, finite=True)
+        self.generate_finite_set()
     def get_data(self, trainSize, testSize):
         assert trainSize > 0 and testSize > 0, "trainSize and testSize must be positive"            
         train_indices = np.random.choice(len(self.finite_set), trainSize)
@@ -222,85 +261,155 @@ class Dataset_finite(Dataset):
         self.x_train = self.finite_set[train_indices]
         self.x_test = self.finite_set[test_indices]
         return (self.x_train, self.x_test)
-
-class Dataset_general(Dataset):
-    def __init__(self, shape, generator, sampler, name):
-        assert len(shape)==2
-        super(Dataset_general, self).__init__(name, shape=shape, color=False, finite=False, synthetic=True)
-        self.generator = generator
-        self.sampler = sampler        
-    def get_data(self, trainSize, testSize):
-        data = np.zeros((trainSize + testSize, self.shape[0], self.shape[1]))
-        for i in range(len(data)):
-            self.generator(data[i], self.sampler())
-        data = np.expand_dims(data, feature_axis)
-        self.x_train = data[:trainSize]
-        self.x_test = data[trainSize: trainSize+testSize]
-        return (self.x_train, self.x_test)
-
-############################################################
-
-
-# single_*_sampler() functions return a scalar or a tuple
-def single_gradient_sampler():
-    return np.random.uniform(0.0, 2*np.pi)
-def single_rectangle_sampler():
-    return np.random.uniform(size=4)
-
-# single_* generators modify data in place
-def single_gradient(data, direction):
-    h, w = data.shape
-    assert h==w
-    c, s = np.cos(direction), np.sin(direction)
-    for y in range(h):
-        for x in range(w):
-            yy = 2 * float(y) / h - 1
-            xx = 2 * float(x) / w - 1
-            scalar_product = yy * s + xx * c
-            normed = (scalar_product / np.sqrt(2) + 1) / 2 # even the 45 degree gradients are in [0, 1].
-            data[y, x] = normed
-def single_rectangle(data, coordinates):
-    assert len(coordinates) == 4
-    h, w = data.shape
-    ys = coordinates[:2] * (h+1)
-    xs = coordinates[2:] * (w+1)
-    ys = sorted(ys.astype(int))
-    xs = sorted(xs.astype(int))
-    data[ys[0]:ys[1], xs[0]:xs[1]] = 1
-
-
-############################################################
-
-# finite_* generators return a complete finite dataset (no randomness involved)
-def finite_circles_centered(shape):
-    max_radius = min(shape) // 2
-    radius_range = range(max_radius + 1)
+    def get_finite_set(self):
+        return self.finite_set
+    def get_train_flow(self, batch_size):
+        class FiniteGenerator(object):
+            def __init__(self, finite_set, batch_size):
+                self.finite_set = finite_set
+                self.batch_size = batch_size
+                self.index_range = range(len(self.finite_set))
+            def next(self):
+                selected_indices = np.random.choice(self.index_range, self.batch_size)
+                return self.finite_set[selected_indices]
+        return FiniteGenerator(self.finite_set, batch_size)
+    def get_nearest_samples(self, generated_samples):
+        x_true = self.finite_set(self.finite_set.shape[0], -1)
+        x_generated = generated_samples.reshape(generated_samples.shape[0], -1)
         
-    data = np.zeros((max_radius + 1, shape[0], shape[1]))
-    for r in radius_range:
-        for y in range(shape[0]):
-            for x in range(shape[1]):
-                if (x-max_radius)**2 + (y-max_radius)**2 < r**2:
-                    data[r, y, x] = 1
-    return data
+        f = x_true.shape[1]
+        t = annoy.AnnoyIndex(f, metric="euclidean")
+        for i, v in enumerate(x_true):
+            t.add_item(i, v)
+        t.build(100)
 
-def finite_circles_moving(shape):
-    assert len(shape)==2
-    radius = min(shape) // 8
-    y_range = range(radius, shape[0] - radius)
-    x_range = range(radius, shape[1] - radius)
-    set_size = len(y_range) * len(x_range)
+        hist = np.zeros(len(x_true))
+        result = []
+        for g in x_generated:
+            nearest_index = t.get_nns_by_vector(g, 1)[0]
+            result.append(x_generated[nearest_index])
+            hist[nearest_index] += 1
+        result = np.array(result)
+        return result, hist
+    def generate_finite_set(self): # TO BE OVERWRITTEN
+        self.finite_set = None
 
-    data = np.zeros((set_size, shape[0], shape[1]))
-    for i in range(set_size):
-        center_y = y_range[i // len(y_range)]
-        center_x = x_range[i % len(y_range)]
-        for y in range(shape[0]):
-            for x in range(shape[1]):
-                if (x-center_x)**2 + (y-center_y)**2 < radius**2:
-                    data[i, y, x] = 1
-    return data
+class Dataset_circles_centered(Dataset_syn_finite):
+    def __init__(self, shape):
+        super(Dataset_circles_centered, self).__init__("syn-circles", shape=shape)
+    def generate_finite_set(self):
+        shape = self.shape
+        max_radius = min(shape) // 2
+        radius_range = range(max_radius + 1)
+        
+        data = np.zeros((max_radius + 1, shape[0], shape[1]))
+        for r in radius_range:
+            for y in range(shape[0]):
+                for x in range(shape[1]):
+                    if (x-max_radius)**2 + (y-max_radius)**2 < r**2:
+                        data[r, y, x] = 1
+        data = np.expand_dims(data, feature_axis)
+        self.finite_set = data
 
+class Dataset_moving_circles(Dataset_syn_finite):
+    def __init__(self, shape):
+        super(Dataset_moving_circles, self).__init__("syn-moving-circles", shape=shape)
+    def generate_finite_set(self):
+        shape = self.shape
+        radius = min(shape) // 8
+        y_range = range(radius, shape[0] - radius)
+        x_range = range(radius, shape[1] - radius)
+        set_size = len(y_range) * len(x_range)
+
+        data = np.zeros((set_size, shape[0], shape[1]))
+        for i in range(set_size):
+            center_y = y_range[i // len(y_range)]
+            center_x = x_range[i % len(y_range)]
+            for y in range(shape[0]):
+                for x in range(shape[1]):
+                    if (x-center_x)**2 + (y-center_y)**2 < radius**2:
+                        data[i, y, x] = 1
+        data = np.expand_dims(data, feature_axis)
+        self.finite_set = data
+
+class Dataset_syn_infinite(Dataset_synthetic):
+    def __init__(self, name, shape):
+        super(Dataset_syn_infinite, self).__init__(name, shape=shape, finite=False)
+    def get_data(self, trainSize, testSize):
+        x_train = self.generate_samples(trainSize)
+        x_test = self.generate_samples(testSize)
+        return (x_train, x_test)
+    def get_train_flow(self, batch_size):
+        class Generator(object):
+            def __init__(self, batch_size, generator):
+                self.generator = generator
+                self.batch_size = batch_size
+            def next(self):
+                return self.generator(batch_size)
+        return Generator(batch_size, self.generate_samples)
+    def get_uniform_data(self):
+        samples = self.get_uniform_samples()
+        data = np.zeros((len(samples), self.shape[0], self.shape[1]))
+        for i, sample in enumerate(samples):
+            self.generate_one_sample(data[i], sample)
+        data = np.expand_dims(data, feature_axis)
+        return data        
+    def generate_samples(self, size):
+        data = np.zeros((size, self.shape[0], self.shape[1]))
+        for i in range(len(data)):
+            self.generate_one_sample(data[i], self.sampler())
+        data = np.expand_dims(data, feature_axis)
+        return data
+    def generate_one_sample(self, data, random_sample):
+        assert False, "NYI"
+    def sampler(self):
+        assert False, "NYI"
+    def get_uniform_samples(self):
+        assert False, "NYI"
+
+class Dataset_syn_rectangles(Dataset_syn_infinite):
+    def __init__(self, shape):
+        super(Dataset_syn_rectangles, self).__init__("syn-rectangles", shape=shape)
+    def generate_one_sample(self, data, coordinates):
+        assert len(coordinates) == 4
+        h, w = data.shape
+        ys = coordinates[:2] * (h+1)
+        xs = coordinates[2:] * (w+1)
+        ys = sorted(ys.astype(int))
+        xs = sorted(xs.astype(int))
+        data[ys[0]:ys[1], xs[0]:xs[1]] = 1
+    def sampler(self):
+        return np.random.uniform(size=4)
+    def get_uniform_samples(self):
+        size = 6
+        samples = []
+        for y1 in range(size-1):
+            for y2 in range(y1+1, size):
+                for x1 in range(size-1):
+                    for x2 in range(x1+1, size):
+                        sample = np.array([y1,y2,x1,x2]) * 1.0 / size 
+                        samples.append(sample)
+        samples = np.array(samples)
+        return samples
+        
+class Dataset_syn_gradient(Dataset_syn_infinite):
+    def __init__(self, shape):
+        super(Dataset_syn_gradient, self).__init__("syn-gradient", shape=shape)
+    def generate_one_sample(self, data, direction):
+        h, w = data.shape
+        assert h==w
+        c, s = np.cos(direction), np.sin(direction)
+        for y in range(h):
+            for x in range(w):
+                yy = 2 * float(y) / h - 1
+                xx = 2 * float(x) / w - 1
+                scalar_product = yy * s + xx * c
+                normed = (scalar_product / np.sqrt(2) + 1) / 2 # even the 45 degree gradients are in [0, 1].
+                data[y, x] = normed
+    def sampler(self):
+        return np.random.uniform(0.0, 2*np.pi)
+    def get_uniform_samples(self):
+        return 2 * np.pi * np.array(range(360)) / 360
 
 ############################################################
 

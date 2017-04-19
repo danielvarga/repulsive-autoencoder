@@ -78,19 +78,19 @@ class ImageDisplayCallback(Callback):
 #            vis.plotMVVM(self.x_train, self.encoder, self.encoder_var, self.batch_size, "{}-mvvm-{}.png".format(self.name, epoch+1))
 #        vis.plotMVhist(self.x_train, self.encoder, self.batch_size, "{}-mvhist-{}.png".format(self.name, epoch+1))
 
-        count = 5 * self.batch_size
-        generated_samples = self.generator.predict(self.latent_normal[:count], batch_size = self.batch_size)
-        emd = vis.dataset_emd(self.x_train[:count], generated_samples)
-        print "Earth Mover distance between real and generated images: {}".format(emd)
+        # count = 5 * self.batch_size
+        # generated_samples = self.generator.predict(self.latent_normal[:count], batch_size = self.batch_size)
+        # emd = vis.dataset_emd(self.x_train[:count], generated_samples)
+        # print "Earth Mover distance between real and generated images: {}".format(emd)
 
-        latent_train_mean = self.encoder.predict(self.x_train[:count], batch_size = self.batch_size)
-        if self.is_sampling:
-            latent_train_logvar = self.encoder_var.predict(self.x_train[:count], batch_size = self.batch_size)
-            latent_train = np.random.normal(size=latent_train_mean.shape) * np.exp(latent_train_logvar/2) + latent_train_mean
-        else:
-            latent_train = latent_train_mean
-        emd = vis.dataset_emd(self.latent_normal[:count], latent_train)
-        print "Earth Mover distance between latent points and standard normal: {}".format(emd)
+        # latent_train_mean = self.encoder.predict(self.x_train[:count], batch_size = self.batch_size)
+        # if self.is_sampling:
+        #     latent_train_logvar = self.encoder_var.predict(self.x_train[:count], batch_size = self.batch_size)
+        #     latent_train = np.random.normal(size=latent_train_mean.shape) * np.exp(latent_train_logvar/2) + latent_train_mean
+        # else:
+        #     latent_train = latent_train_mean
+        # emd = vis.dataset_emd(self.latent_normal[:count], latent_train)
+        # print "Earth Mover distance between latent points and standard normal: {}".format(emd)
 
 class WeightSchedulerCallback(Callback):
     # weight should be a Keras variable

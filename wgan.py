@@ -51,12 +51,6 @@ data_object = data.load(args.dataset, shape=args.shape, color=args.color)
 x_true_flow = data_object.get_train_flow(args.batch_size)
 args.original_shape = x_train.shape[1:]
 
-#imageGenerator = ImageDataGenerator()
-#x_train_size = args.batch_size * (x_train.shape[0] // args.batch_size)
-#x_train = x_train[:x_train_size]
-#print "Train set size: ", x_train_size 
-#x_true_flow = imageGenerator.flow(x_train, batch_size = args.batch_size)
-
 # y_true = 1 (real_image) or -1 (generated_image)
 # we push the real examples up, the false examples down
 def D_loss(y_true, y_pred):

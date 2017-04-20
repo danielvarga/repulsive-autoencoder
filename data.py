@@ -107,7 +107,7 @@ class Dataset(object):
     def get_train_flow(self, batch_size):
         assert False, "Not Yet Implemented"
     def get_nearest_samples(self, generated_samples):
-        trainSize = 1000
+        trainSize = generated_samples.shape[0]
         x_train, x_test = self.get_data(trainSize, 1)
         x_true = x_train.reshape(trainSize, -1)
         x_generated = generated_samples.reshape(generated_samples.shape[0], -1)
@@ -251,6 +251,8 @@ class Dataset_synthetic(Dataset):
     def __init__(self, name, shape, finite):
         assert shape is not None, "Synthetic datasets must have a valid shape argument"
         super(Dataset_synthetic, self).__init__(name, shape=shape, color=False, finite=finite, synthetic=True)
+    def get_nearest_params(self, data):
+        assert False, "NYI"
 
 class Dataset_syn_finite(Dataset_synthetic):
     def __init__(self, name, shape):
@@ -356,6 +358,13 @@ class Dataset_syn_infinite(Dataset_synthetic):
             self.generate_one_sample(data[i], sample)
         data = np.expand_dims(data, feature_axis)
         return data        
+    def generate_samples_from_params(self, params):
+        size = len(params)
+        data = np.zeros((size, self.shape[0], self.shape[1]))
+        for i in range(len(data)):
+            self.generate_one_sample(data[i], params[i])
+        data = np.expand_dims(data, feature_axis)
+        return data
     def generate_samples(self, size):
         data = np.zeros((size, self.shape[0], self.shape[1]))
         params = self.sampler(size)
@@ -363,6 +372,23 @@ class Dataset_syn_infinite(Dataset_synthetic):
             self.generate_one_sample(data[i], params[i])
         data = np.expand_dims(data, feature_axis)
         return data
+    def get_emd_of_nearest(self, generated_samples):
+        nearest_params = self.get_nearest_params(generated_samples)
+        if nearest_params.shape[1] > 1: 
+            assert False, "NYI"
+        sorter = np.argsort(nearest_params)
+        generated_samples = generated_samples[sorter]
+        true_params = self.sampler(len(generated_samples))
+        true_params = np.sort(true_params)
+        true_samples = self.generate_samples_from_params(true_params)
+        
+        true_samples = np.reshape(true_samples, (true_samples.shape[0], -1))
+        generated_samples = np.reshape(generated_samples, (generated_samples.shape[0], -1))
+        ### TODO ONLY FOR CONSTANT
+        dist_loss = np.mean(np.sqrt(np.sum(np.square(generated_samples - nearest_params), axis=1)))
+        mprime = np.mean(np.sqrt(np.sum(np.square(true_samples - generated_samples), axis=1)))
+        m = np.mean(np.sqrt(np.sum(np.square(true_samples - nearest_params), axis=1)))
+        return m, mprime, dist_loss
     def generate_one_sample(self, data, random_sample):
         assert False, "NYI"
     def sampler(self, size):
@@ -419,11 +445,11 @@ class Dataset_syn_constant_uniform(Dataset_syn_infinite):
         super(Dataset_syn_constant_uniform, self).__init__("syn-constant-uniform", shape=shape)
     def generate_one_sample(self, data, level):
         data[:, :] = level
-    def sampler(self):
-        return np.random.uniform(0, 1)
+    def sampler(self, size):
+        return np.random.uniform(0, 1, size=size)
     def get_uniform_samples(self):
         return np.linspace(0, 1, 1001, endpoint=True)
-    def get_nearest_params(data):
+    def get_nearest_params(self, data):
         # to clip or not to clip.
         return data.mean(axis=(1, 2))
 

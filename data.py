@@ -419,8 +419,8 @@ class Dataset_syn_constant_uniform(Dataset_syn_infinite):
         super(Dataset_syn_constant_uniform, self).__init__("syn-constant-uniform", shape=shape)
     def generate_one_sample(self, data, level):
         data[:, :] = level
-    def sampler(self):
-        return np.random.uniform(0, 1)
+    def sampler(self, size):
+        return np.random.uniform(0, 1, size=size)
     def get_uniform_samples(self):
         return np.linspace(0, 1, 1001, endpoint=True)
     def get_nearest_params(data):

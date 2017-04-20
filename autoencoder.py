@@ -41,7 +41,7 @@ sampler = samplers.sampler_factory(args, x_train)
 import callbacks
 cbs = [callbacks.FlushCallback()]
 cbs.append(callbacks.get_lr_scheduler(args.nb_epoch, args.lr))
-cbs.append(callbacks.SaveGeneratedCallback(generator, sampler, args.prefix, args.batch_size, args.frequency, args.latent_dim))
+cbs.append(callbacks.SaveGeneratedCallback(generator, sampler, args.prefix, args.batch_size, 20, args.latent_dim))
 cbs.append(callbacks.ImageDisplayCallback(
     x_train, x_test, args,
     ae, encoder, encoder_var, generator, sampler))

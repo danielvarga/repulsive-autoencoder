@@ -415,7 +415,7 @@ class Dataset_syn_gradient(Dataset_syn_infinite):
 
 class Dataset_syn_constant_uniform(Dataset_syn_infinite):
     def __init__(self, shape):
-        super(Dataset_syn_gradient, self).__init__("syn-constant-uniform", shape=shape)
+        super(Dataset_syn_constant_uniform, self).__init__("syn-constant-uniform", shape=shape)
     def generate_one_sample(self, data, level):
         data[:, :] = level
     def sampler(self):

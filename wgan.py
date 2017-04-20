@@ -280,7 +280,7 @@ for iter in range(1, args.nb_iter+1):
         vis.saveModel(discriminator, args.prefix + "_discriminator")
         vis.saveModel(generator, args.prefix + "_generator")
         vis.saveModel(gen_disc, args.prefix + "_gendisc")
-    if iter % 100 == 0:        
+    if iter % 500 == 0:        
         vis.saveModel(discriminator, args.prefix + "_discriminator_{}".format(iter))
         vis.saveModel(generator, args.prefix + "_generator_{}".format(iter))
         vis.saveModel(gen_disc, args.prefix + "_gendisc_{}".format(iter))

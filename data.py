@@ -358,13 +358,14 @@ class Dataset_syn_infinite(Dataset_synthetic):
         return data        
     def generate_samples(self, size):
         data = np.zeros((size, self.shape[0], self.shape[1]))
+        params = self.sampler(size)
         for i in range(len(data)):
-            self.generate_one_sample(data[i], self.sampler())
+            self.generate_one_sample(data[i], params[i])
         data = np.expand_dims(data, feature_axis)
         return data
     def generate_one_sample(self, data, random_sample):
         assert False, "NYI"
-    def sampler(self):
+    def sampler(self, size):
         assert False, "NYI"
     def get_uniform_samples(self):
         assert False, "NYI"
@@ -380,8 +381,8 @@ class Dataset_syn_rectangles(Dataset_syn_infinite):
         ys = sorted(ys.astype(int))
         xs = sorted(xs.astype(int))
         data[ys[0]:ys[1], xs[0]:xs[1]] = 1
-    def sampler(self):
-        return np.random.uniform(size=4)
+    def sampler(self, size):
+        return np.random.uniform(size=(size,4))
     def get_uniform_samples(self):
         size = 6
         samples = []
@@ -408,8 +409,8 @@ class Dataset_syn_gradient(Dataset_syn_infinite):
                 scalar_product = yy * s + xx * c
                 normed = (scalar_product / np.sqrt(2) + 1) / 2 # even the 45 degree gradients are in [0, 1].
                 data[y, x] = normed
-    def sampler(self):
-        return np.random.uniform(0.0, 2*np.pi)
+    def sampler(self, size):
+        return np.random.uniform(0.0, 2*np.pi, size=size)
     def get_uniform_samples(self):
         return np.linspace(0, 2*np.pi, 360, endpoint=False)
 

@@ -51,6 +51,8 @@ def load(dataset, shape=None, color=True):
         return Dataset_syn_rectangles(shape)
     elif dataset == "syn-gradient":
         return Dataset_syn_gradient(shape)
+    elif dataset == "syn-constant-uniform":
+        return Dataset_syn_constant_uniform(shape)
     else:
         raise Exception("Invalid dataset: ", dataset)
 
@@ -409,7 +411,21 @@ class Dataset_syn_gradient(Dataset_syn_infinite):
     def sampler(self):
         return np.random.uniform(0.0, 2*np.pi)
     def get_uniform_samples(self):
-        return 2 * np.pi * np.array(range(360)) / 360
+        return np.linspace(0, 2*np.pi, 360, endpoint=False)
+
+class Dataset_syn_constant_uniform(Dataset_syn_infinite):
+    def __init__(self, shape):
+        super(Dataset_syn_gradient, self).__init__("syn-constant-uniform", shape=shape)
+    def generate_one_sample(self, data, level):
+        data[:, :] = level
+    def sampler(self):
+        return np.random.uniform(0, 1)
+    def get_uniform_samples(self):
+        return np.linspace(0, 1, 1001, endpoint=True)
+    def get_nearest_params(data):
+        # to clip or not to clip.
+        return data.mean(axis=(1, 2))
+
 
 ############################################################
 

@@ -31,8 +31,8 @@ else:
 #    get_data(trainSize, testSize): -> (x_train, x_test)
 #    get_train_flow(batch_size): -> object with next() method to give batch_size number of samples
 #    get_nearest_samples(generated_samples)
-# guaranteed methods for finite subclasses
-#    get_finite_set(): -> x_train
+# guaranteed methods for synthetic subclasses
+#    get_uniform_data(): -> x_train
 # guaranteed methods for infinte synthetic subclasses
 #    get_uniform_data():
 
@@ -251,6 +251,31 @@ class Dataset_synthetic(Dataset):
     def __init__(self, name, shape, finite):
         assert shape is not None, "Synthetic datasets must have a valid shape argument"
         super(Dataset_synthetic, self).__init__(name, shape=shape, color=False, finite=finite, synthetic=True)
+    def generate_samples_from_params(self, params):
+        size = len(params)
+        data = np.zeros((size, self.shape[0], self.shape[1]))
+        for i in range(len(data)):
+            self.generate_one_sample(data[i], params[i])
+        data = np.expand_dims(data, feature_axis)
+        return data
+    def get_M_Mprime_L(self, generated_samples):
+        nearest_params = self.get_nearest_params(generated_samples)
+        nearest_true = self.generate_samples_from_params(nearest_params)
+
+        sample_axes = tuple(range(generated_samples.ndim)[1:])
+        L = np.mean(np.sqrt(np.sum(np.square(generated_samples - nearest_true), axis=sample_axes)))
+
+        true_params = self.find_matching_sample_params(nearest_params)
+        true_samples = self.generate_samples_from_params(true_params)
+        Mprime = np.mean(np.sqrt(np.sum(np.square(true_samples - generated_samples), axis=sample_axes)))
+        M = np.mean(np.sqrt(np.sum(np.square(true_samples - nearest_true), axis=sample_axes)))
+        return M, Mprime, L
+    def find_matching_sample_params(params):
+        assert False, "NYI"
+    def generate_one_sample(self, data, random_sample):
+        assert False, "NYI"
+    def get_uniform_data(self):
+        assert False, "NYI"
     def get_nearest_params(self, data):
         assert False, "NYI"
 
@@ -265,7 +290,7 @@ class Dataset_syn_finite(Dataset_synthetic):
         self.x_train = self.finite_set[train_indices]
         self.x_test = self.finite_set[test_indices]
         return (self.x_train, self.x_test)
-    def get_finite_set(self):
+    def get_uniform_data(self):
         return self.finite_set
     def get_train_flow(self, batch_size):
         class FiniteGenerator(object):
@@ -301,23 +326,31 @@ class Dataset_syn_finite(Dataset_synthetic):
 class Dataset_circles_centered(Dataset_syn_finite):
     def __init__(self, shape):
         super(Dataset_circles_centered, self).__init__("syn-circles", shape=shape)
+    def generate_one_sample(self, data, radius):
+        center = min(data.shape) // 2
+        for y in range(data.shape[0]):
+            for x in range(data.shape[1]):
+                if (x-center)**2 + (y-center)**2 < radius**2:
+                    data[y, x] = 1
     def generate_finite_set(self):
         shape = self.shape
         max_radius = min(shape) // 2
-        radius_range = range(max_radius + 1)
-        
-        data = np.zeros((max_radius + 1, shape[0], shape[1]))
-        for r in radius_range:
-            for y in range(shape[0]):
-                for x in range(shape[1]):
-                    if (x-max_radius)**2 + (y-max_radius)**2 < r**2:
-                        data[r, y, x] = 1
+
+        data = np.zeros((max_radius + 1, shape[0], shape[1]))        
+        for r in range(max_radius + 1):
+            self.generate_one_sample(data[r], r)
         data = np.expand_dims(data, feature_axis)
         self.finite_set = data
 
 class Dataset_moving_circles(Dataset_syn_finite):
     def __init__(self, shape):
         super(Dataset_moving_circles, self).__init__("syn-moving-circles", shape=shape)
+    def generate_one_sample(self, data, (center_x, center_y)):
+        radius = min(data.shape) // 8
+        for y in range(data.shape[0]):
+            for x in range(data.shape[1]):
+                if (x-center_x)**2 + (y-center_y)**2 < radius**2:
+                    data[y, x] = 1
     def generate_finite_set(self):
         shape = self.shape
         radius = min(shape) // 8
@@ -329,10 +362,7 @@ class Dataset_moving_circles(Dataset_syn_finite):
         for i in range(set_size):
             center_y = y_range[i // len(y_range)]
             center_x = x_range[i % len(y_range)]
-            for y in range(shape[0]):
-                for x in range(shape[1]):
-                    if (x-center_x)**2 + (y-center_y)**2 < radius**2:
-                        data[i, y, x] = 1
+            self.generate_one_sample(data[i], (center_x, center_y))
         data = np.expand_dims(data, feature_axis)
         self.finite_set = data
 
@@ -358,13 +388,6 @@ class Dataset_syn_infinite(Dataset_synthetic):
             self.generate_one_sample(data[i], sample)
         data = np.expand_dims(data, feature_axis)
         return data        
-    def generate_samples_from_params(self, params):
-        size = len(params)
-        data = np.zeros((size, self.shape[0], self.shape[1]))
-        for i in range(len(data)):
-            self.generate_one_sample(data[i], params[i])
-        data = np.expand_dims(data, feature_axis)
-        return data
     def generate_samples(self, size):
         data = np.zeros((size, self.shape[0], self.shape[1]))
         params = self.sampler(size)
@@ -372,25 +395,6 @@ class Dataset_syn_infinite(Dataset_synthetic):
             self.generate_one_sample(data[i], params[i])
         data = np.expand_dims(data, feature_axis)
         return data
-    def get_emd_of_nearest(self, generated_samples):
-        nearest_params = self.get_nearest_params(generated_samples)
-        if nearest_params.shape[1] > 1: 
-            assert False, "NYI"
-        sorter = np.argsort(nearest_params)
-        generated_samples = generated_samples[sorter]
-        true_params = self.sampler(len(generated_samples))
-        true_params = np.sort(true_params)
-        true_samples = self.generate_samples_from_params(true_params)
-        
-        true_samples = np.reshape(true_samples, (true_samples.shape[0], -1))
-        generated_samples = np.reshape(generated_samples, (generated_samples.shape[0], -1))
-        ### TODO ONLY FOR CONSTANT
-        dist_loss = np.mean(np.sqrt(np.sum(np.square(generated_samples - nearest_params), axis=1)))
-        mprime = np.mean(np.sqrt(np.sum(np.square(true_samples - generated_samples), axis=1)))
-        m = np.mean(np.sqrt(np.sum(np.square(true_samples - nearest_params), axis=1)))
-        return m, mprime, dist_loss
-    def generate_one_sample(self, data, random_sample):
-        assert False, "NYI"
     def sampler(self, size):
         assert False, "NYI"
     def get_uniform_samples(self):
@@ -410,7 +414,7 @@ class Dataset_syn_rectangles(Dataset_syn_infinite):
     def sampler(self, size):
         return np.random.uniform(size=(size,4))
     def get_uniform_samples(self):
-        size = 6
+        size = 10
         samples = []
         for y1 in range(size-1):
             for y2 in range(y1+1, size):
@@ -451,7 +455,13 @@ class Dataset_syn_constant_uniform(Dataset_syn_infinite):
         return np.linspace(0, 1, 1001, endpoint=True)
     def get_nearest_params(self, data):
         # to clip or not to clip.
-        return data.mean(axis=(1, 2))
+        return data.mean(axis=tuple(range(data.ndim)[1:])).reshape((-1,1))
+    def find_matching_sample_params(self, params):
+        true_params = self.sampler(len(params))
+        true_params = np.sort(true_params)
+        sorter = np.argsort(params[:,0])
+        invert_sorter = np.argsort(sorter)
+        return true_params[invert_sorter]
 
 
 ############################################################

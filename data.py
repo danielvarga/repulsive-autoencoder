@@ -53,6 +53,8 @@ def load(dataset, shape=None, color=True):
         return Dataset_syn_gradient(shape)
     elif dataset == "syn-constant-uniform":
         return Dataset_syn_constant_uniform(shape)
+    elif dataset == "syn-constant-normal":
+        return Dataset_syn_constant_normal(shape)
     else:
         raise Exception("Invalid dataset: ", dataset)
 
@@ -451,6 +453,25 @@ class Dataset_syn_constant_uniform(Dataset_syn_infinite):
         data[:, :] = level
     def sampler(self, size):
         return np.random.uniform(0, 1, size=size)
+    def get_uniform_samples(self):
+        return np.linspace(0, 1, 1001, endpoint=True)
+    def get_nearest_params(self, data):
+        # to clip or not to clip.
+        return data.mean(axis=tuple(range(data.ndim)[1:])).reshape((-1,1))
+    def find_matching_sample_params(self, params):
+        true_params = self.sampler(len(params))
+        true_params = np.sort(true_params)
+        sorter = np.argsort(params[:,0])
+        invert_sorter = np.argsort(sorter)
+        return true_params[invert_sorter]
+
+class Dataset_syn_constant_normal(Dataset_syn_infinite):
+    def __init__(self, shape):
+        super(Dataset_syn_constant_normal, self).__init__("syn-constant-normal", shape=shape)
+    def generate_one_sample(self, data, level):
+        data[:, :] = level
+    def sampler(self, size):
+        return np.random.normal(0.5, 0.1, size=size)
     def get_uniform_samples(self):
         return np.linspace(0, 1, 1001, endpoint=True)
     def get_nearest_params(self, data):

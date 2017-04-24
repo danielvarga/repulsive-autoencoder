@@ -4,7 +4,7 @@ def gaussian_sampler(batch_size, latent_dim):
     return np.random.normal(size=(batch_size, latent_dim))
 def spherical_sampler(batch_size, latent_dim):
     z_sample = np.random.normal(size=(batch_size, latent_dim))
-    z_sample /= np.linalg.norm(z_sample)
+    z_sample /= np.linalg.norm(z_sample, axis=1, keepdims=True)
     return z_sample
 def train_sampler(batch_size, latent_dim):
     return x_train[:batch_size]

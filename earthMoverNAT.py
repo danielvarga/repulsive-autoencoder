@@ -1,3 +1,4 @@
+import sys
 import numpy as np
 from keras.layers import Input
 from keras.models import Model
@@ -87,7 +88,7 @@ def averageDistance(dataBatch, fakeBatch):
 generated_saver = callbacks.SaveGeneratedCallback(generator, sampler, args.prefix, args.batch_size, args.frequency, args.latent_dim)
 
 data_count = len(x_train)
-minibatchSize = data_count // args.batch_size
+minibatchCount = data_count // args.batch_size
 startTime = time.clock()
 
 # Unit sphere!!!
@@ -98,7 +99,7 @@ for epoch in range(1, args.nb_iter+1):
     allIndices = np.random.permutation(data_count)
     epochDistances = []
     fixedPointRatios = []
-    for i in range(minibatchSize):
+    for i in range(minibatchCount):
         dataIndices = allIndices[i*args.batch_size:(i+1)*args.batch_size]
         assert args.batch_size==len(dataIndices)
 
@@ -129,15 +130,19 @@ for epoch in range(1, args.nb_iter+1):
 
     
     print "epoch %d epochFixedPointRatio %f epochInterimMean %f epochInterimMedian %f" % (epoch, epochFixedPointRatio, epochInterimMean, epochInterimMedian)
+    sys.stdout.flush()
     if epoch % args.frequency == 0:
         currTime = time.clock()
         display_elapsed(startTime, currTime)
-        vis.displayRandom(10, x_train, args.latent_dim, sampler, generator, "{}-random-{}".format(args.prefix, format), batch_size=args.batch_size)
+        vis.displayRandom(10, x_train, args.latent_dim, sampler, generator, "{}-random-{}".format(args.prefix, epoch), batch_size=args.batch_size)
         vis.displayRandom(10, x_train, args.latent_dim, sampler, generator, "{}-random".format(args.prefix), batch_size=args.batch_size)
+        images = vis.mergeSets((fakeBatch, dataBatch))
+        vis.plotImages(images, 2 * 10, args.batch_size // 10, "{}-train-{}".format(args.prefix, epoch))
+        vis.plotImages(images, 2 * 10, args.batch_size // 10, "{}-train".format(args.prefix))
         latent_samples = sampler(2, args.latent_dim)
         vis.interpBetween(latent_samples[0], latent_samples[1], generator, args.batch_size, args.prefix + "_interpBetween-{}".format(epoch))
         vis.interpBetween(latent_samples[0], latent_samples[1], generator, args.batch_size, args.prefix + "_interpBetween")
         vis.saveModel(generator, args.prefix + "_generator")
-    if epoch % 20 == 0:
+    if epoch % 200 == 0:
         vis.saveModel(generator, args.prefix + "_generator_{}".format(epoch))
         generated_saver.save(epoch)

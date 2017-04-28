@@ -134,13 +134,15 @@ for epoch in range(1, args.nb_iter+1):
 
         fakeBatch = generator.predict(latentBatch, batch_size = args.batch_size)
 
-        if epoch % args.epoch_frequency == 0:
+        if epoch % args.matching_frequency == 0:
             # perform optimal matching on minibatch to update masterPermutation
             fakeBatch_flattened = fakeBatch.reshape((args.batch_size, -1))
             dataBatch_flattened = dataBatch.reshape((args.batch_size, -1))
             batchPermutation = np.array(kohonen.optimalPairing(fakeBatch_flattened, dataBatch_flattened))
             masterPermutation[dataIndices] = masterPermutation[dataIndices[batchPermutation]]
             latentBatch = latent[masterPermutation[dataIndices]] # recalculated
+        else:
+            batchPermutation = np.arange(args.batch_size)
             
         # perform gradient descent to make matched images more similar
         gen_loss = generator.train_on_batch(latentBatch, dataBatch)

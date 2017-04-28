@@ -1,6 +1,7 @@
 import sys
 import numpy as np
-from keras.layers import Input
+from keras.layers import Input, Flatten, Dense, Reshape
+from keras.layers.advanced_activations import LeakyReLU
 from keras.models import Model
 from keras.optimizers import Adam, RMSprop, SGD
 import keras.backend as K
@@ -39,21 +40,33 @@ data_object = data.load(args.dataset, shape=args.shape, color=args.color)
 x_true_flow = data_object.get_train_flow(args.batch_size)
 args.original_shape = x_train.shape[1:]
 
-generator_channels = model_dcgan.default_channels("generator", args.gen_size, args.original_shape[2])
-
-reduction = 2 ** (len(generator_channels)+1)
-assert args.original_shape[0] % reduction == 0
-assert args.original_shape[1] % reduction == 0
-gen_firstX = args.original_shape[0] // reduction
-gen_firstY = args.original_shape[1] // reduction
 
 if args.generator == "dcgan":
+    generator_channels = model_dcgan.default_channels("generator", args.gen_size, args.original_shape[2])
+    reduction = 2 ** (len(generator_channels)+1)
+    assert args.original_shape[0] % reduction == 0
+    assert args.original_shape[1] % reduction == 0
+    gen_firstX = args.original_shape[0] // reduction
+    gen_firstY = args.original_shape[1] // reduction
     gen_layers = model_dcgan.generator_layers_wgan(generator_channels, args.latent_dim, args.generator_wd, args.use_bn_gen, args.batch_size, gen_firstX, gen_firstY)
 elif args.generator == "dense":
     gen_layers = model_dcgan.generator_layers_dense(args.latent_dim, args.batch_size, args.generator_wd, args.use_bn_gen, args.original_shape)
+elif args.generator == "nat6":
+    assert args.dataset == "mnist"
+    assert args.shape == (28,28)
+    gen_layers = []
+    gen_layers.append(Dense(600))
+    gen_layers.append(LeakyReLU(alpha=0.1))
+    gen_layers.append(Dense(600))
+    gen_layers.append(LeakyReLU(alpha=0.1))
+    gen_layers.append(Dense(np.prod(args.original_shape)))
+    gen_layers.append(LeakyReLU(alpha=0.1))
+
+    gen_layers.append(Reshape(args.original_shape))
+
 else:
     assert False, "Invalid generator type"
-
+        
 gen_input = Input(batch_shape=(args.batch_size,args.latent_dim), name="gen_input")
 
 if args.optimizer == "adam":
@@ -61,7 +74,10 @@ if args.optimizer == "adam":
 elif args.optimizer == "rmsprop":
     optimizer_g = RMSprop(lr=args.lr)
 elif args.optimizer == "sgd":
-    optimizer_g = SGD(lr=args.lr)
+    if args.nesterov > 0:
+        optimizer_g = SGD(lr=args.lr, nesterov=True, momentum=args.nesterov)
+    else:
+        optimizer_g = SGD(lr=args.lr)
 
 sampler = samplers.spherical_sampler
 
@@ -70,11 +86,12 @@ def display_elapsed(startTime, endTime):
     second = elapsed % 60
     minute = int(elapsed / 60)
     print "Elapsed time: {}:{:.0f}".format(minute, second)
-
+        
 # build generator
 gen_output = gen_input
 for layer in gen_layers:
     gen_output = layer(gen_output)
+        
 
 generator = Model(input=gen_input, output=gen_output)
 generator.compile(optimizer=optimizer_g, loss="mse")
@@ -92,7 +109,10 @@ minibatchCount = data_count // args.batch_size
 startTime = time.clock()
 
 # Unit sphere!!!
-latent = sampler(data_count, args.latent_dim)
+#latent = sampler(data_count, args.latent_dim)
+latent_unnormed = np.random.normal(size=(data_count, args.latent_dim))
+latent = latent_unnormed / np.linalg.norm(latent_unnormed, axis=1, keepdims=True)
+
 masterPermutation = np.arange(data_count).astype(np.int32)
 
 for epoch in range(1, args.nb_iter+1):
@@ -106,16 +126,23 @@ for epoch in range(1, args.nb_iter+1):
         # find match real and generated images
         dataBatch = x_train[dataIndices]
         latentBatch = latent[masterPermutation[dataIndices]]
+
+        if args.sampling:
+            sigma = 0.1
+            latentBatch += np.random.normal(size=latentBatch.shape, scale=sigma)
+            latentBatch /= np.linalg.norm(latentBatch, axis=1, keepdims=True)
+
         fakeBatch = generator.predict(latentBatch, batch_size = args.batch_size)
 
-        # perform optimal matching on minibatch to update masterPermutation
-        fakeBatch_flattened = fakeBatch.reshape((args.batch_size, -1))
-        dataBatch_flattened = dataBatch.reshape((args.batch_size, -1))
-        batchPermutation = np.array(kohonen.optimalPairing(fakeBatch_flattened, dataBatch_flattened))
-        masterPermutation[dataIndices] = masterPermutation[dataIndices[batchPermutation]]
-
+        if epoch % args.epoch_frequency == 0:
+            # perform optimal matching on minibatch to update masterPermutation
+            fakeBatch_flattened = fakeBatch.reshape((args.batch_size, -1))
+            dataBatch_flattened = dataBatch.reshape((args.batch_size, -1))
+            batchPermutation = np.array(kohonen.optimalPairing(fakeBatch_flattened, dataBatch_flattened))
+            masterPermutation[dataIndices] = masterPermutation[dataIndices[batchPermutation]]
+            latentBatch = latent[masterPermutation[dataIndices]] # recalculated
+            
         # perform gradient descent to make matched images more similar
-        latentBatch = latent[masterPermutation[dataIndices]] # recalculated
         gen_loss = generator.train_on_batch(latentBatch, dataBatch)
 
         # collect statistics
@@ -123,12 +150,17 @@ for epoch in range(1, args.nb_iter+1):
         fixedPointRatio = float(np.sum(batchPermutation == np.arange(args.batch_size))) / args.batch_size
         epochDistances.append(minibatchDistances)
         fixedPointRatios.append(fixedPointRatio)
+
     epochDistances = np.array(epochDistances)
     epochInterimMean = epochDistances.mean()
     epochInterimMedian = np.median(epochDistances)
     epochFixedPointRatio = np.mean(np.array(fixedPointRatios))
 
-    
+    if args.ornstein < 1.0:
+        epsilon = np.random.normal(size=latent.shape)
+        latent_unnormed = args.ornstein * latent_unnormed + np.sqrt(1- args.ornstein**2) * epsilon
+        latent = latent_unnormed / np.linalg.norm(latent_unnormed, axis=1, keepdims=True)
+
     print "epoch %d epochFixedPointRatio %f epochInterimMean %f epochInterimMedian %f" % (epoch, epochFixedPointRatio, epochInterimMean, epochInterimMedian)
     sys.stdout.flush()
     if epoch % args.frequency == 0:
@@ -139,9 +171,8 @@ for epoch in range(1, args.nb_iter+1):
         images = vis.mergeSets((fakeBatch, dataBatch))
         vis.plotImages(images, 2 * 10, args.batch_size // 10, "{}-train-{}".format(args.prefix, epoch))
         vis.plotImages(images, 2 * 10, args.batch_size // 10, "{}-train".format(args.prefix))
-        latent_samples = sampler(2, args.latent_dim)
-        vis.interpBetween(latent_samples[0], latent_samples[1], generator, args.batch_size, args.prefix + "_interpBetween-{}".format(epoch))
-        vis.interpBetween(latent_samples[0], latent_samples[1], generator, args.batch_size, args.prefix + "_interpBetween")
+        vis.interpBetween(latent[0], latent[1], generator, args.batch_size, args.prefix + "_interpBetween-{}".format(epoch))
+        vis.interpBetween(latent[0], latent[1], generator, args.batch_size, args.prefix + "_interpBetween")
         vis.saveModel(generator, args.prefix + "_generator")
     if epoch % 200 == 0:
         vis.saveModel(generator, args.prefix + "_generator_{}".format(epoch))

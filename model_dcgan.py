@@ -16,6 +16,9 @@ def default_channels(model_type, model_size, last_channel):
     if model_size == "large":
         channels = [512, 1024, 2048, 4096]
         disc_channels = [64, 128, 256, 512, 1]
+    if model_size == "medium":
+        channels = [256, 512, 1024, 2048]
+        disc_channels = [32, 64, 128, 256, 1]
     elif model_size == "small":
         channels = [64, 128, 256, 512]
         disc_channels = [8, 16, 32, 64, 1] 

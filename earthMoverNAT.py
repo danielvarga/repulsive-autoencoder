@@ -169,7 +169,7 @@ for epoch in range(1, args.nb_iter+1):
 
         # collect statistics
         minibatchDistances = averageDistance(dataBatch, fakeBatch)
-        fixedPointRatio = float(np.sum(batchPermutation == np.arange(args.batch_size))) / args.batch_size
+        fixedPointRatio = float(np.sum(batchPermutation == np.arange(batchPermutation.shape[0]))) / batchPermutation.shape[0]
         epochDistances.append(minibatchDistances)
         fixedPointRatios.append(fixedPointRatio)
 

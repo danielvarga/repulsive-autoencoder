@@ -115,6 +115,9 @@ latent = latent_unnormed / np.linalg.norm(latent_unnormed, axis=1, keepdims=True
 
 masterPermutation = np.arange(data_count).astype(np.int32)
 
+
+pairingIndices_list, pairingFakeData_list, pairingRealData_list = [], [], []
+
 for epoch in range(1, args.nb_iter+1):
     allIndices = np.random.permutation(data_count)
     epochDistances = []
@@ -134,16 +137,33 @@ for epoch in range(1, args.nb_iter+1):
 
         fakeBatch = generator.predict(latentBatch, batch_size = args.batch_size)
 
+
         if epoch % args.matching_frequency == 0:
-            # perform optimal matching on minibatch to update masterPermutation
-            fakeBatch_flattened = fakeBatch.reshape((args.batch_size, -1))
-            dataBatch_flattened = dataBatch.reshape((args.batch_size, -1))
-            batchPermutation = np.array(kohonen.optimalPairing(fakeBatch_flattened, dataBatch_flattened))
-            masterPermutation[dataIndices] = masterPermutation[dataIndices[batchPermutation]]
-            latentBatch = latent[masterPermutation[dataIndices]] # recalculated
+            # perform optimal matching on pairing data to update masterPermutation
+
+            pairingIndices_list.append(dataIndices)
+            pairingFakeData_list.append(fakeBatch)
+            pairingRealData_list.append(dataBatch)
+
+            if sum([l.shape[0] for l in pairingIndices_list]) >= args.min_items_in_matching:
+                # prepare concatenated and flattened data for the pairing
+                pairingIndices = np.concatenate(pairingIndices_list)
+                pairingFakeData = np.concatenate(pairingFakeData_list)
+                pairingRealData = np.concatenate(pairingRealData_list)
+                pairingFakeData_flattened = pairingFakeData.reshape((pairingFakeData.shape[0], -1))
+                pairingRealData_flattened = pairingRealData.reshape((pairingRealData.shape[0], -1))
+
+                # do the pairint and bookkeep it
+                batchPermutation = np.array(kohonen.optimalPairing(pairingFakeData_flattened, pairingRealData_flattened))
+                masterPermutation[pairingIndices] = masterPermutation[pairingIndices[batchPermutation]]
+
+                # empty pairing data
+                pairingIndices_list, pairingFakeData_list, pairingRealData_list = [], [], []
+
+                latentBatch = latent[masterPermutation[dataIndices]] # recalculated
         else:
             batchPermutation = np.arange(args.batch_size)
-            
+
         # perform gradient descent to make matched images more similar
         gen_loss = generator.train_on_batch(latentBatch, dataBatch)
 

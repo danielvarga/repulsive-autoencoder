@@ -35,7 +35,7 @@ parser.add_argument('--resampling', dest="resampling", type=int, default=0, help
 parser.add_argument('--nesterov', dest="nesterov", default="0.0", type=float, help="Nesterov momentum")
 parser.add_argument('--ornstein', dest="ornstein", default="1.0", type=float, help="Ornstein process coefficient (1 means no movement")
 parser.add_argument('--matching_frequency', dest="matching_frequency", default="1", type=int, help="After how many epoch do we rematch the data")
-
+parser.add_argument('--min_items_in_matching', dest="min_items_in_matching", default="100", type=int, help="Minimum number of items to run the matching")
 
 
 args_param = parser.parse_args()

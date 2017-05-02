@@ -31,7 +31,6 @@ parser.add_argument('--gen_size', dest="gen_size", default="small", help="tiny/s
 parser.add_argument('--disc_size', dest="disc_size", default="large", help="tiny/small/large")
 parser.add_argument('--modelPath', dest="modelPath", default=None, help="Path to saved networks. If none, build networks from scratch.")
 parser.add_argument('--sampling', dest="sampling", type=int, default=0, help="use sampling (0/1)")
-parser.add_argument('--resampling', dest="resampling", type=int, default=0, help="use resampling (0/1)")
 parser.add_argument('--nesterov', dest="nesterov", default="0.0", type=float, help="Nesterov momentum")
 parser.add_argument('--ornstein', dest="ornstein", default="1.0", type=float, help="Ornstein process coefficient (1 means no movement")
 parser.add_argument('--matching_frequency', dest="matching_frequency", default="1", type=int, help="After how many epoch do we rematch the data")
@@ -53,11 +52,6 @@ def getArgs():
         args.sampling = True
     else:
         args.sampling = False
-
-    if args.resampling == 1:
-        args.resampling = True
-    else:
-        args.resampling = False
 
     args.use_bn_gen = (args.use_bn_gen == 1)
     args.use_bn_disc = (args.use_bn_disc == 1)

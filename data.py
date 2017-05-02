@@ -9,6 +9,7 @@ import scipy.ndimage
 from keras import backend as K
 from keras.preprocessing.image import ImageDataGenerator
 import annoy
+import csv
 
 import vis
 
@@ -232,6 +233,26 @@ class Dataset_celeba(Dataset_real):
     def get_data(self, trainSize, testSize):
         self.x_train, self.x_test = self.get_normalized_image_data(self.input, trainSize, testSize)
         return (self.x_train, self.x_test)
+
+    def get_labels(self):
+        labelCache = "/home/zombori/datasets/celeba_labels.npy"
+        labelNamesCache = "/home/zombori/datasets/celeba_labels.txt"
+        if os.path.isfile(labelCache) and os.path.isfile(labelNamesCache):
+            self.labels = np.load(labelCache)
+            labelNamesHandle = open(labelNamesCache, 'rb')
+            lines = labelNamesHandle.readlines()
+            lines = [x.strip() for x in lines]
+            self.label_names = lines[0].split()
+        else:
+            self.label_names, self.labels = load_celeba_labels()
+            np.save(labelCache, self.labels)
+            labelNamesHandle = open(labelNamesCache, 'w')
+            labelNamesHandle.write(" ".join(self.label_names))
+            labelNamesHandle.close()
+        return self.label_names, self.labels
+
+        
+
 
 class Dataset_bedroom(Dataset_real):
     def __init__(self, shape=(64,64)):
@@ -737,3 +758,22 @@ def resize_images(dataset, sizeX, sizeY, sizeZ, outputFile=None):
         np.save(outputFile, result)
     return result
                     
+def load_celeba_labels():
+    labelFile = "/home/daniel/autoencoding_beyond_pixels/datasets/celeba/list_attr_celeba.txt"
+    fileHandle = open(labelFile, 'rb')
+    lines = fileHandle.readlines()
+    lines = [x.strip() for x in lines]
+    label_names = lines[1].split()
+    labels = []
+    fileNames = []
+    for line in lines[2:]:
+        line_parts = line.split()
+        fileName = line_parts[0]
+        label_values = np.array([int(i) for i in line_parts[1:]])
+        labels.append(label_values)
+        fileNames.append(fileName)
+    labels = np.array(labels)
+
+    sorter = sorted(range(len(fileNames)), key=lambda k: fileNames[k])
+    labels = labels[sorter]
+    return label_names, labels

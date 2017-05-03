@@ -7,6 +7,9 @@ from keras.optimizers import Adam, RMSprop, SGD
 import keras.backend as K
 import tensorflow as tf
 import time
+import sklearn
+import sklearn.neighbors
+import sklearn.linear_model
 
 import wgan_params
 import data
@@ -39,7 +42,6 @@ data_object = data.load(args.dataset, shape=args.shape, color=args.color)
 (x_train, x_test) = data_object.get_data(args.trainSize, args.testSize)
 x_true_flow = data_object.get_train_flow(args.batch_size)
 args.original_shape = x_train.shape[1:]
-
 
 if args.generator == "dcgan":
     generator_channels = model_dcgan.default_channels("generator", args.gen_size, args.original_shape[2])
@@ -117,6 +119,35 @@ masterPermutation = np.arange(data_count).astype(np.int32)
 
 
 pairingIndices_list, pairingFakeData_list, pairingRealData_list = [], [], []
+
+def check_separability(data, labels, test_type, n_neighbors=1):
+    if test_type == "knn":
+        classifier = sklearn.neighbors.KNeighborsClassifier(n_neighbors=n_neighbors, weights='distance', algorithm='auto')
+    elif test_type == "logreg":
+        classifier = sklearn.linear_model.LogisticRegression(multi_class='multinomial', solver='lbfgs')
+    else:
+        assert False, "unknown separability test type"
+
+    trainSize = int(len(data) * 0.7)
+    classifier.fit(data[:trainSize], labels[:trainSize])
+    predict = classifier.predict(data[trainSize:])
+    result = float(np.sum(predict == labels[trainSize:])) / len(predict)
+    return result
+
+def check_all_separability():
+    for i, name in enumerate(label_names):
+        result = check_separability(latent[masterPermutation], labels[:,i], "knn", 5)
+        separability_results[name]["knn5"].append(result)
+        result = check_separability(latent[masterPermutation], labels[:,i], "logreg")
+        separability_results[name]["logreg"].append(result)
+
+if args.dataset == "celeba":
+    label_names, labels = data_object.get_labels()
+    labels = labels[:args.trainSize]
+    separability_results = {}
+    for name in label_names:
+        separability_results[name] = {"knn5":[], "logreg":[]} 
+    check_all_separability()
 
 for epoch in range(1, args.nb_iter+1):
     allIndices = np.random.permutation(data_count)
@@ -196,6 +227,18 @@ for epoch in range(1, args.nb_iter+1):
         vis.interpBetween(latent[0], latent[1], generator, args.batch_size, args.prefix + "_interpBetween-{}".format(epoch))
         vis.interpBetween(latent[0], latent[1], generator, args.batch_size, args.prefix + "_interpBetween")
         vis.saveModel(generator, args.prefix + "_generator")
+        if args.dataset == "celeba":
+            check_all_separability()
+
     if epoch % 200 == 0:
         vis.saveModel(generator, args.prefix + "_generator_{}".format(epoch))
         generated_saver.save(epoch)
+
+if args.dataset == "celeba":
+    print "separability results for greater than 1 % change"
+    for name in label_names:
+        for k in separability_results[name].keys():
+            results = separability_results[name][k]
+            change = np.abs(results[0] - results[-1])
+            if change > 0.01:
+                print "{} {}: {} -> {}".format(name, k, results[0], results[-1])

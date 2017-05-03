@@ -449,3 +449,12 @@ def dataset_emd(true_samples, generated_samples):
     generated_samples_flattened = np.reshape(generated_samples, (generated_samples.shape[0], -1))
     distance = emd(true_samples_flattened, generated_samples_flattened)
     return distance
+
+def display_labels_separated(data, labels, file, nx = 20, ny=10):
+    assert len(data) == len(labels)
+    assert len(data) >= nx * ny
+    perm = np.random.permutation(len(data))
+    x = data[perm[:nx*ny]]
+    l = labels[perm[:nx*ny]]
+    sorter = np.argsort(l)
+    plotImages(x[sorter], nx, ny, file)

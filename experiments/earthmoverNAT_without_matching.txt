@@ -1,0 +1,12 @@
+ini/earthmover_mnist.ini
+ini/earthmover_mnist_noperm.ini
+
+The architectures are just like nat6
+Ran for 200 epoch
+Without permutation we get much worse reconstruction loss, as well as visually worse images
+
+With matching:
+     epoch 200 epochFixedPointRatio 0.998800 epochInterimMean 0.637863 epochInterimMedian 0.637753
+
+Without matching:
+     epoch 200 epochFixedPointRatio 1.000000 epochInterimMean 0.862273 epochInterimMedian 0.862231

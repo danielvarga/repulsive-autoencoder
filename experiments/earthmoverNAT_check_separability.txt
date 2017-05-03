@@ -1,0 +1,19 @@
+ini/earthmover_celeba.ini
+ini/earthmover_celeba_dim10.ini
+ini/earthmover_celeba_ornstein95.ini
+
+Check how training an EM NAT improves the separability of celeba images
+Take 70% of the latent points, fit a logreg model to predict the labels of the corresponding images.
+Use the remaining 30% to test prediction accuracy
+
+Prediction accuracty does not change at all during training for most of the features.
+For earthmover_celeba, these features improved somewhat
+    (Attractive 51 -> 59, Heavy Makeup 61 -> 63, Smiling 51 -> 55, Wearing Lipstick 51 -> 58)
+
+For earthmover_celeba_dim10, some futher features improved a bit, but the big picture is the same 
+    (Attractive 51 -> 61, Heavy Makeup 61 -> 65, Smiling 51 -> 58, Wearing Lipstick 51 -> 63, High Cheek Bones 61 -> 65, Male 58 -> 61, Mouth Slightly Open 51 -> 54)
+    Horrible generated-reconstructed images!!!
+
+For earthmove_celeba_ornstein95, nothing but Male changed (dropped!)
+    (Male 58 -> 50)
+    Horrible generated-reconstructed images!!!

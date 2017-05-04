@@ -49,16 +49,15 @@ if args.dataset == "celeba":
     labels = labels[:args.trainSize]
 
 # Unit sphere!!!
+#latent = sampler(data_count, args.latent_dim)
+latent_unnormed = np.random.normal(size=(data_count, args.latent_dim))
+latent = latent_unnormed / np.linalg.norm(latent_unnormed, axis=1, keepdims=True)
+
 if args.use_labels_as_latent:
     assert args.dataset == "celeba" # only celeba has labels
     assert args.ornstein == 1.0 # do not alter latent points
-    assert args.matching_frequency > args.nb_iter # do not update matching
-    args.latent_dim = labels.shape[1]
-    latent = labels
-else:
-    #latent = sampler(data_count, args.latent_dim)
-    latent_unnormed = np.random.normal(size=(data_count, args.latent_dim))
-    latent = latent_unnormed / np.linalg.norm(latent_unnormed, axis=1, keepdims=True)
+    assert latent.shape == labels.shape
+    latent = np.abs(latent) * labels
 
 
 if args.generator == "dcgan":
@@ -173,7 +172,7 @@ for epoch in range(1, args.nb_iter+1):
         latentBatch = latent[masterPermutation[dataIndices]]
 
         if args.sampling:
-            sigma = 0.1
+            sigma = 0.001
             latentBatch += np.random.normal(size=latentBatch.shape, scale=sigma)
             latentBatch /= np.linalg.norm(latentBatch, axis=1, keepdims=True)
 

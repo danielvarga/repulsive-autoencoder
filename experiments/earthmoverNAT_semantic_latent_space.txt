@@ -1,0 +1,14 @@
+ini/earhmover_celeba_dim40.ini
+ini/earhmover_celeba_dim40_labels.ini
+
+In earthmover_celeba_dim40_labels, the latent space is the 40 labels that we have for the celeba dataset. The latent point - image matching does not change during training.
+In earthmover_celeba_dim40, everything is the same, but the latent points are generated from standard normal distribution and points are rematched in each batch
+
+The aim of this experiment was to see if a handcrafted, semantically meaningful latent structure helps in the reconstruction task.
+It seems that it does not, earthmover_celeba_dim40 achieves much greater reconstruction loss.
+
+earhmover_celeba_dim40.ini
+	epoch 100 epochFixedPointRatio 1.000000 epochInterimMean 0.619368 epochInterimMedian 0.619022
+
+earhmover_celeba_dim40_labels.ini
+	epoch 100 epochFixedPointRatio 1.000000 epochInterimMean 1.097679 epochInterimMedian 1.095318

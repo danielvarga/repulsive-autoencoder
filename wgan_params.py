@@ -35,6 +35,7 @@ parser.add_argument('--nesterov', dest="nesterov", default="0.0", type=float, he
 parser.add_argument('--ornstein', dest="ornstein", default="1.0", type=float, help="Ornstein process coefficient (1 means no movement")
 parser.add_argument('--matching_frequency', dest="matching_frequency", default="1", type=int, help="After how many epoch do we rematch the data")
 parser.add_argument('--min_items_in_matching', dest="min_items_in_matching", default="-1", type=int, help="Minimum number of items to run the matching (-1 means batch size)")
+parser.add_argument('--use_labels_as_latent', dest="use_labels_as_latent", default="0", type=int, help="Only available for celeba, the latent points are the labels")
 
 
 args_param = parser.parse_args()
@@ -52,6 +53,10 @@ def getArgs():
         args.sampling = True
     else:
         args.sampling = False
+    if args.use_labels_as_latent == 1:
+        args.use_labels_as_latent = True
+    else:
+        args.use_labels_as_latent = False
 
     args.use_bn_gen = (args.use_bn_gen == 1)
     args.use_bn_disc = (args.use_bn_disc == 1)

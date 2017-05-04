@@ -42,6 +42,24 @@ data_object = data.load(args.dataset, shape=args.shape, color=args.color)
 (x_train, x_test) = data_object.get_data(args.trainSize, args.testSize)
 x_true_flow = data_object.get_train_flow(args.batch_size)
 args.original_shape = x_train.shape[1:]
+data_count = len(x_train)
+
+if args.dataset == "celeba":
+    label_names, labels = data_object.get_labels()
+    labels = labels[:args.trainSize]
+
+# Unit sphere!!!
+if args.use_labels_as_latent:
+    assert args.dataset == "celeba" # only celeba has labels
+    assert args.ornstein == 1.0 # do not alter latent points
+    assert args.matching_frequency > args.nb_iter # do not update matching
+    args.latent_dim = labels.shape[1]
+    latent = labels
+else:
+    #latent = sampler(data_count, args.latent_dim)
+    latent_unnormed = np.random.normal(size=(data_count, args.latent_dim))
+    latent = latent_unnormed / np.linalg.norm(latent_unnormed, axis=1, keepdims=True)
+
 
 if args.generator == "dcgan":
     generator_channels = model_dcgan.default_channels("generator", args.gen_size, args.original_shape[2])
@@ -103,17 +121,9 @@ generator.summary()
 def averageDistance(dataBatch, fakeBatch):
     return np.mean(np.linalg.norm(dataBatch - fakeBatch, axis=1))
 
+
 # callback for saving generated images
 generated_saver = callbacks.SaveGeneratedCallback(generator, sampler, args.prefix, args.batch_size, args.frequency, args.latent_dim)
-
-data_count = len(x_train)
-minibatchCount = data_count // args.batch_size
-startTime = time.clock()
-
-# Unit sphere!!!
-#latent = sampler(data_count, args.latent_dim)
-latent_unnormed = np.random.normal(size=(data_count, args.latent_dim))
-latent = latent_unnormed / np.linalg.norm(latent_unnormed, axis=1, keepdims=True)
 
 masterPermutation = np.arange(data_count).astype(np.int32)
 
@@ -142,13 +152,14 @@ def check_all_separability():
         separability_results[name]["logreg"].append(result)
 
 if args.dataset == "celeba":
-    label_names, labels = data_object.get_labels()
-    labels = labels[:args.trainSize]
     separability_results = {}
     for name in label_names:
         separability_results[name] = {"knn5":[], "logreg":[]} 
     check_all_separability()
 
+
+minibatchCount = data_count // args.batch_size
+startTime = time.clock()
 for epoch in range(1, args.nb_iter+1):
     allIndices = np.random.permutation(data_count)
     epochDistances = []

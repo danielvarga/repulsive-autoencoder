@@ -84,7 +84,7 @@ def distanceMatrix(x, y):
     return distances
 
 def optimalPairing(x, y):
-    distances = distanceMatrix(x,y)
+    distances = distanceMatrix(y,x)
     _, perm = linear_sum_assignment(distances)
     return perm
 

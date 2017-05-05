@@ -83,8 +83,10 @@ def distanceMatrix(x, y):
     distances = np.sqrt(np.abs(squaredDistances))
     return distances
 
+# !!! only works if len(y) >= len(x)
 def optimalPairing(x, y):
-    distances = distanceMatrix(y,x)
+    assert len(y) <= len(x)
+    distances = distanceMatrix(x, y)
     _, perm = linear_sum_assignment(distances)
     return perm
 

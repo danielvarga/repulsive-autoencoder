@@ -202,6 +202,8 @@ for epoch in range(1, args.nb_iter+1):
                 pairingIndices_list, pairingFakeData_list, pairingRealData_list = [], [], []
 
                 latentBatch = latent[masterPermutation[dataIndices]] # recalculated
+            else:
+                batchPermutation = np.arange(args.batch_size)
         else:
             batchPermutation = np.arange(args.batch_size)
 
@@ -237,14 +239,13 @@ for epoch in range(1, args.nb_iter+1):
         vis.interpBetween(latent[0], latent[1], generator, args.batch_size, args.prefix + "_interpBetween-{}".format(epoch))
         vis.interpBetween(latent[0], latent[1], generator, args.batch_size, args.prefix + "_interpBetween")
         vis.saveModel(generator, args.prefix + "_generator")
-        if args.dataset == "celeba":
-            check_all_separability()
 
     if epoch % 200 == 0:
         vis.saveModel(generator, args.prefix + "_generator_{}".format(epoch))
         generated_saver.save(epoch)
 
 if args.dataset == "celeba":
+    check_all_separability()
     print "separability results for greater than 1 % change"
     for name in label_names:
         for k in separability_results[name].keys():

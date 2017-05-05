@@ -1,0 +1,37 @@
+ini/earthmover_mnist.ini
+ini/earthmover_mnist_ornstein98.ini
+ini/earthmover_mnist_ornstein99.ini
+ini/earthmover_mnist_ornstein999.ini
+ini/earthmover_mnist_ornstein9999.ini
+
+The architectures are just like nat6
+
+We added an ornstein-uhlenbeck process to nudge the latent points a bit, while preserving the initial standard normal distribution.
+Since our latent points are not standard normal (because they were
+projected to the unit sphere), we save the initial unnormalized
+points, apply the ornstein-uhlenbeck process on them and then
+normalize them.
+
+If the initial standard normal distribution is x, and a newly
+generatedstandard normal is epsilon, then we apply
+
+alpha * x + sqrt(1-sqr(alpha)) * epsilon
+
+If repeated 200 times (at the end of each 200 epoch), alpha=0.9999
+will approximately keep the latent points in around 0.1std radius of
+the initial points.
+
+alpha=1.0
+	In 200 epoch, fixedPointRatio reaches 99.8%, recons loss reaches 0.63
+alpha=0.98
+	fixedPointRatio stops at 54%, recons loss stops at 0.84
+alpha=0.99
+	fixedPointRatio stops at 67%, recons loss stops at 0.80
+alpha=0.999
+	fixedPointRatio stops at 94%, recons loss stops at 0.75
+alpha=0.9999
+	fixedPointRatio stops at 99.5%, recons loss stops at 0.67
+
+Lower alpha vaues result in blurrier generated images, but are more resistant
+to overfitting. The best images are obtained when we don't use
+ornstein (alpha=1) and stop early (at around 100 epochs)

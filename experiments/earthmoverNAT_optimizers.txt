@@ -1,0 +1,16 @@
+ini/earthmover_mnist.ini
+ini/earthmover_mnist_adam.ini
+ini/earthmover_mnist_rmsprop.ini
+
+If we use sgd optimizer, the best setup uses high momentum hyperparameter (0.6) and extremely high learning rate (10)
+If we replace sgd with adam optimizer, we can revert to its default learning rate (0.001) and obtain the same results.
+We get the same results with rmsprop and its default learning rate (0.001)
+
+However, out of these three, sgd optimizer runs faster
+
+sgd
+	Elapsed time: 144:29
+rmsprop
+	Elapsed time: 182:40
+adam
+	Elapsed time: 218:38

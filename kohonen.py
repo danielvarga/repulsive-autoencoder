@@ -5,10 +5,10 @@ import random
 import sys
 import cPickle
 import gzip
+from collections import defaultdict
 from scipy.optimize import linear_sum_assignment
 
 # import next_permutation
-# import munkres
 
 def pretty(m):
     for row in m:
@@ -72,6 +72,14 @@ def slowOptimalPairing(x,y):
             bestP = p
     return bestP
 
+
+# distanceMatrix(x, y)[j, i] == np.linalg.norm(x[i]-y[j])
+# Note the reversing of indices!
+# x = np.random.normal(size=(n,l))
+# y = np.random.normal(size=(m,l))
+# d = distanceMatrix(x, y)
+# d.shape
+# (m, n)
 def distanceMatrix(x, y):
     xL2S = np.sum(x*x,axis=-1)
     yL2S = np.sum(y*y,axis=-1)
@@ -83,13 +91,50 @@ def distanceMatrix(x, y):
     distances = np.sqrt(np.abs(squaredDistances))
     return distances
 
-# !!! only works if len(y) >= len(x)
-def optimalPairing(x, y):
+# !!! only works if len(y) <= len(x)
+# !!! the returned permutation is to be applied on x
+def optimalPairing(x, y, distances=None):
     assert len(y) <= len(x)
-    distances = distanceMatrix(x, y)
+    if distances is None:
+        distances = distanceMatrix(x, y)
+    assert distances.shape == (len(y), len(x))
     _, perm = linear_sum_assignment(distances)
+    assert len(perm) == len(y)
+    # distances[i, perm[i]] is the optimal distance for y[i] among x[j]s.
+    # distances[range(len(y)), perm].sum() is the minimal possible total distance.
+    # That's a matching, not to be confused with the non-bijective closest x[j] assignment.
     return perm
 
+# distances is len
+def greedyPairing(x, y, distances=None):
+    assert len(y) <= len(x)
+    if distances is None:
+        distances = distanceMatrix(x, y)
+    else:
+        distances = distances.copy()
+    assert distances.shape == (len(y), len(x))
+    perm = - np.ones(len(y), dtype=int)
+    done = set()
+    while perm.min() < 0:
+        closestXIndices = distances.argmin(axis=1)
+#        print closestXIndices
+#        print "closest", distances[closestXIndices, range(len(x))]
+        assert len(closestXIndices) == len(y)
+        s = defaultdict(set)
+        for i, j in enumerate(closestXIndices):
+            if i not in done:
+                s[j].add(i)
+        # print s
+        for j, preimage in s.iteritems():
+            preimage = sorted(preimage)
+            localI = distances[preimage, j].argmin()
+            i = preimage[localI]
+            perm[i] = j
+            # print "added col", i, "row", j
+            distances[i, :] = np.inf
+            distances[:, j] = np.inf
+            done.add(i)
+    return perm
 
 class LocalMapping(object):
     KERNEL_SIZE = 0.33 # Ad hoc is an understatement

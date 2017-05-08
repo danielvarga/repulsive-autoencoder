@@ -195,31 +195,31 @@ for epoch in range(1, args.nb_iter+1):
                 pairingRealData_flattened = pairingRealData.reshape((pairingRealData.shape[0], -1))
 
                 # do the pairint and bookkeep it
-                batchPermutation = np.array(kohonen.optimalPairing(pairingFakeData_flattened, pairingRealData_flattened))
+                if args.greedy_matching:
+                    batchPermutation = np.array(kohonen.greedyPairing(pairingFakeData_flattened, pairingRealData_flattened))
+                else:
+                    batchPermutation = np.array(kohonen.optimalPairing(pairingFakeData_flattened, pairingRealData_flattened))
                 masterPermutation[pairingIndices] = masterPermutation[pairingIndices[batchPermutation]]
+                fixedPointRatio = float(np.sum(batchPermutation == np.arange(batchPermutation.shape[0]))) / batchPermutation.shape[0]
+                fixedPointRatios.append(fixedPointRatio)
 
                 # empty pairing data
                 pairingIndices_list, pairingFakeData_list, pairingRealData_list = [], [], []
 
                 latentBatch = latent[masterPermutation[dataIndices]] # recalculated
-            else:
-                batchPermutation = np.arange(args.batch_size)
-        else:
-            batchPermutation = np.arange(args.batch_size)
 
         # perform gradient descent to make matched images more similar
         gen_loss = generator.train_on_batch(latentBatch, dataBatch)
 
         # collect statistics
         minibatchDistances = averageDistance(dataBatch, fakeBatch)
-        fixedPointRatio = float(np.sum(batchPermutation == np.arange(batchPermutation.shape[0]))) / batchPermutation.shape[0]
         epochDistances.append(minibatchDistances)
-        fixedPointRatios.append(fixedPointRatio)
 
     epochDistances = np.array(epochDistances)
     epochInterimMean = epochDistances.mean()
     epochInterimMedian = np.median(epochDistances)
-    epochFixedPointRatio = np.mean(np.array(fixedPointRatios))
+    fixedPointRatios = np.array(fixedPointRatios)
+    epochFixedPointRatio = np.mean(fixedPointRatios) if len(fixedPointRatios) > 0 else 0.0
 
     if args.ornstein < 1.0:
         epsilon = np.random.normal(size=latent.shape)

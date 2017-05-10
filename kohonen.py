@@ -80,7 +80,11 @@ def slowOptimalPairing(x,y):
 # d = distanceMatrix(x, y)
 # d.shape
 # (m, n)
-def distanceMatrix(x, y):
+def distanceMatrix(x, y, projection=0):
+    if projection > 0:
+        projector_matrix = np.random.normal(size=(x.shape[1],projection))
+        x = np.dot(x, projector_matrix)
+        y = np.dot(y, projector_matrix)
     xL2S = np.sum(x*x,axis=-1)
     yL2S = np.sum(y*y,axis=-1)
     xL2SM = np.tile(xL2S, (len(y), 1))

@@ -37,6 +37,7 @@ parser.add_argument('--matching_frequency', dest="matching_frequency", default="
 parser.add_argument('--min_items_in_matching', dest="min_items_in_matching", default="-1", type=int, help="Minimum number of items to run the matching (-1 means batch size)")
 parser.add_argument('--use_labels_as_latent', dest="use_labels_as_latent", default="0", type=int, help="Only available for celeba, the latent points are the labels")
 parser.add_argument('--greedy_matching', dest="greedy_matching", default="0", type=int, help="(0/1) If 1, then matching is greedy")
+parser.add_argument('--projection', dest="projection", default="0", type=int, help="if > 0 then project images to the specified dimension before computing distance matrix")
 
 
 args_param = parser.parse_args()

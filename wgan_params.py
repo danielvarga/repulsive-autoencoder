@@ -38,6 +38,10 @@ parser.add_argument('--min_items_in_matching', dest="min_items_in_matching", def
 parser.add_argument('--use_labels_as_latent', dest="use_labels_as_latent", default="0", type=int, help="Only available for celeba, the latent points are the labels")
 parser.add_argument('--greedy_matching', dest="greedy_matching", default="0", type=int, help="(0/1) If 1, then matching is greedy")
 parser.add_argument('--projection', dest="projection", default="0", type=int, help="if > 0 then project images to the specified dimension before computing distance matrix")
+parser.add_argument('--activation', dest="activation", default="relu", help="activation function")
+parser.add_argument('--intermediate_dims', dest="intermediate_dims", default="1000,1000", help="Intermediate dimensions")
+parser.add_argument('--no_update_epochs', dest="no_update_epochs", default="0", help="Number of epoch during which we do not perform gradient update (only matching)")
+
 
 
 args_param = parser.parse_args()
@@ -71,4 +75,12 @@ def getArgs():
 
     if args.min_items_in_matching == -1:
         args.min_items_in_matching = args.batch_size
+
+    if type(args.intermediate_dims) is int:
+        args.intermediate_dims = [args.intermediate_dims]
+    elif len(args.intermediate_dims) > 0:
+        args.intermediate_dims = map(int, str(args.intermediate_dims).split(","))
+    else:
+        args.intermediate_dims = []
+
     return args

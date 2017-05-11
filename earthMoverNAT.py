@@ -14,10 +14,12 @@ import sklearn.linear_model
 import wgan_params
 import data
 import vis
-import model_dcgan
 import callbacks
 import samplers
 import kohonen
+
+import model_dcgan
+import dense
 
 args = wgan_params.getArgs()
 print(args)
@@ -76,10 +78,11 @@ if args.generator == "dcgan":
     gen_firstY = args.original_shape[1] // reduction
     gen_layers = model_dcgan.generator_layers_wgan(generator_channels, args.latent_dim, args.generator_wd, args.use_bn_gen, args.batch_size, gen_firstX, gen_firstY)
 elif args.generator == "dense":
-    gen_layers = model_dcgan.generator_layers_dense(args.latent_dim, args.batch_size, args.generator_wd, args.use_bn_gen, args.original_shape)
+    #    gen_layers = model_dcgan.generator_layers_dense(args.latent_dim, args.batch_size, args.generator_wd, args.use_bn_gen, args.original_shape)
+    gen_layers = dense.decoder_layers(args.intermediate_dims, args.original_shape, args.activation, args.generator_wd, args.use_bn_gen)
 elif args.generator == "nat6":
-    assert args.dataset == "mnist"
-    assert args.shape == (28,28)
+#    assert args.dataset == "mnist"
+#    assert args.shape == (28,28)
     gen_layers = []
     gen_layers.append(Dense(600))
     gen_layers.append(LeakyReLU(alpha=0.1))
@@ -89,7 +92,6 @@ elif args.generator == "nat6":
     gen_layers.append(LeakyReLU(alpha=0.1))
 
     gen_layers.append(Reshape(args.original_shape))
-
 else:
     assert False, "Invalid generator type"
         
@@ -108,6 +110,7 @@ if args.modelPath is None:
     # build generator
     gen_output = gen_input
     for layer in gen_layers:
+        print layer
         gen_output = layer(gen_output)
     generator = Model(input=gen_input, output=gen_output)
 else:
@@ -205,6 +208,10 @@ for epoch in range(1, args.nb_iter+1):
                 masterPermutation[pairingIndices] = masterPermutation[pairingIndices[batchPermutation]]
                 fixedPointRatio = float(np.sum(batchPermutation == np.arange(batchPermutation.shape[0]))) / batchPermutation.shape[0]
                 fixedPointRatios.append(fixedPointRatio)
+                
+                if epoch <= args.no_update_epochs:
+                    print "batch {}, fixedPointRatio {}".format(i, fixedPointRatio)
+                    sys.stdout.flush()
 
                 # empty pairing data
                 pairingIndices_list, pairingFakeData_list, pairingRealData_list = [], [], []
@@ -218,7 +225,9 @@ for epoch in range(1, args.nb_iter+1):
             np.save(file, fake)
 
         # perform gradient descent to make matched images more similar
-        gen_loss = generator.train_on_batch(latentBatch, dataBatch)
+        if epoch > args.no_update_epochs:
+            gen_loss = generator.train_on_batch(latentBatch, dataBatch)
+            
 
         # collect statistics
         minibatchDistances = averageDistance(dataBatch, fakeBatch)

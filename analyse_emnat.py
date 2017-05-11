@@ -42,11 +42,11 @@ fake_images = np.array(fake_images)
 x_train = x_train.reshape((x_train.shape[0], -1))
 fake_images = fake_images.reshape((fake_images.shape[0], fake_images.shape[1], -1))
 
-
-if args.trainSize > 10000:
-    print "Restricting analysis to the first 10000 points"
-    x_train = x_train[:10000]
-    fake_images = fake_images[:,:10000]
+point_limit = 1000
+if args.trainSize > point_limit:
+    print "Restricting analysis to the first {} points".format(point_limit)
+    x_train = x_train[:point_limit]
+    fake_images = fake_images[:,:point_limit]
 
 print "Calculating distance matrix"
 distances = []
@@ -70,10 +70,11 @@ print "Fixed point ratio when using greedy matching and 10 dim projection: ", gr
 
 
 print "Finding optimal matching"
-if args.trainSize > 2000:
-    print "Restricting optimal matching to the first 2000 points"
-    x_train = x_train[:2000]
-    fake_images = fake_images[:,:2000]
+optimal_limit = 1000
+if args.trainSize > optimal_limit:
+    print "Restricting optimal matching to the first {} points".format(optimal_limit)
+    x_train = x_train[:optimal_limit]
+    fake_images = fake_images[:,:optimal_limit]
 
 optimal_matching = np.zeros(len(fake_epochs))
 optimal_matching10 = np.zeros(len(fake_epochs))

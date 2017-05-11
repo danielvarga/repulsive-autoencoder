@@ -21,6 +21,17 @@ class DenseEncoder(Encoder):
             h = Activation(self.activation)(h)
         return h
 
+def decoder_layers(intermediate_dims, original_shape, activation, wd, use_bn):
+    layers = []
+    for intermediate_dim in reversed(intermediate_dims):
+        layers.append(Dense(intermediate_dim, W_regularizer=l2(wd)))
+        if use_bn:
+            layers.append(BatchNormalization(mode=2))
+            layers.append(Activation(activation))
+    layers.append(Dense(np.prod(original_shape), activation='sigmoid', name="decoder_top", W_regularizer=l2(wd)))
+    layers.append(Reshape(original_shape))
+    return layers
+    
 class DenseDecoder(Decoder):
     def __init__(self, latent_dim, intermediate_dims, original_shape, activation, wd, use_bn):
         self.latent_dim = latent_dim
@@ -32,14 +43,7 @@ class DenseDecoder(Decoder):
 
     def __call__(self, recons_input):
         # we instantiate these layers separately so as to reuse them both for reconstruction and generation
-        layers = []
-        for intermediate_dim in reversed(self.intermediate_dims):
-            layers.append(Dense(intermediate_dim, W_regularizer=l2(self.wd)))
-            if self.use_bn:
-                layers.append(BatchNormalization(mode=2))
-            layers.append(Activation(self.activation))
-        layers.append(Dense(np.prod(self.original_shape), activation='sigmoid', name="decoder_top", W_regularizer=l2(self.wd)))
-        layers.append(Reshape(self.original_shape))
+        layers = decoder_layers(self.intermediate_dims, self.original_shape, self.activation, self.wd, self.use_bn)
 
         generator_input = Input(shape=(self.latent_dim,))
         generator_output = generator_input

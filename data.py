@@ -40,6 +40,10 @@ else:
 def load(dataset, shape=None, color=True):
     if dataset == "mnist":
         return Dataset_mnist(shape)
+    elif dataset.startswith("mnist-"):
+        _, digit = dataset.split("-")
+        digit = int(digit)
+        return Dataset_mnist(shape, digit=digit)
     elif dataset == "celeba":
         return Dataset_celeba(shape, color)
     elif dataset == "bedroom":
@@ -154,11 +158,12 @@ class Dataset_real(Dataset):
         return input
 
 class Dataset_mnist(Dataset_real):
-    def __init__(self, shape=(28,28)):
+    def __init__(self, shape=(28,28), digit=None):
         super(Dataset_mnist, self).__init__("mnist", shape, color=False)
 
         cacheFile_64_64 = "/home/zombori/datasets/mnist_64_64.npz"
         if shape == (64, 64) and os.path.isfile(cacheFile_64_64):
+            assert digit==None, "no digit filtering on cached data, sorry."
             cache = np.load(cacheFile_64_64)
             self.x_train_orig = cache["x_train"]
             self.x_test_orig = cache["x_test"]
@@ -167,6 +172,12 @@ class Dataset_mnist(Dataset_real):
         (x_train, y_train), (x_test, y_test) = mnist.load_data()
         x_train = x_train.astype('float32') / 255.
         x_test = x_test.astype('float32') / 255.
+
+        if digit is not None:
+            x_train = x_train[y_train==digit]
+            x_test = x_test[y_test==digit]
+            y_train = y_train[y_train==digit]
+            y_test = y_test[y_test==digit]
 
         # add_feature_dimension
         x_train = np.expand_dims(x_train, feature_axis)

@@ -62,6 +62,9 @@ sampler = samplers.spherical_sampler
 latent_unnormed = np.random.normal(size=(data_count, args.latent_dim))
 latent = latent_unnormed / np.linalg.norm(latent_unnormed, axis=1, keepdims=True)
 
+if args.latent_point_file is not None:
+    latent = np.load(args.latent_point_file)
+
 if args.use_labels_as_latent:
     assert args.dataset == "celeba" # only celeba has labels
     assert args.ornstein == 1.0 # do not alter latent points
@@ -110,7 +113,6 @@ if args.modelPath is None:
     # build generator
     gen_output = gen_input
     for layer in gen_layers:
-        print layer
         gen_output = layer(gen_output)
     generator = Model(input=gen_input, output=gen_output)
 else:
@@ -190,6 +192,7 @@ for epoch in range(1, args.nb_iter+1):
         # find match real and generated images
         dataMidibatch = x_train[dataMidiIndices]
         latentMidibatch = latent[masterPermutation[dataMidiIndices]]
+        fakeMidibatch = generator.predict(latentMidibatch, batch_size = args.batch_size)
 
         if args.sampling:
             assert False, "Let's not accidentally hit this codepath."
@@ -197,18 +200,14 @@ for epoch in range(1, args.nb_iter+1):
             latentMidibatch += np.random.normal(size=latentMidibatch.shape, scale=sigma)
             latentMidibatch /= np.linalg.norm(latentMidibatch, axis=1, keepdims=True)
 
-        if epoch % args.matching_frequency == 0:
-            fakeMidibatch = generator.predict(latentMidibatch, batch_size = args.batch_size)
 
-            # prepare concatenated and flattened data for the pairing
-            dataMidibatch_flattened = dataMidibatch.reshape((dataMidibatch.shape[0], -1))
-            fakeMidibatch_flattened = fakeMidibatch.reshape((fakeMidibatch.shape[0], -1))
+        if epoch % args.matching_frequency == 0:
             # do the pairing and bookkeep it
-            distanceMatrix = kohonen.distanceMatrix(fakeMidibatch_flattened, dataMidibatch_flattened, projection=args.projection)
+            distanceMatrix = kohonen.distanceMatrix(biflatten(fakeMidibatch), biflatten(dataMidibatch), projection=args.projection)
             if args.greedy_matching:
-                midibatchPermutation = np.array(kohonen.greedyPairing(fakeMidibatch_flattened, dataMidibatch_flattened, distanceMatrix))
+                midibatchPermutation = np.array(kohonen.greedyPairing(biflatten(fakeMidibatch), biflatten(dataMidibatch), distanceMatrix))
             else:
-                midibatchPermutation = np.array(kohonen.optimalPairing(fakeMidibatch_flattened, dataMidibatch_flattened, distanceMatrix))
+                midibatchPermutation = np.array(kohonen.optimalPairing(biflatten(fakeMidibatch), biflatten(dataMidibatch), distanceMatrix))
             masterPermutation[dataMidiIndices] = masterPermutation[dataMidiIndices[midibatchPermutation]]
 
             fixedPointRatio = float(np.sum(midibatchPermutation == np.arange(midibatchPermutation.shape[0]))) / midibatchPermutation.shape[0]
@@ -222,15 +221,15 @@ for epoch in range(1, args.nb_iter+1):
 
         # perform gradient descent to make matched images more similar
         if epoch > args.no_update_epochs:
-            gen_loss = generator.fit(latentMidibatch, dataMidibatch, batch_size=args.batch_size, verbose=0)
+            gen_loss = generator.fit(latentMidibatch, dataMidibatch, nb_epoch=1, batch_size=args.batch_size, verbose=0)
 
         # collect statistics
         minibatchDistances = averageDistance(dataMidibatch, fakeMidibatch)
         epochDistances.append(minibatchDistances)
 
     epochDistances = np.array(epochDistances)
-    epochInterimMean = epochDistances.mean()
-    epochInterimMedian = np.median(epochDistances)
+    epochInterimMean = epochDistances.mean() if len(epochDistances) > 0 else 0.0
+    epochInterimMedian = np.median(epochDistances) if len(epochDistances) > 0 else 0.0
     fixedPointRatios = np.array(fixedPointRatios)
     epochFixedPointRatio = np.mean(fixedPointRatios) if len(fixedPointRatios) > 0 else 0.0
 
@@ -259,6 +258,10 @@ for epoch in range(1, args.nb_iter+1):
         vis.interpBetween(latent[masterPermutation[0]], latent[masterPermutation[1]], generator, args.batch_size, args.prefix + "_interpBetween-{}".format(epoch))
         vis.interpBetween(latent[masterPermutation[0]], latent[masterPermutation[1]], generator, args.batch_size, args.prefix + "_interpBetween")
         vis.saveModel(generator, args.prefix + "_generator")
+
+        file = "{}_latent.npy".format(args.prefix)
+        print "Saving latent points to {}".format(file)
+        np.save(file, latent[masterPermutation])
 
     if epoch % 200 == 0:
         vis.saveModel(generator, args.prefix + "_generator_{}".format(epoch))

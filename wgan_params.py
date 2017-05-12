@@ -40,7 +40,7 @@ parser.add_argument('--greedy_matching', dest="greedy_matching", default="0", ty
 parser.add_argument('--projection', dest="projection", default="0", type=int, help="if > 0 then project images to the specified dimension before computing distance matrix")
 parser.add_argument('--activation', dest="activation", default="relu", help="activation function")
 parser.add_argument('--intermediate_dims', dest="intermediate_dims", default="1000,1000", help="Intermediate dimensions")
-parser.add_argument('--no_update_epochs', dest="no_update_epochs", default="0", help="Number of epoch during which we do not perform gradient update (only matching)")
+parser.add_argument('--no_update_epochs', dest="no_update_epochs", type=int, default=0, help="Number of epochs during which we do not perform gradient update (only matching)")
 
 
 

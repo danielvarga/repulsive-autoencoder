@@ -121,8 +121,12 @@ generator.compile(optimizer=optimizer_g, loss="mse")
 print "Generator:"
 generator.summary()
 
+def biflatten(x):
+    assert len(x.shape)>=2
+    return x.reshape(x.shape[0], -1)
+
 def averageDistance(dataBatch, fakeBatch):
-    return np.mean(np.linalg.norm(dataBatch - fakeBatch, axis=1))
+    return np.mean(np.linalg.norm(biflatten(dataBatch) - biflatten(fakeBatch), axis=1))
 
 
 # callback for saving generated images
@@ -164,73 +168,64 @@ if args.dataset == "celeba":
 
 randomPoints = sampler(args.batch_size, args.latent_dim)
 minibatchCount = data_count // args.batch_size
+assert (data_count % args.min_items_in_matching) == 0
+assert (args.min_items_in_matching % args.batch_size) == 0
 startTime = time.clock()
 sys.stderr.write('Starting training\n')
 for epoch in range(1, args.nb_iter+1):
+    if (epoch == 2) or (epoch % 50 == 0):
+        fake = generator.predict(latent[masterPermutation], batch_size = args.batch_size)
+        file = "{}_fake_{}.npy".format(args.prefix, epoch)
+        print "Saving matched fake pairs to {}".format(file)
+        np.save(file, fake)
+
     allIndices = np.random.permutation(data_count)
     epochDistances = []
     fixedPointRatios = []
-    for i in range(minibatchCount):
-        dataIndices = allIndices[i*args.batch_size:(i+1)*args.batch_size]
-        assert args.batch_size==len(dataIndices)
+    midibatchCount = data_count // args.min_items_in_matching
+    for j in range(midibatchCount):
+        dataMidiIndices = allIndices[j*args.min_items_in_matching:(j+1)*args.min_items_in_matching]
+        assert args.min_items_in_matching==len(dataMidiIndices)
 
         # find match real and generated images
-        dataBatch = x_train[dataIndices]
-        latentBatch = latent[masterPermutation[dataIndices]]
+        dataMidibatch = x_train[dataMidiIndices]
+        latentMidibatch = latent[masterPermutation[dataMidiIndices]]
 
         if args.sampling:
+            assert False, "Let's not accidentally hit this codepath."
             sigma = 0.001
-            latentBatch += np.random.normal(size=latentBatch.shape, scale=sigma)
-            latentBatch /= np.linalg.norm(latentBatch, axis=1, keepdims=True)
-
-        fakeBatch = generator.predict(latentBatch, batch_size = args.batch_size)
+            latentMidibatch += np.random.normal(size=latentMidibatch.shape, scale=sigma)
+            latentMidibatch /= np.linalg.norm(latentMidibatch, axis=1, keepdims=True)
 
         if epoch % args.matching_frequency == 0:
-            # perform optimal matching on pairing data to update masterPermutation
-            pairingIndices_list.append(dataIndices)
-            pairingFakeData_list.append(fakeBatch)
-            pairingRealData_list.append(dataBatch)
+            fakeMidibatch = generator.predict(latentMidibatch, batch_size = args.batch_size)
 
-            if sum([l.shape[0] for l in pairingIndices_list]) >= args.min_items_in_matching:
-                # prepare concatenated and flattened data for the pairing
-                pairingIndices = np.concatenate(pairingIndices_list)
-                pairingFakeData = np.concatenate(pairingFakeData_list)
-                pairingRealData = np.concatenate(pairingRealData_list)
-                pairingFakeData_flattened = pairingFakeData.reshape((pairingFakeData.shape[0], -1))
-                pairingRealData_flattened = pairingRealData.reshape((pairingRealData.shape[0], -1))
+            # prepare concatenated and flattened data for the pairing
+            dataMidibatch_flattened = dataMidibatch.reshape((dataMidibatch.shape[0], -1))
+            fakeMidibatch_flattened = fakeMidibatch.reshape((fakeMidibatch.shape[0], -1))
+            # do the pairing and bookkeep it
+            distanceMatrix = kohonen.distanceMatrix(fakeMidibatch_flattened, dataMidibatch_flattened, projection=args.projection)
+            if args.greedy_matching:
+                midibatchPermutation = np.array(kohonen.greedyPairing(fakeMidibatch_flattened, dataMidibatch_flattened, distanceMatrix))
+            else:
+                midibatchPermutation = np.array(kohonen.optimalPairing(fakeMidibatch_flattened, dataMidibatch_flattened, distanceMatrix))
+            masterPermutation[dataMidiIndices] = masterPermutation[dataMidiIndices[midibatchPermutation]]
 
-                # do the pairing and bookkeep it
-                distanceMatrix = kohonen.distanceMatrix(pairingFakeData_flattened, pairingRealData_flattened, projection=args.projection)
-                if args.greedy_matching:
-                    batchPermutation = np.array(kohonen.greedyPairing(pairingFakeData_flattened, pairingRealData_flattened, distanceMatrix))
-                else:
-                    batchPermutation = np.array(kohonen.optimalPairing(pairingFakeData_flattened, pairingRealData_flattened, distanceMatrix))
-                masterPermutation[pairingIndices] = masterPermutation[pairingIndices[batchPermutation]]
-                fixedPointRatio = float(np.sum(batchPermutation == np.arange(batchPermutation.shape[0]))) / batchPermutation.shape[0]
-                fixedPointRatios.append(fixedPointRatio)
+            fixedPointRatio = float(np.sum(midibatchPermutation == np.arange(midibatchPermutation.shape[0]))) / midibatchPermutation.shape[0]
+            fixedPointRatios.append(fixedPointRatio)
                 
-                if epoch <= args.no_update_epochs:
-                    print "batch {}, fixedPointRatio {}".format(i, fixedPointRatio)
-                    sys.stdout.flush()
+            if epoch <= args.no_update_epochs:
+                print "midibatch {}, fixedPointRatio {}".format(j, fixedPointRatio)
+                sys.stdout.flush()
 
-                # empty pairing data
-                pairingIndices_list, pairingFakeData_list, pairingRealData_list = [], [], []
-
-                latentBatch = latent[masterPermutation[dataIndices]] # recalculated
-
-        if (epoch % 50 == 0) and  (i == minibatchCount - 1): # this is the last batch of the epoch, we save the fake images before the gradient update for later evaluation of the matching
-            fake = generator.predict(latent[masterPermutation], batch_size = args.batch_size)
-            file = "{}_fake_{}.npy".format(args.prefix, epoch)
-            print "Saving matched fake pairs to {}".format(file)
-            np.save(file, fake)
+            latentMidibatch = latent[masterPermutation[dataMidiIndices]] # recalculated
 
         # perform gradient descent to make matched images more similar
         if epoch > args.no_update_epochs:
-            gen_loss = generator.train_on_batch(latentBatch, dataBatch)
-            
+            gen_loss = generator.fit(latentMidibatch, dataMidibatch, batch_size=args.batch_size, verbose=0)
 
         # collect statistics
-        minibatchDistances = averageDistance(dataBatch, fakeBatch)
+        minibatchDistances = averageDistance(dataMidibatch, fakeMidibatch)
         epochDistances.append(minibatchDistances)
 
     epochDistances = np.array(epochDistances)

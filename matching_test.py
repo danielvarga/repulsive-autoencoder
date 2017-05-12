@@ -4,7 +4,7 @@ import numpy as np
 from keras.datasets import mnist as keras_mnist
 
 import kohonen
-
+import vis
 
 def biflatten(x):
     assert len(x.shape)>=2
@@ -13,6 +13,15 @@ def biflatten(x):
 
 def averageDistance(dataBatch, fakeBatch):
     return np.mean(np.linalg.norm(biflatten(dataBatch) - biflatten(fakeBatch), axis=1))
+
+
+def show(x, y, masterPermutation, dataMidiIndices, prefix, epoch):
+    cnt = len(dataMidiIndices)
+    n = int(np.sqrt(cnt) + 1)
+    dataMidibatch = x[dataMidiIndices]
+    fakeMidibatch = y[masterPermutation[dataMidiIndices]]
+    images = vis.mergeSets((dataMidibatch, fakeMidibatch))
+    vis.plotImages(images, 2 * n, n, "{}-{}".format(prefix, epoch))
 
 
 def main():
@@ -30,7 +39,7 @@ def main():
     data_count = len(x)
 
     nb_epoch = 1000
-    midibatchSize = 10000
+    midibatchSize = 1000
     masterPermutation = np.random.permutation(data_count) # np.arange(data_count).astype(np.int32)
     midibatchCount = data_count // midibatchSize
 
@@ -38,11 +47,15 @@ def main():
         allIndices = np.random.permutation(data_count)
         totalDistance = 0.0
         for j in range(midibatchCount):
-            dataMidiIndices = allIndices[j*midibatchSize:(j+1)*midibatchSize]
+            partition = True
+            if partition:
+                dataMidiIndices = allIndices[j*midibatchSize:(j+1)*midibatchSize]
+            else:
+                dataMidiIndices = np.random.choice(data_count, size=midibatchSize, replace=False)
             assert midibatchSize==len(dataMidiIndices)
             dataMidibatch = x[dataMidiIndices]
             fakeMidibatch = y[masterPermutation[dataMidiIndices]]
-            distanceMatrix = kohonen.distanceMatrix(biflatten(fakeMidibatch), biflatten(dataMidibatch), projection=50)
+            distanceMatrix = kohonen.distanceMatrix(biflatten(fakeMidibatch), biflatten(dataMidibatch), projection=0)
 
             exactMatching = False
             if exactMatching:
@@ -52,7 +65,13 @@ def main():
 
             projectedTotalMidibatchDistance = distanceMatrix[range(len(fakeMidibatch)), midibatchPermutation].sum()
 
+            if j==0:
+                show(x, y, masterPermutation, dataMidiIndices, "matching_test/before", i)
+
             masterPermutation[dataMidiIndices] = masterPermutation[dataMidiIndices[midibatchPermutation]]
+
+            if j==0:
+                show(x, y, masterPermutation, dataMidiIndices, "matching_test/after", i)
 
             fakeMidibatch = y[masterPermutation[dataMidiIndices]] # recalc
             totalMidibatchDistance = averageDistance(dataMidibatch, fakeMidibatch) * len(dataMidibatch)

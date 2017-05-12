@@ -1,0 +1,35 @@
+ini/earthmover_mnist.ini
+ini/earthmover_mnist_noperm.ini
+ini/earthmover_mnist_trainedlatent_noperm.ini
+
+earthmover_mnist.ini 
+This is our baseline model, 
+- batch_size = min_items_in_matching = 50 
+- optimal matching
+- architecture and optimizer just like in nat6
+
+earthmover_mnist_noperm.ini
+This is just like the baseline model, but we do not allow rematching,
+i.e., latent points and images are paired randomly at the beginning,
+which stays fixed.
+
+earthmover_mnist_trainedlatent_noperm.ini
+This model uses the matching of the trained earthmover_mnist model.
+Afterwards, we do not allow any rematching.
+
+earthmover_mnist_noperm is clearly worse than any of the other
+two. earthmover_mnist_trainedlatent_noperm starts much better than the
+other two and improves faster, but ends up around the same as
+earthmover_mnist.
+
+earthmover_mnist.ini
+epoch 1 epochFixedPointRatio 0.019650 epochInterimMean 7.922547 epochInterimMedian 7.931651
+epoch 200 epochFixedPointRatio 0.998733 epochInterimMean 4.402079 epochInterimMedian 4.401237
+
+earthmover_mnist_noperm.ini
+epoch 1 epochFixedPointRatio 0.000000 epochInterimMean 7.215864 epochInterimMedian 7.206017
+epoch 200 epochFixedPointRatio 0.000000 epochInterimMean 5.922409 epochInterimMedian 5.918333
+
+earthmover_mnist_trainedlatent_noperm.ini
+epoch 1 epochFixedPointRatio 0.000000 epochInterimMean 5.699115 epochInterimMedian 5.592405
+epoch 200 epochFixedPointRatio 0.000000 epochInterimMean 4.433185 epochInterimMedian 4.427696

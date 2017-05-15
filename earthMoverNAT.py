@@ -17,6 +17,7 @@ import vis
 import callbacks
 import samplers
 import kohonen
+import transform_images
 
 import model_dcgan
 import dense
@@ -61,6 +62,11 @@ sampler = samplers.spherical_sampler
 #latent = sampler(data_count, args.latent_dim)
 latent_unnormed = np.random.normal(size=(data_count, args.latent_dim))
 latent = latent_unnormed / np.linalg.norm(latent_unnormed, axis=1, keepdims=True)
+
+# TODO think about projeting augmented latent points to the unit sphere
+if args.use_augmentation:
+    latent[:, :transform_images.transformation_types] = np.zeros((data_count, transform_images.transformation_types))
+    assert not args.use_labels_as_latent, "TODO"
 
 if args.latent_point_file is not None:
     latent = np.load(args.latent_point_file)
@@ -219,13 +225,19 @@ for epoch in range(1, args.nb_iter+1):
 
             latentMidibatch = latent[masterPermutation[dataMidiIndices]] # recalculated
 
-        # perform gradient descent to make matched images more similar
-        if epoch > args.no_update_epochs:
-            gen_loss = generator.fit(latentMidibatch, dataMidibatch, nb_epoch=1, batch_size=args.batch_size, verbose=0)
-
         # collect statistics
         minibatchDistances = averageDistance(dataMidibatch, fakeMidibatch)
         epochDistances.append(minibatchDistances)
+
+        # perform gradient descent to make matched images more similar
+        if epoch > args.no_update_epochs:
+            gen_loss = generator.fit(latentMidibatch, dataMidibatch, nb_epoch=1, batch_size=args.batch_size, verbose=0)
+            if args.use_augmentation:
+                augmentation_offsets = np.random.normal(size=(transform_images.transformation_types))
+                dataMidibatch = transform_images.shift(dataMidibatch, augmentation_offsets)
+                offsets = np.tile(augmentation_offsets,(args.min_items_in_matching, 1))
+                latentMidibatch[:,:transform_images.transformation_types] = offsets
+                gen_loss = generator.fit(latentMidibatch, dataMidibatch, nb_epoch=1, batch_size=args.batch_size, verbose=0)
 
     epochDistances = np.array(epochDistances)
     epochInterimMean = epochDistances.mean() if len(epochDistances) > 0 else 0.0

@@ -42,6 +42,7 @@ parser.add_argument('--activation', dest="activation", default="relu", help="act
 parser.add_argument('--intermediate_dims', dest="intermediate_dims", default="1000,1000", help="Intermediate dimensions")
 parser.add_argument('--no_update_epochs', dest="no_update_epochs", type=int, default=0, help="Number of epochs during which we do not perform gradient update (only matching)")
 parser.add_argument('--latent_point_file', dest="latent_point_file", default=None, help="npy file that contains NAT latent points")
+parser.add_argument('--use_augmentation', dest="use_augmentation", type=int, default=0, help="If 1 we use data augmentation specified in tranform_images.py")
 
 
 
@@ -68,6 +69,10 @@ def getArgs():
         args.greedy_matching = True
     else:
         args.greedy_matching = False
+    if args.use_augmentation == 1:
+        args.use_augmentation = True
+    else:
+        args.use_augmentation = False
 
     args.use_bn_gen = (args.use_bn_gen == 1)
     args.use_bn_disc = (args.use_bn_disc == 1)

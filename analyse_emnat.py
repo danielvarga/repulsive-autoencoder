@@ -1,11 +1,16 @@
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-import vis
+from matplotlib.offsetbox import OffsetImage, AnnotationBbox
+from matplotlib import cm
+from PIL import Image
 import os
 import re
 import numpy as np
+from sklearn.manifold import TSNE
+import sklearn
 
+import vis
 import data
 import wgan_params
 import kohonen
@@ -17,6 +22,91 @@ prefix = args.prefix
 # set random seed
 np.random.seed(10)
 
+prefix = args.prefix
+generator_prefix = args.prefix + "_generator"
+generator = vis.loadModel(generator_prefix)
+
+def biflatten(x):
+    assert len(x.shape)>=2
+    return x.reshape(x.shape[0], -1)
+
+def averageDistance(dataBatch, fakeBatch):
+    return np.mean(np.linalg.norm(biflatten(dataBatch) - biflatten(fakeBatch), axis=1))
+
+print "loading data"
+data_object = data.load(args.dataset, shape=args.shape, color=args.color)
+(x_train, x_test) = data_object.get_data(args.trainSize, args.testSize)
+
+print "loading latent points"
+latent_file = prefix + "_latent.npy"
+latent = np.load(latent_file)
+fake_original = generator.predict(latent, batch_size=args.batch_size)
+
+if False:
+    print "displaying images along latent axes"
+    ls = []
+    steps = np.linspace(-1, 1, num=args.batch_size)
+    for dim in range(args.latent_dim):
+        l = np.zeros((args.batch_size, args.latent_dim))
+        l[:,dim] = steps
+        ls.append(l)
+    ls = np.concatenate(ls)
+    images = generator.predict(ls, batch_size=args.batch_size)
+    vis.plotImages(images, args.batch_size, args.latent_dim, prefix + "_latent_axes")
+    
+if True:
+    print "displaying latent structure projected to 2 dimensions"
+    tsne_points = 2000
+    display_points = 150
+    images = fake_original[:tsne_points]
+    images *= 255
+    images = np.clip(images, 0, 255).astype('uint8')
+
+    fig, ax = plt.subplots()
+    if ax is None:
+        ax = plt.gca()
+
+    tsne = TSNE(n_components=2, random_state=42, perplexity=100, metric="euclidean")
+    reduced = tsne.fit_transform(latent[:tsne_points])
+    for i in range(display_points):
+        x = reduced[i, 0]
+        y = reduced[i, 1]
+        im_a = images[i]
+        if im_a.shape[2] == 1:
+            im_a = np.concatenate([im_a, im_a, im_a], axis=2)
+            image = Image.fromarray(im_a, mode="RGB")
+#            image = Image.fromarray(im_a[:,:,0], mode="L")
+        else:
+            image = Image.fromarray(im_a, mode="RGB")
+        im = OffsetImage(image, zoom=1.0)
+        ab = AnnotationBbox(im, (x, y), xycoords='data', frameon=False)
+        ax.add_artist(ab)
+
+    plt.scatter(reduced[:, 0], reduced[:, 1])
+    file = prefix + "_latent_structure.png"
+    print "Saving {}".format(file)
+    plt.savefig(file)
+    plt.close()
+
+xxx
+ 
+
+
+recons = averageDistance(x_train, fake_original)
+print "Reconstruction loss: {}".format(recons)
+
+assert latent.shape[1] == args.latent_dim
+for dim in range(args.latent_dim):
+    l = latent.copy()
+    l[:,dim] = np.mean(l[:,dim])
+    l /= np.linalg.norm(l, axis=1, keepdims=True)
+    fake = generator.predict(l, batch_size=args.batch_size)
+    recons_to_orig = averageDistance(x_train, fake)
+    recons_to_recons = averageDistance(fake_original, fake)
+    print "Reconstruction without {}th dim: {} to x_train, {} to original reconstruction".format(dim, recons_to_orig, recons_to_recons)
+
+
+xxx
 
 fake_files_string = os.popen("ls {}_fake_*.npy".format(prefix)).read()
 fake_files = fake_files_string.strip().split("\n")
@@ -27,10 +117,6 @@ for fake_file in fake_files:
 sorter = np.argsort(fake_epochs)
 fake_epochs = [fake_epochs[i] for i in sorter]
 fake_files = [fake_files[i] for i in sorter]
-
-print "loading data"
-data_object = data.load(args.dataset, shape=args.shape, color=args.color)
-(x_train, x_test) = data_object.get_data(args.trainSize, args.testSize)
 
 fake_images = []
 for fake_file in fake_files:

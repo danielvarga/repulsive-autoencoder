@@ -11,7 +11,7 @@ import sklearn
 import sklearn.neighbors
 import sklearn.linear_model
 
-import wgan_params
+import params
 import data
 import vis
 import callbacks
@@ -22,7 +22,7 @@ import transform_images
 import model_dcgan
 import dense
 
-args = wgan_params.getArgs()
+args = params.getArgs()
 print(args)
 
 # set random seed
@@ -57,16 +57,22 @@ if args.dataset == "celeba":
     label_names, labels = data_object.get_labels()
     labels = labels[:args.trainSize]
 
-# Unit sphere!!!
-sampler = samplers.spherical_sampler
-#latent = sampler(data_count, args.latent_dim)
-latent_unnormed = np.random.normal(size=(data_count, args.latent_dim))
-latent = latent_unnormed / np.linalg.norm(latent_unnormed, axis=1, keepdims=True)
+def project_to_sphere(data):
+    return data / np.linalg.norm(data, axis=1, keepdims=True)
 
-# TODO think about projeting augmented latent points to the unit sphere
+latent_unnormed = samplers.gaussian_sampler(data_count, args.latent_dim)
+
+if args.spherical:
+    sampler = samplers.spherical_sampler
+    latent = project_to_sphere(latent_unnormed)
+else:
+    sampler = samplers.gaussian_sampler
+    latent = latent_unnormed
+    
+
 if args.use_augmentation:
+    assert not args.use_labels_as_latent, "I don't know how use_augmentation and use_labels_as_latent should work together"
     latent[:, :transform_images.transformation_types] = np.zeros((data_count, transform_images.transformation_types))
-    assert not args.use_labels_as_latent, "TODO"
 
 if args.latent_point_file is not None:
     latent = np.load(args.latent_point_file)
@@ -79,7 +85,7 @@ if args.use_labels_as_latent:
 
 
 if args.generator == "dcgan":
-    generator_channels = model_dcgan.default_channels("generator", args.gen_size, args.original_shape[2])
+    generator_channels = model_dcgan.default_channels("generator", args.dcgan_size, args.original_shape[2])
     reduction = 2 ** (len(generator_channels)+1)
     assert args.original_shape[0] % reduction == 0
     assert args.original_shape[1] % reduction == 0
@@ -87,7 +93,6 @@ if args.generator == "dcgan":
     gen_firstY = args.original_shape[1] // reduction
     gen_layers = model_dcgan.generator_layers_wgan(generator_channels, args.latent_dim, args.generator_wd, args.use_bn_gen, args.batch_size, gen_firstX, gen_firstY)
 elif args.generator == "dense":
-    #    gen_layers = model_dcgan.generator_layers_dense(args.latent_dim, args.batch_size, args.generator_wd, args.use_bn_gen, args.original_shape)
     gen_layers = dense.decoder_layers(args.intermediate_dims, args.original_shape, args.activation, args.generator_wd, args.use_bn_gen)
 elif args.generator == "nat6":
 #    assert args.dataset == "mnist"
@@ -181,7 +186,7 @@ assert (args.min_items_in_matching % args.batch_size) == 0
 startTime = time.clock()
 sys.stderr.write('Starting training\n')
 for epoch in range(1, args.nb_iter+1):
-    if (epoch == 2) or (epoch % 50 == 0):
+    if (epoch % 50 == 0):
         fake = generator.predict(latent[masterPermutation], batch_size = args.batch_size)
         file = "{}_fake_{}.npy".format(args.prefix, epoch)
         print "Saving matched fake pairs to {}".format(file)
@@ -204,7 +209,8 @@ for epoch in range(1, args.nb_iter+1):
             assert False, "Let's not accidentally hit this codepath."
             sigma = 0.001
             latentMidibatch += np.random.normal(size=latentMidibatch.shape, scale=sigma)
-            latentMidibatch /= np.linalg.norm(latentMidibatch, axis=1, keepdims=True)
+            if args.spherical:
+                latentMidibatch = project_to_sphere(latentMidibatch)
 
 
         if epoch % args.matching_frequency == 0:
@@ -233,7 +239,7 @@ for epoch in range(1, args.nb_iter+1):
         if epoch > args.no_update_epochs:
             gen_loss = generator.fit(latentMidibatch, dataMidibatch, nb_epoch=1, batch_size=args.batch_size, verbose=0)
             if args.use_augmentation:
-                augmentation_offsets = np.random.normal(size=(transform_images.transformation_types))
+                augmentation_offsets = samplers.gaussian_sampler(1, transform_images.transformation_types)[0]
                 dataMidibatch = transform_images.shift(dataMidibatch, augmentation_offsets)
                 offsets = np.tile(augmentation_offsets,(args.min_items_in_matching, 1))
                 latentMidibatch[:,:transform_images.transformation_types] = offsets
@@ -248,7 +254,10 @@ for epoch in range(1, args.nb_iter+1):
     if args.ornstein < 1.0:
         epsilon = np.random.normal(size=latent.shape)
         latent_unnormed = args.ornstein * latent_unnormed + np.sqrt(1- args.ornstein**2) * epsilon
-        latent = latent_unnormed / np.linalg.norm(latent_unnormed, axis=1, keepdims=True)
+        if args.spherical:
+            latent = project_to_sphere(latent_unnormed)
+        else:
+            latent = latent_unnormed
 
     print "epoch %d epochFixedPointRatio %f epochInterimMean %f epochInterimMedian %f" % (epoch, epochFixedPointRatio, epochInterimMean, epochInterimMedian)
     sys.stdout.flush()

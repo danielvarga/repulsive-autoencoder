@@ -61,9 +61,18 @@ def mergeParamsWithInis(args_param, ini_files_param="ini_file"):
 	for ini_file in args_param_dict[ini_files_param]:
     	    args_ini_dict = paramsFromConf(file(ini_file))
     	    for k in args_ini_dict:
-		#if k not in args_param_dict:
-            	args[k] = args_ini_dict[k]
+                if (k in args_param_dict) and isinstance(args[k], bool): # convert parameter from ini file to bool
+                    args[k] = str2bool(args_ini_dict[k])
+                else:
+                    args[k] = args_ini_dict[k]
 
     return args
 
 
+def str2bool(v):
+    if str(v).lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    if str(v).lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')

@@ -16,7 +16,7 @@ import keras.backend as K
 import tensorflow as tf
 import time
 
-import wgan_params
+import params
 import data
 import vis
 import model_dcgan
@@ -24,7 +24,7 @@ import model_dcgan
 import callbacks
 import samplers
 
-args = wgan_params.getArgs()
+args = params.getArgs()
 print(args)
 
 # set random seed
@@ -78,7 +78,7 @@ def make_trainable(net, val):
 
 
 print "building networks"
-generator_channels = model_dcgan.default_channels("generator", args.gen_size, args.original_shape[2])
+generator_channels = model_dcgan.default_channels("generator", args.dcgan_size, args.original_shape[2])
 discriminator_channels = model_dcgan.default_channels("discriminator", args.disc_size, None)
 
 reduction = 2 ** (len(generator_channels)+1)

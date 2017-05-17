@@ -239,9 +239,8 @@ for epoch in range(1, args.nb_iter+1):
         if epoch > args.no_update_epochs:
             gen_loss = generator.fit(latentMidibatch, dataMidibatch, nb_epoch=1, batch_size=args.batch_size, verbose=0)
             if args.use_augmentation:
-                augmentation_offsets = samplers.gaussian_sampler(1, transform_images.transformation_types)[0]
-                dataMidibatch = transform_images.shift(dataMidibatch, augmentation_offsets)
-                offsets = np.tile(augmentation_offsets,(args.min_items_in_matching, 1))
+                offsets = samplers.gaussian_sampler(args.min_items_in_matching, transform_images.transformation_types)
+                dataMidibatch = transform_images.shift(dataMidibatch, offsets)
                 latentMidibatch[:,:transform_images.transformation_types] = offsets
                 gen_loss = generator.fit(latentMidibatch, dataMidibatch, nb_epoch=1, batch_size=args.batch_size, verbose=0)
 

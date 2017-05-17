@@ -71,6 +71,7 @@ parser.add_argument('--greedy_matching', dest="greedy_matching", default=False, 
 parser.add_argument('--projection', dest="projection", default="0", type=int, help="if > 0 then project images to the specified dimension before computing distance matrix")
 parser.add_argument('--no_update_epochs', dest="no_update_epochs", type=int, default=0, help="Number of epochs during which we do not perform gradient update (only matching)")
 parser.add_argument('--use_augmentation', dest="use_augmentation", type=str2bool, default=False, help="If True we use data augmentation specified in tranform_images.py")
+parser.add_argument('--oversampling', dest="oversampling", type=int, default=0, help="How many extra latent points should we use (oversampling)")
 
 # locations
 parser.add_argument('ini_file', nargs='*', help="Ini file to use for configuration")

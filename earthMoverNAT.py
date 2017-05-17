@@ -69,6 +69,9 @@ else:
     sampler = samplers.gaussian_sampler
     latent = latent_unnormed
     
+if args.oversampling > 0:
+    assert args.ornstein == 1.0, "Do not use oversampling and ornsteing dynamics together."
+    extra_latent = sampler(args.oversampling, args.latent_dim)
 
 if args.use_augmentation:
     assert not args.use_labels_as_latent, "I don't know how use_augmentation and use_labels_as_latent should work together"
@@ -195,6 +198,7 @@ for epoch in range(1, args.nb_iter+1):
     allIndices = np.random.permutation(data_count)
     epochDistances = []
     fixedPointRatios = []
+    extraLatentRatios = []
     midibatchCount = data_count // args.min_items_in_matching
     for j in range(midibatchCount):
         dataMidiIndices = allIndices[j*args.min_items_in_matching:(j+1)*args.min_items_in_matching]
@@ -203,6 +207,8 @@ for epoch in range(1, args.nb_iter+1):
         # find match real and generated images
         dataMidibatch = x_train[dataMidiIndices]
         latentMidibatch = latent[masterPermutation[dataMidiIndices]]
+        if args.oversampling > 0:
+            latentMidibatch = np.concatenate([latentMidibatch, extra_latent])
         fakeMidibatch = generator.predict(latentMidibatch, batch_size = args.batch_size)
 
         if args.sampling:
@@ -214,13 +220,23 @@ for epoch in range(1, args.nb_iter+1):
 
 
         if epoch % args.matching_frequency == 0:
+            
+
             # do the pairing and bookkeep it
             distanceMatrix = kohonen.distanceMatrix(biflatten(fakeMidibatch), biflatten(dataMidibatch), projection=args.projection)
             if args.greedy_matching:
                 midibatchPermutation = np.array(kohonen.greedyPairing(biflatten(fakeMidibatch), biflatten(dataMidibatch), distanceMatrix))
             else:
                 midibatchPermutation = np.array(kohonen.optimalPairing(biflatten(fakeMidibatch), biflatten(dataMidibatch), distanceMatrix))
-            masterPermutation[dataMidiIndices] = masterPermutation[dataMidiIndices[midibatchPermutation]]
+
+            if args.oversampling > 0:
+                extra_latent_indices = np.setdiff1d(range(len(latentMidibatch)), midibatchPermutation, assume_unique=True)
+                latent[masterPermutation[dataMidiIndices]] = latentMidibatch[midibatchPermutation] # the new latent pairs
+                extra_latent = latentMidibatch[extra_latent_indices] # the new extra points
+                extraLatentRatio = float(np.sum(midibatchPermutation >= args.min_items_in_matching)) / args.min_items_in_matching
+                extraLatentRatios.append(extraLatentRatio)
+            else:
+                masterPermutation[dataMidiIndices] = masterPermutation[dataMidiIndices[midibatchPermutation]]
 
             fixedPointRatio = float(np.sum(midibatchPermutation == np.arange(midibatchPermutation.shape[0]))) / midibatchPermutation.shape[0]
             fixedPointRatios.append(fixedPointRatio)
@@ -232,7 +248,7 @@ for epoch in range(1, args.nb_iter+1):
             latentMidibatch = latent[masterPermutation[dataMidiIndices]] # recalculated
 
         # collect statistics
-        minibatchDistances = averageDistance(dataMidibatch, fakeMidibatch)
+        minibatchDistances = averageDistance(dataMidibatch, fakeMidibatch[:args.min_items_in_matching])
         epochDistances.append(minibatchDistances)
 
         # perform gradient descent to make matched images more similar
@@ -249,6 +265,8 @@ for epoch in range(1, args.nb_iter+1):
     epochInterimMedian = np.median(epochDistances) if len(epochDistances) > 0 else 0.0
     fixedPointRatios = np.array(fixedPointRatios)
     epochFixedPointRatio = np.mean(fixedPointRatios) if len(fixedPointRatios) > 0 else 0.0
+    extraLatentRatios = np.array(extraLatentRatios)
+    epochExtraLatentRatio = np.mean(extraLatentRatios) if len(extraLatentRatios) > 0 else 0.0
 
     if args.ornstein < 1.0:
         epsilon = np.random.normal(size=latent.shape)
@@ -258,7 +276,7 @@ for epoch in range(1, args.nb_iter+1):
         else:
             latent = latent_unnormed
 
-    print "epoch %d epochFixedPointRatio %f epochInterimMean %f epochInterimMedian %f" % (epoch, epochFixedPointRatio, epochInterimMean, epochInterimMedian)
+    print "epoch %d epochFixedPointRatio %f epochInterimMean %f epochInterimMedian %f epochExtraLatentRatio %f" % (epoch, epochFixedPointRatio, epochInterimMean, epochInterimMedian, epochExtraLatentRatio)
     sys.stdout.flush()
     if epoch % args.frequency == 0:
         currTime = time.clock()

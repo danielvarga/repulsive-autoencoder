@@ -301,6 +301,11 @@ for epoch in range(1, args.nb_iter+1):
         print "Saving latent points to {}".format(file)
         np.save(file, latent[masterPermutation])
 
+        if args.oversampling:
+            file = "{}_extra_latent.npy".format(args.prefix)
+            print "Saving extra latent points to {}".format(file)
+            np.save(file, extra_latent)
+
     if epoch % 200 == 0:
         vis.saveModel(generator, args.prefix + "_generator_{}".format(epoch))
         generated_saver.save(epoch)

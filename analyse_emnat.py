@@ -42,6 +42,12 @@ latent_file = prefix + "_latent.npy"
 latent = np.load(latent_file)
 fake_original = generator.predict(latent, batch_size=args.batch_size)
 
+if True:
+    print "Checking covariance matrix of latent points"
+    cov_latent = np.cov(latent.T)
+    eigVals, eigVects = np.linalg.eigh(cov_latent)
+    print "cov_latent eigvals = ", list(reversed(eigVals))
+
 if False:
     print "displaying images along latent axes"
     ls = []
@@ -78,7 +84,7 @@ if True:
 #            image = Image.fromarray(im_a[:,:,0], mode="L")
         else:
             image = Image.fromarray(im_a, mode="RGB")
-        im = OffsetImage(image, zoom=1.0)
+        im = OffsetImage(image, zoom=0.5)
         ab = AnnotationBbox(im, (x, y), xycoords='data', frameon=False)
         ax.add_artist(ab)
 

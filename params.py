@@ -33,6 +33,7 @@ parser.add_argument('--nesterov', dest="nesterov", default="0.0", type=float, he
 parser.add_argument('--weight_schedules', dest="weight_schedules", default='', help="Comma separated list of loss schedules, ex size_loss|5|1|0.2|0.8 means that size_loss has has initial weight 5, final weight 1 and the weight is adjusted linearly after finishing the first 20% of the training and before finishing the 80% of training")
 parser.add_argument('--losses', dest="losses", default="mse_loss", help="list of losses")
 parser.add_argument('--metrics', dest="metrics", default="mse_loss", help="list of metrics")
+parser.add_argument('--lr_decay_schedule', dest="lr_decay_schedule", default='0.5,0.8', help="Comma separated list floats from [0,1] indicating where to decimate the learning rate. Ex 0.2,0.5 means we decimate the learning rate at 20% and 50% of the training")
 
 # dataset
 parser.add_argument('--dataset', dest="dataset", default="celeba", help="Dataset to use")
@@ -112,6 +113,13 @@ def getArgs():
         args.intermediate_dims = map(int, str(args.intermediate_dims).split(","))
     else:
         args.intermediate_dims = []
+
+    if type(args.lr_decay_schedule) is float:
+        args.lr_decay_schedule = [args.lr_decay_schedule]
+    elif len(args.lr_decay_schedule) > 0:
+        args.lr_decay_schedule = map(float, str(args.lr_decay_schedule).split(","))
+    else:
+        args.lr_decay_schedule = []
 
     args.losses = str(args.losses).split(",")
     args.metrics = str(args.metrics).split(",")

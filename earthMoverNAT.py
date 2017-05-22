@@ -181,6 +181,8 @@ if args.dataset == "celeba":
         separability_results[name] = {"knn5":[], "logreg":[]} 
     check_all_separability()
 
+lr_scheduler = callbacks.get_lr_scheduler(args.nb_epoch, args.lr, args.lr_decay_schedule)
+
 
 randomPoints = sampler(args.batch_size, args.latent_dim)
 minibatchCount = data_count // args.batch_size
@@ -191,9 +193,13 @@ sys.stderr.write('Starting training\n')
 for epoch in range(1, args.nb_iter+1):
     if (epoch % 50 == 0):
         fake = generator.predict(latent[masterPermutation], batch_size = args.batch_size)
-        file = "{}_fake_{}.npy".format(args.prefix, epoch)
+        file = "{}_fake.npy".format(args.prefix)
         print "Saving matched fake pairs to {}".format(file)
         np.save(file, fake)
+
+    if epoch > args.no_update_epochs:
+        K.set_value(generator.optimizer.lr, lr_scheduler(epoch-2))
+
 
     allIndices = np.random.permutation(data_count)
     epochDistances = []

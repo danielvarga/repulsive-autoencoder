@@ -19,7 +19,7 @@ def get_lr_scheduler(nb_epoch, base_lr, lr_decay_schedule):
                 multiplier *= 0.1
             else:
                 break
-        print "*** LR multiplier: ", multiplier
+#         print "*** LR multiplier: ", multiplier
         return base_lr * multiplier
     return get_lr
 

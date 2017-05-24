@@ -70,7 +70,7 @@ else:
     latent = latent_unnormed
     
 if args.oversampling > 0:
-    assert args.ornstein == 1.0, "Do not use oversampling and ornsteing dynamics together."
+    assert args.ornstein == 1.0, "Do not use oversampling and Ornstein dynamics together."
     extra_latent = sampler(args.oversampling, args.latent_dim)
 
 if args.use_augmentation:
@@ -200,6 +200,9 @@ for epoch in range(1, args.nb_iter+1):
     fixedPointRatios = []
     extraLatentRatios = []
     midibatchCount = data_count // args.min_items_in_matching
+    matching_in_this_epoch = (epoch % args.matching_frequency == 0)
+
+    oversampling_in_this_epoch = matching_in_this_epoch and (args.oversampling > 0)
     for j in range(midibatchCount):
         dataMidiIndices = allIndices[j*args.min_items_in_matching:(j+1)*args.min_items_in_matching]
         assert args.min_items_in_matching==len(dataMidiIndices)
@@ -207,7 +210,7 @@ for epoch in range(1, args.nb_iter+1):
         # find match real and generated images
         dataMidibatch = x_train[dataMidiIndices]
         latentMidibatch = latent[masterPermutation[dataMidiIndices]]
-        if args.oversampling > 0:
+        if oversampling_in_this_epoch:
             latentMidibatch = np.concatenate([latentMidibatch, extra_latent])
         fakeMidibatch = generator.predict(latentMidibatch, batch_size = args.batch_size)
 
@@ -219,8 +222,7 @@ for epoch in range(1, args.nb_iter+1):
                 latentMidibatch = project_to_sphere(latentMidibatch)
 
 
-        if epoch % args.matching_frequency == 0:
-            
+        if matching_in_this_epoch:
 
             # do the pairing and bookkeep it
             distanceMatrix = kohonen.distanceMatrix(biflatten(fakeMidibatch), biflatten(dataMidibatch), projection=args.projection)
@@ -229,7 +231,7 @@ for epoch in range(1, args.nb_iter+1):
             else:
                 midibatchPermutation = np.array(kohonen.optimalPairing(biflatten(fakeMidibatch), biflatten(dataMidibatch), distanceMatrix))
 
-            if args.oversampling > 0:
+            if oversampling_in_this_epoch:
                 extra_latent_indices = np.setdiff1d(range(len(latentMidibatch)), midibatchPermutation, assume_unique=True)
                 latent[masterPermutation[dataMidiIndices]] = latentMidibatch[midibatchPermutation] # the new latent pairs
                 extra_latent = latentMidibatch[extra_latent_indices] # the new extra points
@@ -251,14 +253,33 @@ for epoch in range(1, args.nb_iter+1):
         minibatchDistances = averageDistance(dataMidibatch, fakeMidibatch[:args.min_items_in_matching])
         epochDistances.append(minibatchDistances)
 
+
+        def vis_before_after_gradient_step(phase):
+            fakeMidibatch = generator.predict(latentMidibatch[:args.batch_size*5], batch_size = args.batch_size)
+            fakeMidibatch2 = vis.mergeSets((fakeMidibatch, x_train[dataMidiIndices[:args.batch_size*5]]))
+            vis.plotImages(fakeMidibatch2, 20, args.batch_size // 2, "{}-in_{}_update-{}".format(args.prefix, phase, epoch))
+            latentFromElsewhere = latent[masterPermutation[:args.batch_size*5]]
+            fakeFromElsewhere = generator.predict(latentFromElsewhere, batch_size = args.batch_size)
+            fakeFromElsewhere2 = vis.mergeSets((fakeFromElsewhere, x_train[:args.batch_size*5]))
+            vis.plotImages(fakeFromElsewhere2, 20, args.batch_size // 2, "{}-out_{}_update-{}".format(args.prefix, phase, epoch))
+
         # perform gradient descent to make matched images more similar
         if epoch > args.no_update_epochs:
-            gen_loss = generator.fit(latentMidibatch, dataMidibatch, nb_epoch=1, batch_size=args.batch_size, verbose=0)
+
+            vis_before_after_gradient_step("before")
+
+            #!!!!!!
+            nb_internal_epoch = 1
+
+            gen_loss = generator.fit(latentMidibatch, dataMidibatch, nb_epoch=nb_internal_epoch, batch_size=args.batch_size, verbose=0)
             if args.use_augmentation:
                 offsets = samplers.gaussian_sampler(args.min_items_in_matching, transform_images.transformation_types)
                 dataMidibatch = transform_images.shift(dataMidibatch, offsets)
                 latentMidibatch[:,:transform_images.transformation_types] = offsets
-                gen_loss = generator.fit(latentMidibatch, dataMidibatch, nb_epoch=1, batch_size=args.batch_size, verbose=0)
+                gen_loss = generator.fit(latentMidibatch, dataMidibatch, nb_epoch=nb_internal_epoch, batch_size=args.batch_size, verbose=0)
+
+            vis_before_after_gradient_step("after")
+
 
     epochDistances = np.array(epochDistances)
     epochInterimMean = epochDistances.mean() if len(epochDistances) > 0 else 0.0

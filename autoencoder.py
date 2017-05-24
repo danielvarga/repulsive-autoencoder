@@ -13,6 +13,7 @@ import numpy as np
 import params
 import vis
 
+np.random.seed(10)
 
 args = params.getArgs()
 print(args)

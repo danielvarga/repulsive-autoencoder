@@ -40,11 +40,10 @@ if keras.backend._BACKEND == "tensorflow":
     config.gpu_options.per_process_gpu_memory_fraction = args.memory_share
     set_session(tf.Session(config=config))
 
-def display_elapsed(startTime, endTime):
-    elapsed = endTime - startTime
+def display_elapsed(elapsed):
     second = elapsed % 60
     minute = int(elapsed / 60)
-    print "Elapsed time: {}:{:.0f}".format(minute, second)
+    print "Elapsed time: {}m:{:.0f}s".format(minute, second)
 
 print "loading data"
 data_object = data.load(args.dataset, shape=args.shape, color=args.color)
@@ -144,6 +143,11 @@ def biflatten(x):
 def averageDistance(dataBatch, fakeBatch):
     return np.mean(np.linalg.norm(biflatten(dataBatch) - biflatten(fakeBatch), axis=1))
 
+# for compatibility with autoencoder.py mse_loss
+def averageSquaredDistance(dataBatch, fakeBatch):
+    image_dim = np.prod(dataBatch.shape[1:])
+    return image_dim * np.mean(np.square(dataBatch - fakeBatch))
+
 
 # callback for saving generated images
 generated_saver = callbacks.SaveGeneratedCallback(generator, sampler, args.prefix, args.batch_size, args.frequency, args.latent_dim)
@@ -189,6 +193,9 @@ minibatchCount = data_count // args.batch_size
 assert (data_count % args.min_items_in_matching) == 0
 assert (args.min_items_in_matching % args.batch_size) == 0
 startTime = time.clock()
+time_distanceMatrix = 0
+time_matching = 0
+time_sgd = 0
 sys.stderr.write('Starting training\n')
 for epoch in range(1, args.nb_iter+1):
     if (epoch % 50 == 0):
@@ -203,6 +210,7 @@ for epoch in range(1, args.nb_iter+1):
 
     allIndices = np.random.permutation(data_count)
     epochDistances = []
+    epochSquaredDistances = []
     fixedPointRatios = []
     extraLatentRatios = []
     midibatchCount = data_count // args.min_items_in_matching
@@ -225,15 +233,21 @@ for epoch in range(1, args.nb_iter+1):
                 latentMidibatch = project_to_sphere(latentMidibatch)
 
 
-        if epoch % args.matching_frequency == 0:
+        if (epoch % args.matching_frequency == 0) and (epoch > args.no_matching_epochs):
             
 
-            # do the pairing and bookkeep it
+            # calculate distance matrix
+            time_distanceMatrix -= time.clock()
             distanceMatrix = kohonen.distanceMatrix(biflatten(fakeMidibatch), biflatten(dataMidibatch), projection=args.projection)
+            time_distanceMatrix += time.clock()
+
+            # to the matching
+            time_matching -= time.clock()
             if args.greedy_matching:
                 midibatchPermutation = np.array(kohonen.greedyPairing(biflatten(fakeMidibatch), biflatten(dataMidibatch), distanceMatrix))
             else:
                 midibatchPermutation = np.array(kohonen.optimalPairing(biflatten(fakeMidibatch), biflatten(dataMidibatch), distanceMatrix))
+            time_matching += time.clock()
 
             if args.oversampling > 0:
                 extra_latent_indices = np.setdiff1d(range(len(latentMidibatch)), midibatchPermutation, assume_unique=True)
@@ -256,10 +270,14 @@ for epoch in range(1, args.nb_iter+1):
         # collect statistics
         minibatchDistances = averageDistance(dataMidibatch, fakeMidibatch[:args.min_items_in_matching])
         epochDistances.append(minibatchDistances)
+        minibatchSquaredDistances = averageSquaredDistance(dataMidibatch, fakeMidibatch[:args.min_items_in_matching])
+        epochSquaredDistances.append(minibatchSquaredDistances)
 
         # perform gradient descent to make matched images more similar
         if epoch > args.no_update_epochs:
+            time_sgd -= time.clock()
             gen_loss = generator.fit(latentMidibatch, dataMidibatch, nb_epoch=1, batch_size=args.batch_size, verbose=0)
+            time_sgd += time.clock()
             if args.use_augmentation:
                 offsets = samplers.gaussian_sampler(args.min_items_in_matching, transform_images.transformation_types)
                 dataMidibatch = transform_images.shift(dataMidibatch, offsets)
@@ -267,10 +285,12 @@ for epoch in range(1, args.nb_iter+1):
                 gen_loss = generator.fit(latentMidibatch, dataMidibatch, nb_epoch=1, batch_size=args.batch_size, verbose=0)
 
     epochDistances = np.array(epochDistances)
+    epochSquaredDistances = np.array(epochSquaredDistances)
     epochInterimMean = epochDistances.mean() if len(epochDistances) > 0 else 0.0
+    epochInterimSquaredMean = epochSquaredDistances.mean() if len(epochSquaredDistances) > 0 else 0.0
     epochInterimMedian = np.median(epochDistances) if len(epochDistances) > 0 else 0.0
     fixedPointRatios = np.array(fixedPointRatios)
-    epochFixedPointRatio = np.mean(fixedPointRatios) if len(fixedPointRatios) > 0 else 0.0
+    epochFixedPointRatio = np.mean(fixedPointRatios) if len(fixedPointRatios) > 0 else 1.0
     extraLatentRatios = np.array(extraLatentRatios)
     epochExtraLatentRatio = np.mean(extraLatentRatios) if len(extraLatentRatios) > 0 else 0.0
 
@@ -282,11 +302,11 @@ for epoch in range(1, args.nb_iter+1):
         else:
             latent = latent_unnormed
 
-    print "epoch %d epochFixedPointRatio %f epochInterimMean %f epochInterimMedian %f epochExtraLatentRatio %f" % (epoch, epochFixedPointRatio, epochInterimMean, epochInterimMedian, epochExtraLatentRatio)
+    print "epoch %d epochFixedPointRatio %f epochInterimMean %f epochInterimMedian %f epochInterimSquaredMean %f epochExtraLatentRatio %f" % (epoch, epochFixedPointRatio, epochInterimMean, epochInterimMedian, epochInterimSquaredMean, epochExtraLatentRatio)
     sys.stdout.flush()
     if epoch % args.frequency == 0:
         currTime = time.clock()
-        display_elapsed(startTime, currTime)
+        display_elapsed(currTime - startTime)
 
         # vis.displayRandom(10, x_train, args.latent_dim, sampler, generator, "{}-random-{}".format(args.prefix, epoch), batch_size=args.batch_size)
         # vis.displayRandom(10, x_train, args.latent_dim, sampler, generator, "{}-random".format(args.prefix), batch_size=args.batch_size)
@@ -315,6 +335,15 @@ for epoch in range(1, args.nb_iter+1):
     if epoch % 200 == 0:
         vis.saveModel(generator, args.prefix + "_generator_{}".format(epoch))
         generated_saver.save(epoch)
+
+print "Time spent on calculating the distance matrix:"
+display_elapsed(time_distanceMatrix)
+print "Time spent on matching:"
+display_elapsed(time_matching)
+print "Time spent on sgd:"
+display_elapsed(time_sgd)
+
+
 
 if args.dataset == "celeba":
     check_all_separability()

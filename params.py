@@ -46,6 +46,7 @@ parser.add_argument('--shape', dest="shape", default="64,64", help="image shape"
 parser.add_argument('--encoder', dest="encoder", default="conv", help="encoder type (dense/conv)")
 parser.add_argument('--encoder_wd', dest="encoder_wd", type=float, default=0.0, help="Weight decay param for the encoder")
 parser.add_argument('--encoder_use_bn', dest="encoder_use_bn", type=str2bool, default=False, help="Use batch norm in encoder")
+parser.add_argument('--use_nat', dest="use_nat", default=False, type=str2bool, help="If true, we sample points from the latent prior, match them with images and try to push latent points to the corresponding sampled points")
 
 # decoder/generator
 parser.add_argument('--decoder', dest="decoder", default="conv", help="decoder type (dense/conv)") #TODO
@@ -71,6 +72,7 @@ parser.add_argument('--use_labels_as_latent', dest="use_labels_as_latent", defau
 parser.add_argument('--greedy_matching', dest="greedy_matching", default=False, type=str2bool, help="If True, then matching is greedy")
 parser.add_argument('--projection', dest="projection", default="0", type=int, help="if > 0 then project images to the specified dimension before computing distance matrix")
 parser.add_argument('--no_update_epochs', dest="no_update_epochs", type=int, default=0, help="Number of epochs during which we do not perform gradient update (only matching)")
+parser.add_argument('--no_matching_epochs', dest="no_matching_epochs", type=int, default=0, help="Number of epochs during which we do not perform rematching (only gradient update)")
 parser.add_argument('--use_augmentation', dest="use_augmentation", type=str2bool, default=False, help="If True we use data augmentation specified in tranform_images.py")
 parser.add_argument('--oversampling', dest="oversampling", type=int, default=0, help="How many extra latent points should we use (oversampling)")
 

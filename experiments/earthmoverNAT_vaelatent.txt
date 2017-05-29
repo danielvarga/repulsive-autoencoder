@@ -1,0 +1,28 @@
+ini/earthmover_celeba_greedy.ini
+ini/earthmover_celeba_greedy_vaelatent.ini
+ini/earthmover_celeba_greedy_vaelatent2.ini
+ini/earthmover_celeba_greedy_vaelatent3.ini
+
+earthmover_celeba_greedy_vaelatent uses as latent points the latent means of a trained vae.
+earthmover_celeba_greedy_vaelatent2 uses as latent points the sampled latent points of a trained vae.
+earthmover_celeba_greedy_vaelatent3 is just like earthmover_celeba_greedy_vaelatent2, but freezes the rematching for the first 10 epoch.
+
+Using the latent structure of a trained VAE results in much better
+reconstruction. If we take the latent means, then reconstruction
+slightly improves, despite the fact that the means expand only a small
+(20-25dim) submanifold of the latent space (200dim).
+
+If we take the sampled latent structure, which is close to standard
+normal, then reconstruction drastically improves, suggesting that the
+way VAE-s arrange their latent points is useful for a reconstruction
+task.
+
+If we fix the matching for the first 10 epoch, then there is no more
+rematching later on (fixedpointratio is practically 100%). In this
+scenario we obtain even better reconstruction, with the same
+generation quality. This suggests that we are better off staying with
+the initial VAE structure, dispite some small gains due to partial
+rearrangement.
+
+Can we demonstrate the usefulness of the VAE latent structure on a
+task that is not reconstruction related???

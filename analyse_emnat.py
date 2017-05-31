@@ -41,7 +41,7 @@ print "loading latent points"
 latent_file = prefix + "_latent.npy"
 latent = np.load(latent_file)
 fake_original = generator.predict(latent, batch_size=args.batch_size)
-
+xxx
 if True:
     print "Checking covariance matrix of latent points"
     cov_latent = np.cov(latent.T)

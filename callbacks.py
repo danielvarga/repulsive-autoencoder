@@ -76,12 +76,12 @@ class ImageDisplayCallback(Callback):
         vis.plotImages(randomImages, 10, self.batch_size // 10, "{}-random-{}".format(self.name, epoch+1))
         vis.plotImages(randomImages, 10, self.batch_size // 10, "{}-random".format(self.name))
 
-        trainImages = self.model.predict(self.x_train[:self.batch_size], batch_size = self.batch_size)
+        trainImages = self.ae.predict(self.x_train[:self.batch_size], batch_size = self.batch_size)
         images = vis.mergeSets((trainImages, self.x_train[:self.batch_size]))        
         vis.plotImages(images, 2 * 10, self.batch_size // 10, "{}-train-{}".format(self.name, epoch+1))
         vis.plotImages(images, 2 * 10, self.batch_size // 10, "{}-train".format(self.name))
 
-        testImages = self.model.predict(self.x_test[:self.batch_size], batch_size = self.batch_size)
+        testImages = self.ae.predict(self.x_test[:self.batch_size], batch_size = self.batch_size)
         images = vis.mergeSets((testImages, self.x_test[:self.batch_size]))        
         vis.plotImages(images, 2 * 10, self.batch_size // 10, "{}-test-{}".format(self.name, epoch+1))
         vis.plotImages(images, 2 * 10, self.batch_size // 10, "{}-test".format(self.name))

@@ -72,6 +72,9 @@ def slowOptimalPairing(x,y):
             bestP = p
     return bestP
 
+def biflatten(x):
+    assert len(x.shape)>=2
+    return x.reshape(x.shape[0], -1)
 
 # distanceMatrix(x, y)[j, i] == np.linalg.norm(x[i]-y[j])
 # Note the reversing of indices!
@@ -139,6 +142,25 @@ def greedyPairing(x, y, distances=None):
             distances[:, j] = np.inf
             done.add(i)
     return perm
+
+def batchPairing(x, y, masterPermutation, batch_size, greedy=False):
+    data_count = len(x)
+    assert len(x) == len(y)
+    assert data_count % batch_size == 0
+    assert len(x) == len(masterPermutation)
+
+    masterPermutation = np.copy(masterPermutation)
+    batch_count = data_count // batch_size
+    allIndices = np.random.permutation(data_count)
+    for j in range(batch_count):
+        currentIndices = allIndices[j*batch_size : (j+1)*batch_size]
+        if greedy:
+            currentPermutation = greedyPairing(x[masterPermutation[currentIndices]], y[currentIndices])
+        else:
+            currentPermutation = optimalPairing(x[masterPermutation[currentIndices]], y[currentIndices])
+        currentPermutation = np.array(currentPermutation)
+        masterPermutation[currentIndices] = masterPermutation[currentIndices[currentPermutation]]
+    return masterPermutation
 
 class LocalMapping(object):
     KERNEL_SIZE = 0.33 # Ad hoc is an understatement

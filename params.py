@@ -1,4 +1,6 @@
+import os
 import argparse
+
 import exp
 from model_gaussian import get_latent_dim
 
@@ -76,6 +78,10 @@ parser.add_argument('--no_matching_epochs', dest="no_matching_epochs", type=int,
 parser.add_argument('--use_augmentation', dest="use_augmentation", type=str2bool, default=False, help="If True we use data augmentation specified in tranform_images.py")
 parser.add_argument('--oversampling', dest="oversampling", type=int, default=0, help="How many extra latent points should we use (oversampling)")
 
+# natAE
+parser.add_argument('--distance_space', dest="distance_space", default="latent", help="The space in which we compute distances (latent/pixel)")
+
+
 # locations
 parser.add_argument('ini_file', nargs='*', help="Ini file to use for configuration")
 parser.add_argument('--prefix', dest="prefix", default="trash", help="File prefix for the output visualizations and models.")
@@ -105,7 +111,14 @@ def getArgs():
         print "xent_weight argument is deprecated and it is not doing anything!"
     if args.gen_size is not None:
         print "gen_size argument is deprecated, please use dcgan_size instead! Now forwarding its value to dcgan_size"
-    
+
+    # put output files in a separate directory
+    if not os.path.exists(args.prefix):
+        os.makedirs(args.prefix)
+    prefix_parts = args.prefix.split("/")
+    prefix_parts.append(prefix_parts[-1])
+    args.prefix = "/".join(prefix_parts)
+
     if args.callback_prefix == "same":
         args.callback_prefix = args.prefix
     args.shape = tuple(map(int, str(args.shape).split(",")))

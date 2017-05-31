@@ -8,6 +8,7 @@ import model_conv_discgen
 import model_gaussian
 import model_resnet
 import model_dcgan
+import samplers
 
 from keras.layers import Input, Dense, Lambda, Reshape, Flatten, Activation
 from keras.models import Model
@@ -88,6 +89,11 @@ def build_model(args):
     })
     if args.decoder == "resnet":
         loss_features.intermediary_outputs = decoder_fun_output[3]
+    if args.use_nat:
+        nat_input = Input(batch_shape=(args.batch_size, args.latent_dim), name="nat_input")
+        ae_with_nat = Model([x, nat_input], recons_output)
+        loss_features.nat_input = nat_input
+
     loss, metrics = loss_factory(ae, encoder, loss_features, args)
 
     if args.optimizer == "rmsprop":
@@ -100,8 +106,16 @@ def build_model(args):
         assert False, "Unknown optimizer %s" % args.optimizer
 
     ae.compile(optimizer=optimizer, loss=loss, metrics=metrics)
+    modelDict = AttrDict({})
+    modelDict.ae = ae
+    modelDict.encoder = encoder
+    modelDict.encoder_var = encoder_var
+    modelDict.generator = generator
+    if args.use_nat:
+        ae_with_nat.compile(optimizer=optimizer, loss=loss, metrics=metrics)
+        modelDict.ae_with_nat = ae_with_nat
 
-    return ae, encoder, encoder_var, generator
+    return modelDict
 
 
 def add_sampling(hidden, sampling, batch_size, latent_dim, wd):

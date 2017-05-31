@@ -176,6 +176,11 @@ def loss_factory(model, encoder, loss_features, args):
         z = loss_features.z_mean # pre sampling!
         loss = K.mean(z, axis=1)
         return K.mean(loss)
+    def nat_loss(x, x_decoded):
+        assert hasattr(loss_features,"nat_input")
+        nat = loss_features.nat_input
+        z = loss_features.z_mean
+        return mse_loss(nat, z)
 
     metrics = []
     for metric in args.metrics:

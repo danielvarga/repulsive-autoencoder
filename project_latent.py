@@ -37,8 +37,8 @@ data_object = data.load(args.dataset, color=args.color, shape=args.shape)
 args.original_shape = x_train.shape[1:]
 
 # delete duplicate elements
-x_train = np.delete(x_train, [36439, 48561], axis=0)
-x_train = x_train[:(x_train.shape[0] // args.batch_size) * args.batch_size]
+#x_train = np.delete(x_train, [36439, 48561], axis=0)
+#x_train = x_train[:(x_train.shape[0] // args.batch_size) * args.batch_size]
 
 import samplers
 sampler = samplers.sampler_factory(args, x_train)
@@ -55,7 +55,7 @@ latent_train_mean_file = prefix + "_latent_train_mean.npy"
 latent_train_logvar_file = prefix + "_latent_train_logvar.npy"
 latent_train_file = prefix + "_latent_train.npy"
 
-useCache = False
+useCache = True
 if useCache and os.path.isfile(latent_train_file):
     latent_train_mean = np.load(latent_train_mean_file)
 else:    
@@ -75,7 +75,7 @@ if do_latent_variances:
 else:
     encoder_var =encoder
     latent_train = latent_train_mean
-
+xxx
 # check how overlapping the latent ellipsoids are
 if do_latent_variances:
     sigma_all = np.exp(latent_train_logvar/2)

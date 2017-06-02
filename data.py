@@ -208,7 +208,7 @@ class Dataset_celeba(Dataset_real):
         elif shape==(72, 64) or shape==(64,64):
             directory = "/home/daniel/autoencoding_beyond_pixels/datasets/celeba/img_align_celeba-64x72"
             if color:
-                cacheFile = "/home/zombori/datasets/celeba_72_64_color.npy"
+                cacheFile = "/home/daniel/experiments/repulsive-autoencoder/datasets/celeba_72_64_color.npy"
             else:
                 cacheFile = "/home/zombori/datasets/celeba_72_64.npy"
         else:

@@ -44,6 +44,13 @@ def loss_factory(model, encoder, loss_features, args):
         loss = 0.5 * K.sum(-1 - loss_features.z_log_var + K.exp(loss_features.z_log_var), axis=-1)
         return K.mean(loss)
 
+    def minimax_vae_loss(x, x_decoded):
+        mse_loss = original_dim * objectives.mean_squared_error(K.batch_flatten(x), K.batch_flatten(x_decoded))
+        size_loss = 0.5 * K.sum(K.square(loss_features.z_mean), axis=-1)
+        variance_loss = 0.5 * K.sum(-1 - loss_features.z_log_var + K.exp(loss_features.z_log_var), axis=-1)
+        elbo_loss = mse_loss + size_loss + variance_loss
+        return K.mean(elbo_loss)
+
     def edge_loss(x, x_decoded):
         edge_x = edgeDetect(x, args.original_shape)
         edge_x_decoded = edgeDetect(x_decoded, args.original_shape)

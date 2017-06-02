@@ -17,6 +17,7 @@ parser = argparse.ArgumentParser()
 # architecture
 parser.add_argument('--spherical', dest="spherical", type=str2bool, default=True, help="spherical (True/False)")
 parser.add_argument('--sampling', dest="sampling", type=str2bool, default=False, help="use sampling")
+parser.add_argument('--sampling_std', dest="sampling_std", type=float, default=-1.0, help="sampling std, if < 0, then we learn std")
 parser.add_argument('--intermediate_dims', dest="intermediate_dims", default="1000,1000", help="Intermediate dimensions")
 parser.add_argument('--latent_dim', dest="latent_dim", type=int, default=3, help="Latent dimension")
 parser.add_argument('--activation', dest="activation", default="relu", help="activation function")

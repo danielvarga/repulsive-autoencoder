@@ -40,7 +40,7 @@ def build_model(args):
         encoder = model_dcgan.DcganEncoder(args)
     hidden = encoder(x)
 
-    z, z_mean, z_log_var = add_sampling(hidden, args.sampling, args.batch_size, args.latent_dim, args.encoder_wd)
+    z, z_mean, z_log_var = add_sampling(hidden, args.sampling, args.sampling_std, args.batch_size, args.latent_dim, args.encoder_wd)
 
     z_normed = Lambda(lambda z_unnormed: K.l2_normalize(z_unnormed, axis=-1))([z])
     if args.spherical:
@@ -118,13 +118,16 @@ def build_model(args):
     return modelDict
 
 
-def add_sampling(hidden, sampling, batch_size, latent_dim, wd):
+def add_sampling(hidden, sampling, sampling_std, batch_size, latent_dim, wd):
     z_mean = Dense(latent_dim, W_regularizer=l2(wd), name="latent_mean")(hidden)
     if not sampling:
         z_log_var = Lambda(lambda x: 0*x, output_shape=[latent_dim])((z_mean))
         return z_mean, z_mean, z_log_var
     else:
-        z_log_var = Dense(latent_dim, W_regularizer=l2(wd))(hidden)
+        if sampling_std > 0:
+            z_log_var = Lambda(lambda x: 0*x + K.log(K.square(sampling_std)), output_shape=[latent_dim])((z_mean))
+        else:
+            z_log_var = Dense(latent_dim, W_regularizer=l2(wd))(hidden)
         def sampling(inputs):
             z_mean, z_log_var = inputs
             epsilon = K.random_normal(shape=(batch_size, latent_dim), mean=0.)

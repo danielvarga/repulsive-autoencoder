@@ -80,6 +80,11 @@ else:
         if epoch % args.matching_frequency == 0:
             if args.distance_space == "latent":
                 true_latent = encoder.predict(x_train, batch_size=args.batch_size)
+                if epoch % args.frequency == 0:
+                    vis.display_pair_distance_histogram(true_latent, latent[masterPermutation], args.prefix + "-pairdistance.png")
+                    vis.display_pair_distance_histogram(true_latent, latent[masterPermutation], args.prefix + "-pairdistance-{}.png".format(epoch))
+                true_latent_variances = np.var(true_latent, axis=0)
+                print np.histogram(true_latent_variances)
                 newPermutation = kohonen.batchPairing(latent, true_latent, masterPermutation, args.min_items_in_matching, args.greedy_matching)
             elif args.distance_space == "pixel":
                 target_reconstruction = generator.predict(latent, batch_size=args.batch_size)

@@ -180,7 +180,15 @@ def loss_factory(model, encoder, loss_features, args):
         assert hasattr(loss_features,"nat_input")
         nat = loss_features.nat_input
         z = loss_features.z_mean
-        return mse_loss(nat, z)
+        squared_distances = K.sum(K.square(z - nat), axis=1)
+        return K.mean(squared_distances)
+    def nat_monitor(x, x_decoded):
+        assert hasattr(loss_features,"nat_input")
+        nat = loss_features.nat_input
+        z = loss_features.z_mean
+        squared_distances = K.sum(K.square(z - nat), axis=1)
+        std_distances = K.std(squared_distances)
+        return std_distances
 
     metrics = []
     for metric in args.metrics:

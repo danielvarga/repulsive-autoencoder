@@ -458,3 +458,14 @@ def display_labels_separated(data, labels, file, nx = 20, ny=10):
     l = labels[perm[:nx*ny]]
     sorter = np.argsort(l)
     plotImages(x[sorter], nx, ny, file)
+
+def display_pair_distance_histogram(latent, target, name):
+    assert latent.shape == target.shape
+    assert latent.ndim == 2
+    distance_to_pair = np.sqrt(np.sum(np.square(latent-target), axis=1))
+    distance_to_origo = np.sqrt(np.sum(np.square(target), axis=1))
+    plt.figure(figsize=(6,6))
+    plt.scatter(distance_to_origo, distance_to_pair)
+    print "Creating file " + name
+    plt.savefig(name)
+    plt.close()

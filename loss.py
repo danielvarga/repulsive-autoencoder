@@ -49,7 +49,9 @@ def loss_factory(model, encoder, loss_features, args):
         size_loss = 0.5 * K.sum(K.square(loss_features.z_mean), axis=-1)
         variance_loss = 0.5 * K.sum(-1 - loss_features.z_log_var + K.exp(loss_features.z_log_var), axis=-1)
         elbo_loss = mse_loss + size_loss + variance_loss
-        return K.mean(elbo_loss)
+        MINIMAX_WEIGHT = 0.1
+        print "ad hoc hardwired weight", MINIMAX_WEIGHT, "for minimax_vae_loss"
+        return K.max(elbo_loss) * MINIMAX_WEIGHT
 
     def edge_loss(x, x_decoded):
         edge_x = edgeDetect(x, args.original_shape)

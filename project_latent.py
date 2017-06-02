@@ -75,7 +75,24 @@ if do_latent_variances:
 else:
     encoder_var =encoder
     latent_train = latent_train_mean
-xxx
+
+
+def check_ellipse_likelihoods():
+    latent_train_std = np.exp(latent_train_logvar) ** 0.5
+    volumes = np.prod(latent_train_std, axis=1)
+    # print volumes.shape, volumes[:20]
+
+    density = np.exp(-np.sum(latent_train_mean ** 2, axis=1))
+    # print density.shape, density[:20]
+
+    likelihoods = volumes * density
+    likelihoods = np.sort(likelihoods)
+    print "that's just an estimate, instead of integrating over it, we use likelihood of center"
+    print likelihoods[:10], likelihoods[-10:], likelihoods[::5000]
+
+# check_ellipse_likelihoods()
+
+
 # check how overlapping the latent ellipsoids are
 if do_latent_variances:
     sigma_all = np.exp(latent_train_logvar/2)

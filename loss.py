@@ -50,8 +50,15 @@ def loss_factory(model, encoder, loss_features, args):
         variance_loss = 0.5 * K.sum(-1 - loss_features.z_log_var + K.exp(loss_features.z_log_var), axis=-1)
         elbo_loss = mse_loss + size_loss + variance_loss
         MINIMAX_WEIGHT = 0.1
+        TOP_K = 10
         print "ad hoc hardwired weight", MINIMAX_WEIGHT, "for minimax_vae_loss"
-        return K.max(elbo_loss) * MINIMAX_WEIGHT
+
+        if TOP_K == 1:
+            loss = K.max(elbo_loss)
+        else:
+            values, indices = tf.nn.top_k(elbo_loss, k=TOP_K, sorted=True)
+            loss = K.mean(values)
+        return loss * MINIMAX_WEIGHT
 
     def edge_loss(x, x_decoded):
         edge_x = edgeDetect(x, args.original_shape)

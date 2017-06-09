@@ -1,3 +1,8 @@
+
+# This must be included before other things, according to this guy:
+# https://stackoverflow.com/questions/25383698/error-string-to-bool-in-mplot3d-workaround-found/30233681#30233681
+from mpl_toolkits.mplot3d import Axes3D
+
 import matplotlib
 matplotlib.use('Agg')
 import numpy as np
@@ -90,7 +95,30 @@ def check_ellipse_likelihoods():
     print "that's just an estimate, instead of integrating over it, we use likelihood of center"
     print likelihoods[:10], likelihoods[-10:], likelihoods[::5000]
 
+
 # check_ellipse_likelihoods()
+
+
+def show_latent_cloud():
+    z = latent_train_mean
+    latent_dim = z.shape[-1]
+
+    if latent_dim==1:
+        plt.hist(z, bins=20)
+    elif latent_dim==2:
+        plt.scatter(z[:, 0], z[:, 1])
+    else:
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+        z = z[:2000, :]
+        # TODO color according to reconstruction loss.
+        ax.scatter(z[:, 0], z[:, 1], z[:, 2])
+        ax.set_title('Latent points')
+    plt.savefig(prefix + "_cloud.png")
+    plt.close()
+
+
+show_latent_cloud()
 
 
 # check how overlapping the latent ellipsoids are
@@ -147,7 +175,7 @@ projector = np.random.normal(size=(flat_input.shape[1],))
 projector /= np.linalg.norm(projector)
 projected_input = flat_input.dot(projector)
 projected_output = flat_output.dot(projector)
-vis.cumulative_view(projected_input, "CDF of randomly projected latent cloud", prefix + "_cdf_input.png")
+vis.cumulative_view(projected_input, "CDF of randomly projected input cloud", prefix + "_cdf_input.png")
 vis.cumulative_view(projected_output, "CDF of randomly projected latent cloud", prefix + "_cdf_output.png")
 
 if False:
@@ -312,7 +340,7 @@ print sample.shape
 
 def oval_sampler(batch_size, latent_dim):
     z = np.random.normal(size=(batch_size, latent_dim))
-    z = cho.dot(z.T).T+origo
+    z = cho.dot(z.T).T + origo
 #    z /= np.linalg.norm(z)
     return z
 

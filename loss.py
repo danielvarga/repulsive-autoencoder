@@ -44,6 +44,27 @@ def loss_factory(model, encoder, loss_features, args):
         loss = 0.5 * K.sum(-1 - loss_features.z_log_var + K.exp(loss_features.z_log_var), axis=-1)
         return K.mean(loss)
 
+    # energy distance from the standard normal distribution.
+    def energy_distance_loss(x, x_decoded):
+        z = loss_features.z_mean
+        assert args.batch_size % 2 == 0
+        n = args.batch_size // 2
+        z_1 = z[:n]
+        z_2 = z[n:]
+        distances = K.sqrt(K.abs(eigen.mean_pairwise_squared_distances(z_1, z_2, n, n)))
+        exx = K.mean(distances)
+
+        m = n * 20
+        normals = K.random_normal((2 * m, args.latent_dim), 0, 1)
+        distances_from_normals = K.sqrt(K.abs(eigen.mean_pairwise_squared_distances(z_1, normals[:m], n, m)))
+        exn = K.mean(distances_from_normals)
+
+        distances_amongst_normals = K.sqrt(K.abs(eigen.mean_pairwise_squared_distances(normals[:n], normals[m:], n, m)))
+        enn = K.mean(distances_amongst_normals)
+
+        energy_distance = 2 * exn - exx - enn
+        return energy_distance * 100
+
     def edge_loss(x, x_decoded):
         edge_x = edgeDetect(x, args.original_shape)
         edge_x_decoded = edgeDetect(x_decoded, args.original_shape)
@@ -95,11 +116,22 @@ def loss_factory(model, encoder, loss_features, args):
             loss += extra_diag_loss
         return loss
 
+    def mean_monitor(x, x_decoded):
+        z = loss_features.z_mean # pre sampling!
+        return K.mean(K.mean(z, axis=0) ** 2)
+
+    def variance_monitor(x, x_decoded):
+        z = loss_features.z_mean # pre sampling!
+        z_centered = z - K.mean(z, axis=0)
+        cov = K.dot(K.transpose(z_centered), z_centered) / args.batch_size
+        return K.mean((tf.diag_part(cov) - 1) ** 2)
+
     def covariance_monitor(x, x_decoded):
         z = loss_features.z_mean # pre sampling!
         z_centered = z - K.mean(z, axis=0)
         cov = K.dot(K.transpose(z_centered), z_centered) / args.batch_size
-        return K.mean(tf.diag_part(cov))
+        cov = cov - tf.diag(cov)
+        return K.mean(cov ** 2)
 
     def intermediary_loss(x, x_decoded):
         intermediary_outputs = loss_features.intermediary_outputs

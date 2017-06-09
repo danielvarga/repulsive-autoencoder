@@ -52,6 +52,34 @@ def kstest_loss(z, latent_dim, batch_size, aggregator=None):
     return kstest_tf(p, batch_size, aggregator)
 
 
+def mean_pairwise_squared_distances(x, y, n, m):
+    # ([n, f] , [m, f]) -> (n, m)
+    xL2S = K.sum(x*x, axis=-1) # [n]
+    yL2S = K.sum(y*y, axis=-1) # [m]
+    xL2SM = K.zeros((m, n)) + xL2S # broadcasting, [m, n]
+    yL2SM = K.zeros((n, m)) + yL2S # # broadcasting, [n, m]
+    squaredDistances = K.transpose(xL2SM) + yL2SM - 2.0 * K.dot(x, K.transpose(y)) # [n, m]
+    return squaredDistances
+
+
+def test_pairwise_distances():
+    n = 5
+    m = 6
+    f = 50
+    x_ph = K.placeholder(shape=(n, f))
+    y_ph = K.placeholder(shape=(m, f))
+
+    x = np.random.normal(size=(n, f)) + 10
+    y = 2 * np.random.normal(size=(m, f))
+
+    f = K.function([x_ph, y_ph], [mean_pairwise_squared_distances(x_ph, y_ph, n, m)])
+    print np.sqrt(f([x, y]))
+
+    import kohonen
+    # stupid kohonen.distanceMatrix() gives back the transpose of what would be logical.
+    print kohonen.distanceMatrix(x, y).T
+
+
 def test_eigenvec():
     bs = 200
     latent_dim = 20
@@ -104,3 +132,4 @@ def test_eigenvec():
 
 if __name__ == "__main__":
     test_eigenvec()
+    test_pairwise_distances()

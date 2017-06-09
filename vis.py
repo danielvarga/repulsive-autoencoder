@@ -252,7 +252,7 @@ def displayInterp(x_train, x_test, batch_size, dim,
         encoder, encoder_var, do_latent_variances, generator, gridSize, name,
         anchor_indices=None):
     if anchor_indices is None:
-        anchor_indices = [14, 6, 0]
+        anchor_indices = [14, 6, 0] # TODO Not a very good choice for mnist, 1-1-7.
     assert len(anchor_indices)==3, "Three anchors are expected for interpolation"
     train_latent_mean = encoder.predict(x_train[:batch_size], batch_size=batch_size)
     test_latent_mean = encoder.predict(x_test[:batch_size], batch_size=batch_size)

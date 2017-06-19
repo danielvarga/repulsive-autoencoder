@@ -103,11 +103,11 @@ def grid(d, m):
 
 
 def entropy(weights):
-    return np.mean(weights * np.log(weights))
+    return - np.sum(weights * np.log(weights))
 
 
 def entropy_tf(weights):
-    return K.mean(weights * K.log(weights))
+    return - K.sum(weights * K.log(weights))
 
 
 def test_signature():
@@ -137,13 +137,19 @@ def test_signature_of_grid():
 
 def optimize_grid():
     d = 2
-    target_data = np.array([[1./3,2./3], [2./3,1./3], [2./3,2./3]]).astype(np.float32)
+    # target_data = np.array([[1./3,2./3], [2./3,1./3], [2.5/3,2./3], [2./3,2./3]]).astype(np.float32)
+    target_data = np.array([[0,1], [1,0], [1,1]]).astype(np.float32)
+    target_data -= 2./3
+    target_data /= 10
+    target_data += 2./3
+    print "target_data", target_data
+
     target_n = target_data.shape[0]
     target_weights = np.ones((target_n, )) / target_n
     k = 2
     target_signia = moment_signature_of_weighted_cloud(target_data, target_weights, k)
 
-    m = 10
+    m = 20
     data = grid(d, m).astype(np.float32)
     n = data.shape[0]
     weights = np.random.uniform(size=n).astype(np.float32)
@@ -156,33 +162,38 @@ def optimize_grid():
     signia_fn = K.function(inputs=[data_var, weights_var], outputs=signia_vars)
 
     signia_loss = K.mean((signia_vars[0] - target_signia[0]) ** 2) + K.mean((signia_vars[0] - target_signia[0]) ** 2)
-    entropy_loss = entropy_tf(weights_var)
-    ENTROPY_LOSS_WEIGHT = 1.0
-    total_loss = signia_loss + ENTROPY_LOSS_WEIGHT * (-entropy_loss)
+    entropy_loss = - entropy_tf(weights_var) # negentropy minimization
+    ENTROPY_LOSS_WEIGHT = 0.01
+    total_loss = signia_loss + ENTROPY_LOSS_WEIGHT * entropy_loss
 
     optimizer = tf.train.GradientDescentOptimizer(learning_rate=0.00001)
     train_step = optimizer.minimize(total_loss)
 
-    epochs = 2000
+    epochs = 20000
 
     with tf.Session() as sess:
         init = tf.initialize_all_variables()
         sess.run(init)
         for step in xrange(epochs):
             sess.run(train_step)
-            if step % 100 == 0:
+            if step % 1 == 0:
                 weights_val = weights_var.eval(session=sess)
-                print step, signia_loss.eval(session=sess), entropy_loss.eval(session=sess), weights_val.sum()
+                # print step, signia_loss.eval(session=sess), entropy_loss.eval(session=sess), weights_val.sum()
                 if weights_val.min() <= 0.0:
-                    print "underflow"
+                    # print "underflow"
                     weights_val = np.clip(weights_val, 1e-6, 1)
                 weights_val /= weights_val.sum()
                 weights_var.load(weights_val, sess)
+            if step % 1000 == 0:
+                print step, signia_loss.eval(session=sess), entropy_loss.eval(session=sess), weights_val.sum()
+                print target_signia
+                print moment_signature_of_weighted_cloud(data, weights_val, 2)
         vis = weights_val.reshape((m, m))
         import matplotlib.pyplot as plt
         plt.imshow(vis)
         plt.show()
         plt.savefig("vis.png")
+        print vis[::m/10, ::m/10]
 
 
 def main():

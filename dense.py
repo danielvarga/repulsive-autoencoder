@@ -27,7 +27,7 @@ def decoder_layers(intermediate_dims, original_shape, activation, wd, use_bn):
         layers.append(Dense(intermediate_dim, W_regularizer=l2(wd)))
         if use_bn:
             layers.append(BatchNormalization(mode=2))
-            layers.append(Activation(activation))
+        layers.append(Activation(activation))
     layers.append(Dense(np.prod(original_shape), activation='sigmoid', name="decoder_top", W_regularizer=l2(wd)))
     layers.append(Reshape(original_shape))
     return layers

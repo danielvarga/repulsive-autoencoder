@@ -8,6 +8,7 @@ import model_conv_discgen
 import model_gaussian
 import model_resnet
 import model_dcgan
+import model_ladder
 import samplers
 
 from keras.layers import Input, Dense, Lambda, Reshape, Flatten, Activation
@@ -38,9 +39,14 @@ def build_model(args):
             base_filter_num = args.base_filter_num)
     elif args.encoder == "dcgan":
         encoder = model_dcgan.DcganEncoder(args)
+    elif args.encoder == "ladderDense":
+        encoder = model_ladder.LadderDenseEncoder(args)
     hidden = encoder(x)
 
-    z, z_mean, z_log_var = add_sampling(hidden, args.sampling, args.sampling_std, args.batch_size, args.latent_dim, args.encoder_wd)
+    if args.encoder == "ladderDense":
+        z, z_mean, z_log_var = encoder.get_latent_code()
+    else:
+        z, z_mean, z_log_var = add_sampling(hidden, args.sampling, args.sampling_std, args.batch_size, args.latent_dim, args.encoder_wd)
 
     z_normed = Lambda(lambda z_unnormed: K.l2_normalize(z_unnormed, axis=-1))([z])
     if args.spherical:
@@ -65,6 +71,8 @@ def build_model(args):
         decoder = model_resnet.ResnetDecoder(args)
     elif args.decoder =="dcgan":
         decoder = model_dcgan.DcganDecoder(args)
+    elif args.decoder == "ladderDense":
+        decoder = model_ladder.LadderDenseDecoder(args)
     decoder_fun_output = decoder(z)
     generator_input, recons_output, generator_output = decoder_fun_output[:3]
 
@@ -119,7 +127,7 @@ def build_model(args):
 
 
 def add_sampling(hidden, sampling, sampling_std, batch_size, latent_dim, wd):
-    z_mean = Dense(latent_dim, W_regularizer=l2(wd), name="latent_mean")(hidden)
+    z_mean = Dense(latent_dim, W_regularizer=l2(wd))(hidden)
     if not sampling:
         z_log_var = Lambda(lambda x: 0*x, output_shape=[latent_dim])((z_mean))
         return z_mean, z_mean, z_log_var
@@ -132,6 +140,6 @@ def add_sampling(hidden, sampling, sampling_std, batch_size, latent_dim, wd):
             z_mean, z_log_var = inputs
             epsilon = K.random_normal(shape=(batch_size, latent_dim), mean=0.)
             return z_mean + K.exp(z_log_var / 2) * epsilon
-        z = Lambda(sampling, output_shape=(latent_dim,), name="latent")([z_mean, z_log_var])
+        z = Lambda(sampling, output_shape=(latent_dim,))([z_mean, z_log_var])
         return z, z_mean, z_log_var
 

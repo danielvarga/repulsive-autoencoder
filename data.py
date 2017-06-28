@@ -109,6 +109,7 @@ class Dataset(object):
         self.color = color
         self.finite = finite
         self.synthetic = synthetic
+        self.anchor_indices = [14, 6, 0] # this can be overridden for each dataset
     def get_data(self, trainSize, testSize):
         assert False, "Not Yet Implemented"
     def get_train_flow(self, batch_size):
@@ -160,6 +161,7 @@ class Dataset_real(Dataset):
 class Dataset_mnist(Dataset_real):
     def __init__(self, shape=(28,28), digit=None):
         super(Dataset_mnist, self).__init__("mnist", shape, color=False)
+        self.anchor_indices = [12, 9, 50]
 
         cacheFile_64_64 = "/home/zombori/datasets/mnist_64_64.npz"
         if shape == (64, 64) and os.path.isfile(cacheFile_64_64):

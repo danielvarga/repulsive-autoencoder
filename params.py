@@ -159,11 +159,7 @@ def getArgs():
     else:
         args.layers_to_monitor = []
 
-
-    # if the decoder is gaussian, update latent_dim
     args.gaussianParams = map(int, str(args.gaussianParams).split(","))
     assert len(args.gaussianParams) == 3
-    if args.decoder == "gaussian":
-        args.latent_dim = get_latent_dim(args.gaussianParams)
-    else: print "!!!!!!!!!!!!!!!!!!!!!!!!"
+
     return args

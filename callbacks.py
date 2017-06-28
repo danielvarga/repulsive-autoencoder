@@ -49,6 +49,7 @@ class ImageDisplayCallback(Callback):
     def __init__(self, 
                  x_train, x_test, args,
                  ae, encoder, encoder_var, generator, sampler,
+                 anchor_indices,
                  **kwargs):
         self.x_train = x_train
         self.x_test = x_test
@@ -62,6 +63,7 @@ class ImageDisplayCallback(Callback):
         self.is_sampling = args.sampling
         self.generator = generator
         self.sampler = sampler
+        self.anchor_indices = anchor_indices
         self.name = args.callback_prefix
         self.frequency = args.frequency
         self.latent_normal = np.random.normal(size=(self.x_train.shape[0], self.latent_dim))
@@ -86,8 +88,7 @@ class ImageDisplayCallback(Callback):
         vis.plotImages(images, 2 * 10, self.batch_size // 10, "{}-test-{}".format(self.name, epoch+1))
         vis.plotImages(images, 2 * 10, self.batch_size // 10, "{}-test".format(self.name))
 
-        if self.args.decoder != "gaussian":
-            vis.displayInterp(self.x_train, self.x_test, self.batch_size, self.latent_dim, self.encoder, self.encoder_var, self.is_sampling, self.generator, 10, "%s-interp-%i" % (self.name,epoch+1))
+        vis.displayInterp(self.x_train, self.x_test, self.batch_size, self.latent_dim, self.encoder, self.encoder_var, self.is_sampling, self.generator, 10, "%s-interp-%i" % (self.name,epoch+1), anchor_indices=self.anchor_indices)
         if self.encoder != self.encoder_var:
             vis.plotMVVM(self.x_train, self.encoder, self.encoder_var, self.batch_size, "{}-mvvm-{}.png".format(self.name, epoch+1))
         vis.plotMVhist(self.x_train, self.encoder, self.batch_size, "{}-mvhist-{}.png".format(self.name, epoch+1))

@@ -9,7 +9,6 @@ keras.layers.MixtureLayer = mixture.MixtureLayer
 
 learn_variance=True
 learn_density=True
-variance = 0.1
 maxpooling = False
 upscale = False
 
@@ -59,38 +58,10 @@ class GaussianDecoder(Decoder):
         generator_output = generator_input
         recons_output = recons_input
 
-        # add intermediate dense layers
-        layers = []
-        for intermediate_dim in reversed(args.intermediate_dims):
-            layers.append(Dense(intermediate_dim, W_regularizer=l2(args.decoder_wd)))
-            if args.decoder_use_bn:
-                layers.append(BatchNormalization(mode=2))
-            layers.append(Activation(args.activation))
-        # the last layer ensures the feature size aligns with gaussianParams
-        hidden_dim = get_latent_dim(args.gaussianParams)
-        layers.append(Dense(hidden_dim, W_regularizer=l2(args.decoder_wd)))
-        for layer in layers:
-            generator_output = layer(generator_output)
-            recons_output = layer(recons_output)
-
-
-        if self.main_params > 0:
-            mainSplitter = Lambda(lambda x: x[:,:self.main_params], output_shape=(self.main_params,), name="mainSplitter")
-            recons_main = mainSplitter(recons_output)
-            generator_main = mainSplitter(generator_output)
-
-#            generator_main = add_noise(recons_main, 0.0, args.batch_size) # TODO
-
-            mainLayers = []
-            mainLayers.append(Reshape([self.main_channel, self.dots, self.gaussian_params]))
-            mainLayers.append(Activation("sigmoid"))
-            mainLayers.append(mixture.MixtureLayer(self.ys[args.depth], self.xs[args.depth], self.main_channel, learn_variance=learn_variance, learn_density=learn_density, variance=variance, maxpooling=maxpooling, name="mixtureLayer"))
-            for layer in mainLayers:
-                generator_main = layer(generator_main)
-                recons_main = layer(recons_main)            
-            
+        # split side channels off
+        position_latent_params = args.latent_dim - self.side_params
         def sideFun(x):
-            x = x[:,self.main_params:]
+            x = x[:,position_latent_params:]
             x = K.expand_dims(x, dim=1)
             x = K.expand_dims(x, dim=2)
             x = K.repeat_elements(x, self.ys[self.depth], axis=1)
@@ -98,12 +69,36 @@ class GaussianDecoder(Decoder):
             return x
 
         if self.side_params > 0:
+            assert self.side_params <= args.latent_dim
             sideSplitter = Lambda(sideFun, output_shape=(self.ys[args.depth], self.xs[args.depth], self.side_params), name="sideSplitter")
             recons_side = sideSplitter(recons_output)
             generator_side = sideSplitter(generator_output)
 
-#            generator_side = add_noise(recons_side, 0.1, args.batch_size) # TODO
+        if self.main_params > 0:
+            mainSplitter = Lambda(lambda x: x[:,:position_latent_params], output_shape=(position_latent_params,), name="mainSplitter")
+            recons_main = mainSplitter(recons_output)
+            generator_main = mainSplitter(generator_output)
 
+            # add intermediate dense layers
+            layers = []
+            for intermediate_dim in reversed(args.intermediate_dims):
+                layers.append(Dense(intermediate_dim, W_regularizer=l2(args.decoder_wd)))
+                if args.decoder_use_bn:
+                    layers.append(BatchNormalization(mode=2))
+                layers.append(Activation(args.activation))
+            # the last layer ensures the feature size aligns with gaussianParams
+#            hidden_dim = get_latent_dim(args.gaussianParams)
+            layers.append(Dense(self.main_params, W_regularizer=l2(args.decoder_wd)))
+            layers.append(Reshape([self.main_channel, self.dots, self.gaussian_params]))
+            layers.append(Activation("sigmoid"))
+            layers.append(mixture.MixtureLayer(self.ys[args.depth], self.xs[args.depth], learn_variance=learn_variance, learn_density=learn_density, variance=args.gaussianVariance, maxpooling=maxpooling, name="mixtureLayer"))
+
+            print "!!!!!!!!!!!!!!!!!!!!"
+            for layer in layers:
+                generator_main = layer(generator_main)
+                print K.int_shape(generator_main)
+                recons_main = layer(recons_main)
+         
         if self.side_params == 0:
             assert self.main_params > 0
             generator_output = generator_main
@@ -135,9 +130,9 @@ class GaussianDecoder(Decoder):
         output_shape = K.int_shape(recons_output)[1:]
         assert output_shape == self.args.original_shape, "Expected shape {}, got shape {}".format(self.args.original_shape, output_shape)
 
-        # # create a separate model that returns the output of the main channels
-        # args.mixture_model = Model(self.generator_input, recons_main)
-        # args.mixture_model.compile(optimizer="sgd", loss="mse")
+        # create a separate model that returns the output of the main channels
+        args.mixture_model = Model(generator_input, generator_main)
+        args.mixture_model.compile(optimizer="sgd", loss="mse")
 
         return generator_input, recons_output, generator_output
 

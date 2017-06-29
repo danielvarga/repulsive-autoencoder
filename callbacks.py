@@ -92,6 +92,7 @@ class ImageDisplayCallback(Callback):
         if self.encoder != self.encoder_var:
             vis.plotMVVM(self.x_train, self.encoder, self.encoder_var, self.batch_size, "{}-mvvm-{}.png".format(self.name, epoch+1))
         vis.plotMVhist(self.x_train, self.encoder, self.batch_size, "{}-mvhist-{}.png".format(self.name, epoch+1))
+        vis.displayGaussian(self.args, self.ae, self.encoder, self.x_train, "{}-dots-{}".format(self.name, epoch+1))
 
 #        vis.displayGaussian(self.args, self.ae, self.x_train, "%s-dots-%i" % (self.name, epoch+1))
         # vis.displayRandom(10, self.x_train, self.latent_dim, self.sampler, self.generator, "%s-random-%i" % (self.name, epoch+1), batch_size=self.batch_size)

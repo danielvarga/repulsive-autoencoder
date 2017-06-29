@@ -109,7 +109,7 @@ vis.saveModel(encoder, args.prefix + "_encoder")
 vis.saveModel(encoder_var, args.prefix + "_encoder_var")
 vis.saveModel(generator, args.prefix + "_generator")
 
-# vis.displayGaussian(args, ae, x_train, args.prefix + "-dots")
+vis.displayGaussian(args, ae, encoder, x_train, args.prefix + "-dots")
 
 # display randomly generated images
 vis.displayRandom(10, x_train, args.latent_dim, sampler, generator, "%s-random" % args.prefix, batch_size=args.batch_size)

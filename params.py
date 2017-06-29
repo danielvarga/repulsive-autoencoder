@@ -23,7 +23,6 @@ parser.add_argument('--latent_dim', dest="latent_dim", type=int, default=3, help
 parser.add_argument('--activation', dest="activation", default="relu", help="activation function")
 parser.add_argument('--depth', dest="depth", default=3, type=int, help="Depth of conv vae model")
 parser.add_argument('--base_filter_num', dest="base_filter_num", default=32, type=int, help="Initial number of filter in the conv model")
-parser.add_argument('--gaussianParams', dest="gaussianParams", default="10,1,10", help="main_channel,dots,side_channel - this overrides latent_dim param")
 
 # training
 parser.add_argument('--optimizer', dest="optimizer", type=str, default="adam", help="Optimizer, adam or rmsprop or sgd")
@@ -81,6 +80,10 @@ parser.add_argument('--oversampling', dest="oversampling", type=int, default=0, 
 
 # natAE
 parser.add_argument('--distance_space', dest="distance_space", default="latent", help="The space in which we compute distances (latent/pixel)")
+
+# radial basis model
+parser.add_argument('--gaussianParams', dest="gaussianParams", default="10,1,10", help="main_channel,dots,side_channel - this overrides latent_dim param")
+parser.add_argument('--gaussianVariance', dest="gaussianVariance", default=0.1, type=float, help="Maximum variance of the dots.")
 
 
 # locations

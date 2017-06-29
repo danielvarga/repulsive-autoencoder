@@ -20,7 +20,7 @@ def get_param_count(learn_variance, learn_density):
     return GAUSS_PARAM_COUNT
 
 class MixtureLayer(Layer):
-    def __init__(self, sizeX, sizeY, channel=1, learn_variance=True, learn_density=False, variance=1.0/200, maxpooling=True, **kwargs):
+    def __init__(self, sizeX, sizeY, learn_variance=True, learn_density=False, variance=1.0/200, maxpooling=True, **kwargs):
         self.output_dim = 2
         self.sizeX = sizeX
         self.sizeY = sizeY
@@ -46,8 +46,8 @@ class MixtureLayer(Layer):
     # input_shape = (batch, channels, dots, GAUSS_PARAM_COUNT)
     def build(self, input_shape):
         assert len(input_shape) == 4
-#        assert input_shape[3] == self.GAUSS_PARAM_COUNT # x, y, xv, yv, density but the last three could be missing!!!
-        self.k = input_shape[2] # number of dots to place
+        #        assert input_shape[3] == self.GAUSS_PARAM_COUNT # x, y, xv, yv, density but the last three could be missing!!!
+        self.k = input_shape[2] # number of dots to place on each channel
         super(MixtureLayer, self).build(input_shape)  # Be sure to call this somewhere!
 
     def call(self, inp, mask=None):

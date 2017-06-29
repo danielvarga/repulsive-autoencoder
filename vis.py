@@ -357,9 +357,10 @@ def plot2Dprojections(dataset, indices, name):
     plt.savefig(name)
     plt.close()
 
-def displayGaussian(args, ae, x_train, name):
+def displayGaussian(args, ae, encoder, x_train, name):
     if args.decoder != "gaussian": return
-    mixture_output = args.mixture_model.predict(x_train, batch_size=args.batch_size)
+    mixture_input = encoder.predict(x_train, batch_size=args.batch_size)
+    mixture_output = args.mixture_model.predict(mixture_input, batch_size=args.batch_size)
     mixture_output = np.expand_dims(np.sum(mixture_output, axis=3),3)
     mixture_output -= np.min(mixture_output)
     mixture_output /= np.max(mixture_output)

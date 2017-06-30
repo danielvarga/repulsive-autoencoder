@@ -7,14 +7,17 @@ in the following ways:
   corresponds to a pairwise repulsive force between the encoded
   elements of the minibatch.
 '''
+import numpy as np
+np.random.seed(10)
+
+import tensorflow as tf
+tf.set_random_seed(10)
 
 from keras.callbacks import LearningRateScheduler
 import keras.backend as K
-import numpy as np
 import params
 import vis
 
-np.random.seed(10)
 
 args = params.getArgs()
 print(args)
@@ -115,8 +118,8 @@ vis.displayGaussian(args, ae, encoder, x_train, args.prefix + "-dots")
 vis.displayRandom(10, x_train, args.latent_dim, sampler, generator, "%s-random" % args.prefix, batch_size=args.batch_size)
 
 
-vis.displaySet(x_test[:args.batch_size], args.batch_size, 100, ae, "%s-test" % args.prefix)
-vis.displaySet(x_train[:args.batch_size], args.batch_size, 100, ae, "%s-train" % args.prefix)
+vis.displaySet(x_test[:args.batch_size], args.batch_size, args.batch_size, ae, "%s-test" % args.prefix)
+vis.displaySet(x_train[:args.batch_size], args.batch_size, args.batch_size, ae, "%s-train" % args.prefix)
 
 # display image interpolation
 vis.displayInterp(x_train, x_test, args.batch_size, args.latent_dim, encoder, encoder_var, args.sampling, generator, 10, "%s-interp" % args.prefix, anchor_indices = data_object.anchor_indices)

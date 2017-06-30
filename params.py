@@ -84,6 +84,7 @@ parser.add_argument('--distance_space', dest="distance_space", default="latent",
 # radial basis model
 parser.add_argument('--gaussianParams', dest="gaussianParams", default="10,1,10", help="main_channel,dots,side_channel - this overrides latent_dim param")
 parser.add_argument('--gaussianVariance', dest="gaussianVariance", default=0.1, type=float, help="Maximum variance of the dots.")
+parser.add_argument('--gaussianMaxpooling', dest="gaussianMaxpooling", default=False, type=str2bool, help="Whether to use maxpooling or average pooling")
 
 
 # locations

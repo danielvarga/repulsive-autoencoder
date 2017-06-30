@@ -107,16 +107,17 @@ class MixtureLayer(Layer):
 
 
 def test_forward():
-    inp = np.array([[0.8, 0.8, 0.5], [0.3, 0.2, 0.5]]) # each row specifies a gaussian, as [x, y, density]
+    inp = np.array([[[0.8, 0.8, 0.5], [0.3, 0.2, 0.5]]]) # each row specifies a gaussian, as [x, y, density]
     size = 100
     inputs = Input(shape=inp.shape)
-    net = MixtureLayer(size,size)(inputs)
+    net = MixtureLayer(size,size,learn_variance=False)(inputs)
     model = Model(input=inputs, output=net)
     out = model.predict([np.expand_dims(inp, 0)])
+    print out.shape
     out = out[0]
     out = np.clip(out, 0.0, 1.0)
     out *= 255.0
-
+    print out.shape
     img = Image.fromarray(out.astype(dtype='uint8'), mode="L")
     img.save("vis.png")
 

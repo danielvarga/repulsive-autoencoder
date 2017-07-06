@@ -6,6 +6,7 @@ import numpy as np
 import dense
 import model_conv_discgen
 import model_gaussian
+import model_strictly_gaussian
 import model_resnet
 import model_dcgan
 import model_ladder
@@ -67,6 +68,8 @@ def build_model(args):
             use_bn = args.decoder_use_bn)
     elif args.decoder == "gaussian":
         decoder = model_gaussian.GaussianDecoder(args, x)
+    elif args.decoder == "strictlyGaussian":
+        decoder = model_strictly_gaussian.StrictlyGaussianDecoder(args, x)
     elif args.decoder == "resnet":
         decoder = model_resnet.ResnetDecoder(args)
     elif args.decoder =="dcgan":

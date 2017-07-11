@@ -358,23 +358,21 @@ def plot2Dprojections(dataset, indices, name):
     plt.close()
 
 def displayGaussian(args, ae, encoder, x_train, name):
-    return # todo
     if args.decoder != "gaussian": return
-    mixture_input = encoder.predict(x_train, batch_size=args.batch_size)
+    mixture_input = encoder.predict(x_train[:args.batch_size], batch_size=args.batch_size)
     mixture_output = args.mixture_model.predict(mixture_input, batch_size=args.batch_size)
     mixture_output = np.expand_dims(np.sum(mixture_output, axis=3),3)
     mixture_output -= np.min(mixture_output)
     mixture_output /= np.max(mixture_output)
 
-    if args.original_shape[2] == 1:
-        data_output = ae.predict(x_train, batch_size=args.batch_size)
-        output = np.concatenate([mixture_output, mixture_output, data_output], axis=3)
-    else:
-        output = np.concatenate([mixture_output, mixture_output, mixture_output], axis=3)
-    plotImages(output[:100], 10, 10, name)
-#    empty_channel = np.zeros(mixture_output.shape)
-#    output2 = np.concatenate([mixture_output, mixture_output, empty_channel], axis=3)
-#    plotImages(output2[:100], 10, 10, "%s-mnist2" % args.prefix)
+    data_output = ae.predict(x_train[:args.batch_size], batch_size=args.batch_size)
+    if args.original_shape[2] > 1:
+        data_output = np.expand_dims(np.mean(data_output, axis=3),3)
+
+    output = np.concatenate([mixture_output, mixture_output, data_output], axis=3)
+    plotImages(output, 10, args.batch_size // 10, name)
+    output = np.concatenate([mixture_output, mixture_output, mixture_output], axis=3)
+    plotImages(output, 10, args.batch_size // 10, "{}-b".format(name))
 
 
 """

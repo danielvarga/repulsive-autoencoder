@@ -24,12 +24,11 @@ from loss import loss_factory
 from arm import ArmLayer
 from exp import AttrDict
 
-
 def build_model(args):
     x = Input(batch_shape=([args.batch_size] + list(args.original_shape)))
 
     if args.encoder == "dense":
-        encoder = dense.DenseEncoder(args.intermediate_dims,args.activation, args.encoder_wd)
+        encoder = dense.DenseEncoder(args.intermediate_dims,args.activation, args.encoder_wd, args.encoder_use_bn)
     elif args.encoder == "conv":
         encoder = model_conv_discgen.ConvEncoder(
             depth = args.depth,
@@ -84,18 +83,18 @@ def build_model(args):
     ae = Model(x, recons_output)
     generator = Model(generator_input, generator_output)
 
-    armLayer = ArmLayer(dict_size=1000, iteration=5, threshold=0.01, reconsCoef=1)
-    sparse_input = Flatten()(x)
-    sparse_input = armLayer(sparse_input)
-    sparse_output = Flatten()(recons_output)
-    sparse_output = armLayer(sparse_output)
+#    armLayer = ArmLayer(dict_size=1000, iteration=5, threshold=0.01, reconsCoef=1)
+#    sparse_input = Flatten()(x)
+#    sparse_input = armLayer(sparse_input)
+#    sparse_output = Flatten()(recons_output)
+#    sparse_output = armLayer(sparse_output)
     loss_features = AttrDict({
         "z_sampled": z,
         "z_mean": z_mean,
         "z_log_var": z_log_var,
         "z_normed": z_normed,
-        "sparse_input": sparse_input,
-        "sparse_output": sparse_output,
+#        "sparse_input": sparse_input,
+#        "sparse_output": sparse_output,
         "z_projected": z_projected
     })
     if args.decoder == "resnet":
@@ -106,6 +105,7 @@ def build_model(args):
         loss_features.nat_input = nat_input
 
     loss, metrics = loss_factory(ae, encoder, loss_features, args)
+
 
     if args.optimizer == "rmsprop":
         optimizer = RMSprop(lr=args.lr, clipvalue=1.0)

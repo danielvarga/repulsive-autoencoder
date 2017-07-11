@@ -1,7 +1,7 @@
 from keras.models import Model
 import mixture
 import numpy as np
-from keras.layers import Dense, Reshape, Input, Lambda, Convolution2D, Flatten, merge, Deconvolution2D, Activation, BatchNormalization
+from keras.layers import Dense, Reshape, Input, Lambda, Convolution2D, Flatten, merge, Deconvolution2D, Activation, BatchNormalization, SeparableConv2D
 import keras.backend as K
 from keras.regularizers import l1, l2
 import keras
@@ -11,7 +11,7 @@ keras.layers.MixtureLayer = mixture.MixtureLayer
 
 learn_variance=True
 learn_density=True
-upscale = False
+upscale = 0
 
 def get_latent_dim(gaussianParams):
     main_channel = gaussianParams[0]
@@ -41,17 +41,17 @@ class GaussianDecoder(Decoder):
         self.side_channel = self.side_params
         self.channel = self.main_channel + self.side_channel
         self.depth = args.depth
-        if upscale:
-            assert args.original_shape[0] % (2 ** args.depth) == 0
-            assert args.original_shape[1] % (2 ** args.depth) == 0
+        if upscale > 0:
+            assert args.original_shape[0] % (upscale ** args.depth) == 0
+            assert args.original_shape[1] % (upscale ** args.depth) == 0
             factors = range(args.depth+1)
         else:
             factors = [0] * (args.depth+1)
         self.ys = []
         self.xs = []
         for i in factors:
-            self.ys.append(args.original_shape[0] / (2 ** i))
-            self.xs.append(args.original_shape[1] / (2 ** i))
+            self.ys.append(args.original_shape[0] / (upscale ** i))
+            self.xs.append(args.original_shape[1] / (upscale ** i))
 
     def __call__(self, recons_input):
         args = self.args
@@ -105,16 +105,26 @@ class GaussianDecoder(Decoder):
                 generator_output = merge([generator_main, generator_side], mode='concat', concat_axis=3)
                 recons_output = merge([recons_main, recons_side], mode='concat', concat_axis=3)
 
+        # add conv block
+        channels = [self.channel] * args.depth
+#        layers = net_blocks.conv_block(channels, 3, 3, args.decoder_wd, args.decoder_use_bn, args.activation, subsample=(1,1), border_mode="same", upscale=upscale)
 
         layers = []
         for i in reversed(range(args.depth)):
-            layers.append(Convolution2D(self.channel, 3, 3, subsample=(1,1), border_mode="same"))
+            if args.gaussianUseSeparableConv:
+                layers.append(SeparableConv2D(self.args.decoder_conv_channels, 3, 3, depth_multiplier=1, border_mode="same"))
+            else:
+                layers.append(Convolution2D(self.args.decoder_conv_channels, 3, 3, subsample=(1,1), border_mode="same"))
+
+
             if args.decoder_use_bn:
                 layers.append(BatchNormalization())
             layers.append(Activation(args.activation))
-            if upscale:
-                layers.append(Deconvolution2D(self.channel, 2, 2, output_shape=(args.batch_size, self.ys[i], self.xs[i], self.channel), border_mode='same', subsample=(2,2), W_regularizer=l2(args.decoder_wd)))
+            if upscale>0:
+                layers.append(Deconvolution2D(self.args.decoder_conv_channels, upscale, upscale, output_shape=(args.batch_size, self.ys[i], self.xs[i], self.channel), border_mode='same', subsample=(upscale,upscale), W_regularizer=l2(args.decoder_wd)))
                 layers.append(Activation(args.activation))
+
+
         layers.append(Convolution2D(args.original_shape[2], 3, 3, activation="sigmoid", subsample=(1,1), border_mode="same"))
 
         for layer in layers:
@@ -125,8 +135,8 @@ class GaussianDecoder(Decoder):
         assert output_shape == self.args.original_shape, "Expected shape {}, got shape {}".format(self.args.original_shape, output_shape)
 
         # create a separate model that returns the output of the main channels
-        # args.mixture_model = Model(generator_input, generator_main)
-        # args.mixture_model.compile(optimizer="sgd", loss="mse")
+        args.mixture_model = Model(generator_input, generator_main)
+        args.mixture_model.compile(optimizer="sgd", loss="mse")
 
         return generator_input, recons_output, generator_output
 

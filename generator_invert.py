@@ -19,6 +19,7 @@ from keras import backend as K
 from keras.layers import Input
 
 import vis
+import load_models
 import data
 
 # set random seed
@@ -107,7 +108,7 @@ else:
     img_size = (img_height, img_width, channels)
 
 # load model
-model = vis.loadModel(generator_prefix)
+model = load_models.loadModel(generator_prefix)
 print('Model loaded.')
 model.summary()
 latent_shape = K.int_shape(model.input)

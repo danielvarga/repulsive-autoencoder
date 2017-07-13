@@ -17,7 +17,7 @@ from keras.callbacks import LearningRateScheduler
 import keras.backend as K
 import params
 import vis
-
+import load_models
 
 args = params.getArgs()
 print(args)
@@ -54,7 +54,7 @@ cbs = [callbacks.FlushCallback()]
 get_lr = callbacks.get_lr_scheduler(args.nb_epoch, args.lr, args.lr_decay_schedule)
 cbs.append(LearningRateScheduler(get_lr))
 # cbs.append(callbacks.SaveGeneratedCallback(generator, sampler, args.prefix, args.batch_size, 20, args.latent_dim))
-cbs.append(callbacks.ImageDisplayCallback(x_train, x_test, args,ae, encoder, encoder_var, generator, sampler, data_object.anchor_indices))
+cbs.append(callbacks.ImageDisplayCallback(x_train, x_test, args, modelDict, sampler, data_object.anchor_indices))
 cbs.append(callbacks.SaveModelsCallback(ae, encoder, encoder_var, generator, args.prefix, args.frequency))
 for schedule in args.weight_schedules:
     if schedule[1] != schedule[2]:
@@ -107,12 +107,14 @@ else:
         for cb in cbs:
             cb.on_epoch_end(epoch, 0)
 
-vis.saveModel(ae, args.prefix + "_model")
-vis.saveModel(encoder, args.prefix + "_encoder")
-vis.saveModel(encoder_var, args.prefix + "_encoder_var")
-vis.saveModel(generator, args.prefix + "_generator")
+load_models.saveModel(ae, args.prefix + "_model")
+load_models.saveModel(encoder, args.prefix + "_encoder")
+load_models.saveModel(encoder_var, args.prefix + "_encoder_var")
+load_models.saveModel(generator, args.prefix + "_generator")
+if args.decoder == "gaussian":
+    load_models.saveModel(modelDict.generator_mixture, args.prefix + "_generator_mixture")
 
-vis.displayGaussian(args, ae, encoder, x_train, args.prefix + "-dots")
+vis.displayGaussian(args, modelDict, x_train, args.prefix + "-dots")
 
 # display randomly generated images
 vis.displayRandom(10, x_train, args.latent_dim, sampler, generator, "%s-random" % args.prefix, batch_size=args.batch_size)
@@ -126,14 +128,3 @@ vis.displayInterp(x_train, x_test, args.batch_size, args.latent_dim, encoder, en
 
 vis.plotMVhist(x_train, encoder, args.batch_size, "{}-mvhist.png".format(args.prefix))
 vis.plotMVVM(x_train, encoder, encoder_var, args.batch_size, "{}-mvvm.png".format(args.prefix))
-
-
-# # display a 2D plot of the validation set in the latent space
-# vis.latentScatter(encoder, x_test, batch_size, args.prefix+"-fig1")
-
-# display 2D manifolds of images
-# show_manifolds = False
-# if show_manifolds:
-#     for y in range(1, args.latent_dim-1):
-#         vis.displayImageManifold(30, args.latent_dim, generator, height, width, 0, y, y+1, "%s-manifold%d" % (args.prefix, y), batch_size=batch_size)
-

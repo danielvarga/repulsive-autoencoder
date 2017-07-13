@@ -14,6 +14,7 @@ import sklearn.linear_model
 import params
 import data
 import vis
+import load_models
 import callbacks
 import samplers
 import kohonen
@@ -130,7 +131,7 @@ if args.modelPath is None:
     generator = Model(input=gen_input, output=gen_output)
 else:
     print "Loading generator from " +args.modelPath
-    generator = vis.loadModel(args.modelPath + "_generator")
+    generator = load_models.loadModel(args.modelPath + "_generator")
 
 generator.compile(optimizer=optimizer_g, loss="mse")
 print "Generator:"
@@ -321,7 +322,7 @@ for epoch in range(1, args.nb_iter+1):
 
         vis.interpBetween(latent[masterPermutation[0]], latent[masterPermutation[1]], generator, args.batch_size, args.prefix + "_interpBetween-{}".format(epoch))
         vis.interpBetween(latent[masterPermutation[0]], latent[masterPermutation[1]], generator, args.batch_size, args.prefix + "_interpBetween")
-        vis.saveModel(generator, args.prefix + "_generator")
+        load_models.saveModel(generator, args.prefix + "_generator")
 
         file = "{}_latent.npy".format(args.prefix)
         print "Saving latent points to {}".format(file)
@@ -333,7 +334,7 @@ for epoch in range(1, args.nb_iter+1):
             np.save(file, extra_latent)
 
     if epoch % 200 == 0:
-        vis.saveModel(generator, args.prefix + "_generator_{}".format(epoch))
+        load_models.saveModel(generator, args.prefix + "_generator_{}".format(epoch))
         generated_saver.save(epoch)
 
 print "Time spent on calculating the distance matrix:"

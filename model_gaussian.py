@@ -27,7 +27,7 @@ class Decoder(object):
     pass
 
 class GaussianDecoder(Decoder):
-    def __init__(self, args, generator_input):
+    def __init__(self, args):
         self.args = args
         self.main_channel = args.gaussianParams[0]
         self.dots = args.gaussianParams[1]
@@ -134,11 +134,7 @@ class GaussianDecoder(Decoder):
         output_shape = K.int_shape(recons_output)[1:]
         assert output_shape == self.args.original_shape, "Expected shape {}, got shape {}".format(self.args.original_shape, output_shape)
 
-        # create a separate model that returns the output of the main channels
-        args.mixture_model = Model(generator_input, generator_main)
-        args.mixture_model.compile(optimizer="sgd", loss="mse")
-
-        return generator_input, recons_output, generator_output
+        return generator_input, recons_output, generator_output, generator_main
 
 def add_noise(x, magnitude, batch_size):
     shape = [batch_size] + list(K.int_shape(x)[1:])

@@ -11,6 +11,7 @@ from sklearn.manifold import TSNE
 import sklearn
 
 import vis
+import load_models
 import data
 import wgan_params
 import kohonen
@@ -24,7 +25,7 @@ np.random.seed(10)
 
 prefix = args.prefix
 generator_prefix = args.prefix + "_generator"
-generator = vis.loadModel(generator_prefix)
+generator = load_models.loadModel(generator_prefix)
 
 def biflatten(x):
     assert len(x.shape)>=2

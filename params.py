@@ -23,6 +23,7 @@ parser.add_argument('--latent_dim', dest="latent_dim", type=int, default=3, help
 parser.add_argument('--activation', dest="activation", default="relu", help="activation function")
 parser.add_argument('--depth', dest="depth", default=3, type=int, help="Depth of conv vae model")
 parser.add_argument('--base_filter_num', dest="base_filter_num", default=32, type=int, help="Initial number of filter in the conv model")
+parser.add_argument('--kernel_size', dest="kernel_size", default="3,3", help="Convolution kernel size")
 
 # training
 parser.add_argument('--optimizer', dest="optimizer", type=str, default="adam", help="Optimizer, adam or rmsprop or sgd")
@@ -165,5 +166,8 @@ def getArgs():
 
     args.gaussianParams = map(int, str(args.gaussianParams).split(","))
     assert len(args.gaussianParams) == 3
+
+    args.kernel_size = map(int, str(args.kernel_size).split(","))
+    assert len(args.kernel_size) == 2
 
     return args

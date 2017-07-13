@@ -67,7 +67,7 @@ if not args.use_nat:
     ae.fit(x_train, x_train,
            verbose=args.verbose,
            shuffle=True,
-           nb_epoch=args.nb_epoch,
+           epochs=args.nb_epoch,
            batch_size=args.batch_size,
            callbacks = cbs,
            validation_data=(x_test, x_test))
@@ -101,7 +101,7 @@ else:
         ae_with_nat.fit([x_train,latent[masterPermutation]], x_train,
                         verbose=args.verbose,
                         shuffle=True,
-                        nb_epoch=1,
+                        epochs=1,
                         batch_size=args.batch_size,
                         validation_data=([x_test,latent[:len(x_test)]], x_test))
         for cb in cbs:

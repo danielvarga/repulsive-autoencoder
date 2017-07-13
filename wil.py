@@ -327,7 +327,7 @@ for iter in range(args.nb_epoch):
 
     #images = [x_true_flow.next() for i in range(disc_iters)]
     images = x_true_flow.next()
-    r = ae.fit(images, images, verbose=args.verbose, batch_size=args.batch_size, nb_epoch=1)
+    r = ae.fit(images, images, verbose=args.verbose, batch_size=args.batch_size, epochs=1)
     cov_monitor = r.history['covariance_monitor'][0]
 
     # # update encoder

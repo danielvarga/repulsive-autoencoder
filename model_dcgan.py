@@ -4,7 +4,7 @@ from keras.layers.advanced_activations import LeakyReLU
 from keras.layers.convolutional import Deconvolution2D, Convolution2D
 
 from keras.regularizers import l2
-from keras import initializations
+from keras import initializers
 
 import keras.backend as K
 
@@ -42,13 +42,13 @@ def default_channels(model_type, model_size, last_channel):
 
 
 def normal_init(shape, name=None, dim_ordering="tf"):
-    return initializations.normal(shape, scale=0.02, name=name, dim_ordering=dim_ordering)
+    return initializers.normal(shape, scale=0.02, name=name, dim_ordering=dim_ordering)
 
 def bn_beta_init(shape, name=None):
     return K.zeros(shape)
 
 def bn_gamma_init(shape, name=None):
-    return initializations.normal(shape, scale=0.02, name=name) + K.ones(shape)
+    return initializers.normal(shape, scale=0.02, name=name) + K.ones(shape)
 
 def encoder_layers_wgan(channels, wd, bn_allowed):
     layers=[]
@@ -63,9 +63,9 @@ def encoder_layers_wgan(channels, wd, bn_allowed):
             stride=2
             activation="relu"
             use_bn = bn_allowed
-        layers.append(Convolution2D(channel, kernel, kernel, subsample=(stride, stride), border_mode=border_mode, bias=False, W_regularizer=l2(wd)))
+        layers.append(Convolution2D(channel, (kernel, kernel), strides=(stride, stride), padding=border_mode, use_bias=False, kernel_regularizer=l2(wd)))
         if use_bn: 
-            layers.append(BatchNormalization(mode=2, axis=-1))
+            layers.append(BatchNormalization(axis=-1))
         layers.append(Activation(activation, name="encoder_{}".format(idx)))
     layers.append(Flatten())
     return layers
@@ -120,10 +120,10 @@ def generator_layers_wgan(channels, latent_dim, wd, bn_allowed, batch_size, firs
         else:
             activation="relu"
             use_bn = bn_allowed
-        layers.append(Deconvolution2D(channel, kernel, kernel, output_shape=(batch_size, sizeX, sizeY, channel), bias=False,
-                                      subsample=(stride, stride), border_mode=border_mode, W_regularizer=l2(wd)))
+        layers.append(Deconvolution2D(channel, (kernel, kernel), use_bias=False, #output_shape=(batch_size, sizeX, sizeY, channel)
+                                      strides=(stride, stride), padding=border_mode, kernel_regularizer=l2(wd)))
         if use_bn: 
-            layers.append(BatchNormalization(mode=2, axis=-1))
+            layers.append(BatchNormalization(axis=-1))
         layers.append(Activation(activation, name="generator_{}".format(idx)))
     return layers
 
@@ -227,9 +227,9 @@ def discriminator_layers_wgan(channels, wd, bn_allowed):
             else:
                 use_bn = bn_allowed
             nonlinearity = True
-        layers.append(Convolution2D(channel, kernel, kernel, subsample=(stride, stride), border_mode=border_mode, bias=False, W_regularizer=l2(wd)))
+        layers.append(Convolution2D(channel, (kernel, kernel), strides=(stride, stride), padding=border_mode, use_bias=False, kernel_regularizer=l2(wd)))
         if use_bn:
-            layers.append(BatchNormalization(mode=2, axis=-1))
+            layers.append(BatchNormalization(axis=-1))
         if nonlinearity: 
             layers.append(LeakyReLU(alpha=alpha))
     layers.append(Reshape((1,)))

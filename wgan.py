@@ -248,7 +248,7 @@ for iter in range(1, args.nb_iter+1):
         x_generated = generator.predict(gen_in, batch_size=args.batch_size)
         xs = np.concatenate((x_generated, x_true), axis=0)
         ys = np.concatenate((-1 * np.ones((args.batch_size * disc_iters)), np.ones((args.batch_size * disc_iters))), axis=0).reshape((-1,1)).astype("float32")
-        r = discriminator.fit(xs, ys, verbose=args.verbose, batch_size=args.batch_size, shuffle=True, nb_epoch=1)
+        r = discriminator.fit(xs, ys, verbose=args.verbose, batch_size=args.batch_size, shuffle=True, epochs=1)
         clipper.clip()
         disc_loss = r.history["loss"][0]
     else:

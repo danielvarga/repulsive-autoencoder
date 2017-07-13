@@ -3,7 +3,7 @@ from sklearn.preprocessing import normalize
 import scipy.misc
 from keras import backend as K
 from keras.engine.topology import Layer
-from keras.regularizers import Regularizer, activity_l1
+from keras.regularizers import Regularizer, l1
 
 
 class ArmLayer(Layer):
@@ -36,7 +36,7 @@ class ArmLayer(Layer):
 #        maxEigval = np.max(np.absolute(eigvals))
 #        self.alpha = np.float32(1/maxEigval)
 
-        self.activity_regularizer = activity_l1(self.threshold/nb_features)
+        self.activity_regularizer = l1(self.threshold/nb_features)
         self.activity_regularizer.set_layer(self)
         self.regularizers.append(self.activity_regularizer)
 
@@ -72,7 +72,7 @@ class ArmLayer(Layer):
         y = self.arm(x, domineigval, self.iteration)        
         return y
     
-    def get_output_shape_for(self,input_shape):
+    def compute_output_shape(self,input_shape):
         return(input_shape[0], self.dict_size)
 
 class reconsRegularizer(Regularizer):

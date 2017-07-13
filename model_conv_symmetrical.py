@@ -42,7 +42,7 @@ def discnet_encoder_drop(depth, base_filter_nums, batch_size, use_bias=False, wd
         else:
             act = "relu"
 
-        conv = Convolution2D(nb_filter, nb_row, nb_col, border_mode='same', subsample=subsample, W_regularizer=l2(wd), bias=use_bias,
+        conv = Convolution2D(nb_filter, (nb_row, nb_col), padding='same', strides=subsample, kernel_regularizer=l2(wd), use_bias=use_bias,
                              name="enc_conv_{}_{}".format(depth,i))
         layers.append(conv)
 
@@ -63,15 +63,15 @@ def discnet_decoder_drop(image_size, depth, base_filter_nums, batch_size, use_bi
     for i in reversed(range(layer_count)):
         nb_filter = filter_nums[i] * (2**depth)
         if i < (layer_count - 1):
-            deconv = Convolution2D(nb_filter, 3, 3, subsample=(1,1), border_mode="same", W_regularizer=l2(wd), bias=use_bias,
+            deconv = Convolution2D(nb_filter, (3, 3), strides=(1,1), padding="same", kernel_regularizer=l2(wd), use_bias=use_bias,
                                    name="dec_conv_{}_{}".format(depth,i))
         else:
             if K.image_dim_ordering() == 'tf':
                 output_shape = (batch_size, image_size[0], image_size[1], nb_filter)
             elif K.image_dim_ordering() == 'th':
                 output_shape = (batch_size, nb_filter, image_size[1], image_size[2])
-            deconv = Deconvolution2D(nb_filter, 2, 2, output_shape=output_shape, border_mode='same', subsample=(2,2), 
-                                     W_regularizer=l2(wd), bias=use_bias,
+            deconv = Deconvolution2D(nb_filter, (2, 2), padding='same', strides=(2,2), 
+                                     kernel_regularizer=l2(wd), use_bias=use_bias,
                                      name="dec_conv_{}_{}".format(depth,i))
         layers.append(deconv)
 

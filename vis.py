@@ -2,7 +2,7 @@ import matplotlib
 matplotlib.use('Agg')
 from PIL import Image
 import matplotlib.pyplot as plt
-from emd import emd
+from pyemd import emd
 
 import numpy as np
 import math

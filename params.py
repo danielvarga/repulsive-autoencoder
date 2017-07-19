@@ -58,6 +58,7 @@ parser.add_argument('--generator_wd', dest="generator_wd", type=float, default=0
 parser.add_argument('--decoder_use_bn', dest="decoder_use_bn", type=str2bool, default=False, help="Use batch norm in decoder") # TODO
 parser.add_argument('--use_bn_gen', dest="use_bn_gen", type=str2bool, default=False, help="Use batch normalization in generator")
 parser.add_argument('--dcgan_size', dest="dcgan_size", default="small", help="tiny/small/large")
+parser.add_argument('--gen_dense_layers', dest='gen_dense_layers', default=2, help='Num of intermediate dense layers in generator') 
 
 # discriminator
 parser.add_argument('--discriminator', dest="discriminator", default="dcgan", help="discriminator type (dense/dcgan)")

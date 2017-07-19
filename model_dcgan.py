@@ -70,10 +70,10 @@ def encoder_layers_wgan(channels, wd, bn_allowed):
     layers.append(Flatten())
     return layers
 
-def generator_layers_dense(latent_dim, batch_size, wd, bn_allowed, image_shape):
+def generator_layers_dense(latent_dim, batch_size, wd, bn_allowed, image_shape, layer_num=2):
     layers = []
-    layers.append(Dense(latent_dim, activation="relu"))
-    layers.append(Dense(latent_dim, activation="relu"))
+    for i in range(layer_num):
+        layers.append(Dense(latent_dim, activation="relu"))
     layers.append(Dense(np.prod(image_shape), activation="sigmoid"))
     layers.append(Reshape(image_shape))
     return layers

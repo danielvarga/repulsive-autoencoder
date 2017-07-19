@@ -90,7 +90,8 @@ gen_firstY = args.original_shape[1] // reduction
 if args.generator == "dcgan":
     gen_layers = model_dcgan.generator_layers_wgan(generator_channels, args.latent_dim, args.generator_wd, args.use_bn_gen, args.batch_size, gen_firstX, gen_firstY)
 elif args.generator == "dense":
-    gen_layers = model_dcgan.generator_layers_dense(args.latent_dim, args.batch_size, args.generator_wd, args.use_bn_gen, args.original_shape)
+    gen_layers = model_dcgan.generator_layers_dense(args.latent_dim, args.batch_size, args.generator_wd, 
+            args.use_bn_gen, args.original_shape, args.gen_dense_layers)
 else:
     assert False, "Invalid generator type"
 if args.discriminator =="dcgan":

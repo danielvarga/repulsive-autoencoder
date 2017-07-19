@@ -66,7 +66,7 @@ def build_model(args):
             wd = args.decoder_wd,
             use_bn = args.decoder_use_bn)
     elif args.decoder == "gaussian":
-        decoder = model_gaussian.GaussianDecoder(args, x)
+        decoder = model_gaussian.GaussianDecoder(args)
     elif args.decoder == "strictlyGaussian":
         decoder = model_strictly_gaussian.StrictlyGaussianDecoder(args, x)
     elif args.decoder == "resnet":
@@ -125,6 +125,10 @@ def build_model(args):
     if args.use_nat:
         ae_with_nat.compile(optimizer=optimizer, loss=loss, metrics=metrics)
         modelDict.ae_with_nat = ae_with_nat
+    if args.decoder == "gaussian":
+        generator_mixture_output = decoder_fun_output[3]
+        generator_mixture = Model(generator_input, generator_mixture_output)
+        modelDict.generator_mixture = generator_mixture
 
     return modelDict
 

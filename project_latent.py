@@ -20,7 +20,6 @@ import params
 args = params.getArgs()
 print(args)
 
-
 # limit memory usage
 import keras
 print "Keras version: ", keras.__version__
@@ -31,30 +30,38 @@ if keras.backend._BACKEND == "tensorflow":
     config.gpu_options.per_process_gpu_memory_fraction = args.memory_share
     set_session(tf.Session(config=config))
 
-
-prefix = args.prefix
-batch_size = args.batch_size
-do_latent_variances = args.sampling
-
 import data
 data_object = data.load(args.dataset, color=args.color, shape=args.shape)
 (x_train, x_test) = data_object.get_data(args.trainSize, args.testSize)
 args.original_shape = x_train.shape[1:]
 
-# delete duplicate elements
-#x_train = np.delete(x_train, [36439, 48561], axis=0)
-#x_train = x_train[:(x_train.shape[0] // args.batch_size) * args.batch_size]
+import load_models
+modelDict = load_models.load_autoencoder(args)
+ae = modelDict.ae
+encoder = modelDict.encoder
+encoder_var = modelDict.encoder_var
+generator = modelDict.generator
+
+
+prefix = args.prefix
+batch_size = args.batch_size
+do_latent_variances = args.sampling
 
 import samplers
 sampler = samplers.sampler_factory(args, x_train)
 
-try:
-    generator = vis.loadModel(prefix + "_generator")
-    encoder = vis.loadModel(prefix + "_encoder")
-    if do_latent_variances:
-        encoder_var = vis.loadModel(prefix + "_encoder_var")
-except:
-    ae, encoder, encoder_var, generator = vis.rebuild_models(args)
+visualize_conv_weights = True
+if visualize_conv_weights:
+    i = 0
+    for layer in generator.layers:
+        if layer.__class__.__name__ not in ("Convolution2D"): continue
+        i += 1
+        weights = layer.get_weights()
+        kernel = weights[0]
+        average_contribution = np.mean(np.abs(kernel), axis=(0,1,3))
+        plt.plot(average_contribution)
+        plt.savefig("{}_conv_weight_distribution-{}.png".format(prefix,i))
+        plt.close()
 
 latent_train_mean_file = prefix + "_latent_train_mean.npy"
 latent_train_logvar_file = prefix + "_latent_train_logvar.npy"

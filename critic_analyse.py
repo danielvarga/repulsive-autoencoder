@@ -5,6 +5,7 @@ import numpy as np
 import argparse
 import data
 import vis
+import load_models
 from keras import backend as K
 
 
@@ -22,9 +23,9 @@ discriminator_prefix = args.prefix + "_discriminator"
 generator_prefix = args.prefix + "_generator"
 gendisc_prefix = args.prefix + "_gendisc"
 
-discriminator = vis.loadModel(discriminator_prefix)
-generator = vis.loadModel(generator_prefix)
-gendisc = vis.loadModel(gendisc_prefix)
+discriminator = load_models.loadModel(discriminator_prefix)
+generator = load_models.loadModel(generator_prefix)
+gendisc = load_models.loadModel(gendisc_prefix)
 
 # interpolate between latent points
 latent_samples = np.random.normal(size=(2, args.latent_dim))

@@ -8,7 +8,7 @@ import numpy as np
 import time
 import params
 import vis
-
+import load_models
 
 args = params.getArgs()
 args.clipValue = 0.01 #TODO
@@ -352,8 +352,8 @@ for iter in range(args.nb_epoch):
             vis.plotMVhist(x_train, encoder, args.batch_size, "{}-mvhist.png".format(args.prefix))
             vis.displaySet(x_test[:args.batch_size], args.batch_size, args.batch_size, ae, "%s-test" % args.prefix)
             vis.displaySet(x_train[:args.batch_size], args.batch_size, args.batch_size, ae, "%s-train" % args.prefix)
-            vis.saveModel(disc, args.prefix + "-discriminator")
-            vis.saveModel(encoder, args.prefix + "-encoder")
-            vis.saveModel(generator, args.prefix + "-generator")
-            vis.saveModel(gen_disc, args.prefix + "-gen_disc")
+            load_models.saveModel(disc, args.prefix + "-discriminator")
+            load_models.saveModel(encoder, args.prefix + "-encoder")
+            load_models.saveModel(generator, args.prefix + "-generator")
+            load_models.saveModel(gen_disc, args.prefix + "-gen_disc")
 

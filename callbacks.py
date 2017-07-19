@@ -7,6 +7,7 @@ from keras import backend as K
 from keras.models import Model
 import numpy as np
 import vis
+import load_models
 
 def get_lr_scheduler(nb_epoch, base_lr, lr_decay_schedule):
     assert lr_decay_schedule == sorted(lr_decay_schedule), "lr_decay_schedule has to be monotonically increasing!"
@@ -48,7 +49,7 @@ class SaveGeneratedCallback(Callback):
 class ImageDisplayCallback(Callback):
     def __init__(self, 
                  x_train, x_test, args,
-                 ae, encoder, encoder_var, generator, sampler,
+                 modelDict, sampler,
                  anchor_indices,
                  **kwargs):
         self.x_train = x_train
@@ -57,11 +58,12 @@ class ImageDisplayCallback(Callback):
 
         self.latent_dim = args.latent_dim
         self.batch_size = args.batch_size
-        self.ae = ae
-        self.encoder = encoder
-        self.encoder_var = encoder_var
+        self.modelDict = modelDict
+        self.ae = modelDict.ae
+        self.encoder = modelDict.encoder
+        self.encoder_var = modelDict.encoder_var
         self.is_sampling = args.sampling
-        self.generator = generator
+        self.generator = modelDict.generator
         self.sampler = sampler
         self.anchor_indices = anchor_indices
         self.name = args.callback_prefix
@@ -92,7 +94,8 @@ class ImageDisplayCallback(Callback):
         if self.encoder != self.encoder_var:
             vis.plotMVVM(self.x_train, self.encoder, self.encoder_var, self.batch_size, "{}-mvvm-{}.png".format(self.name, epoch+1))
         vis.plotMVhist(self.x_train, self.encoder, self.batch_size, "{}-mvhist-{}.png".format(self.name, epoch+1))
-        vis.displayGaussian(self.args, self.ae, self.encoder, self.x_train, "{}-dots-{}".format(self.name, epoch+1))
+        vis.displayGaussian(self.args, self.modelDict, self.x_train, "{}-dots-{}".format(self.name, epoch+1))
+        vis.displayGaussianDots(self.args, self.modelDict, self.x_train, "{}-singledots-{}".format(self.name, epoch+1), 15, 20)
 
 #        vis.displayGaussian(self.args, self.ae, self.x_train, "%s-dots-%i" % (self.name, epoch+1))
         # vis.displayRandom(10, self.x_train, self.latent_dim, self.sampler, self.generator, "%s-random-%i" % (self.name, epoch+1), batch_size=self.batch_size)
@@ -150,10 +153,10 @@ class SaveModelsCallback(Callback):
 
     def on_epoch_end(self, epoch, logs):        
         if (epoch+1) % self.frequency != 0: return        
-        vis.saveModel(self.ae, self.prefix + "_model")
-        vis.saveModel(self.encoder, self.prefix + "_encoder")
-        vis.saveModel(self.encoder_var, self.prefix + "_encoder_var")
-        vis.saveModel(self.generator, self.prefix + "_generator")
+        load_models.saveModel(self.ae, self.prefix + "_model")
+        load_models.saveModel(self.encoder, self.prefix + "_encoder")
+        load_models.saveModel(self.encoder_var, self.prefix + "_encoder_var")
+        load_models.saveModel(self.generator, self.prefix + "_generator")
 
 
 class FlushCallback(Callback):

@@ -2,6 +2,8 @@ import numpy as np
 from keras.layers import Dense, Flatten, Activation, Reshape, Input, BatchNormalization
 from keras.regularizers import l2
 
+import net_blocks
+
 class Encoder(object):
     pass
 
@@ -9,16 +11,17 @@ class Decoder(object):
     pass
 
 class DenseEncoder(Encoder):
-    def __init__(self, intermediate_dims, activation, wd):
+    def __init__(self, intermediate_dims, activation, wd, use_bn):
         self.intermediate_dims = intermediate_dims
         self.activation = activation
         self.wd = wd
+        self.use_bn = use_bn
 
     def __call__(self, x):
         h = Flatten()(x)
-        for intermediate_dim in self.intermediate_dims:
-            h = Dense(intermediate_dim, W_regularizer=l2(self.wd))(h)
-            h = Activation(self.activation)(h)
+        layers = net_blocks.dense_block(self.intermediate_dims, self.wd, self.use_bn, self.activation)
+        for layer in layers:
+            h = layer(h)
         return h
 
 def decoder_layers(intermediate_dims, original_shape, activation, wd, use_bn):

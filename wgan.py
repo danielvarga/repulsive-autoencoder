@@ -19,6 +19,7 @@ import time
 import params
 import data
 import vis
+import load_models
 import model_dcgan
 
 import callbacks
@@ -158,9 +159,9 @@ if args.modelPath is None:
     (generator, discriminator, gen_disc, clipper, generated_saver) = build_networks(gen_layers, disc_layers)
 else:
     print "Loading models from " +args.modelPath
-    generator = vis.loadModel(args.modelPath + "_generator")
-    discriminator = vis.loadModel(args.modelPath + "_discriminator")
-    gen_disc = vis.loadModel(args.modelPath + "_gendisc")
+    generator = load_models.loadModel(args.modelPath + "_generator")
+    discriminator = load_models.loadModel(args.modelPath + "_discriminator")
+    gen_disc = load_models.loadModel(args.modelPath + "_gendisc")
     make_trainable(discriminator, True)
     discriminator.compile(optimizer=optimizer_d, loss=D_loss, metrics=[D_acc])
     generator.compile(optimizer=optimizer_g, loss="mse")
@@ -278,19 +279,19 @@ for iter in range(1, args.nb_iter+1):
         latent_samples = np.random.normal(size=(2, args.latent_dim))
         vis.interpBetween(latent_samples[0], latent_samples[1], generator, args.batch_size, args.prefix + "_interpBetween-{}".format(iter))
         vis.interpBetween(latent_samples[0], latent_samples[1], generator, args.batch_size, args.prefix + "_interpBetween")
-        vis.saveModel(discriminator, args.prefix + "_discriminator")
-        vis.saveModel(generator, args.prefix + "_generator")
-        vis.saveModel(gen_disc, args.prefix + "_gendisc")
+        load_models.saveModel(discriminator, args.prefix + "_discriminator")
+        load_models.saveModel(generator, args.prefix + "_generator")
+        load_models.saveModel(gen_disc, args.prefix + "_gendisc")
     if iter % 500 == 0:        
-        vis.saveModel(discriminator, args.prefix + "_discriminator_{}".format(iter))
-        vis.saveModel(generator, args.prefix + "_generator_{}".format(iter))
-        vis.saveModel(gen_disc, args.prefix + "_gendisc_{}".format(iter))
+        load_models.saveModel(discriminator, args.prefix + "_discriminator_{}".format(iter))
+        load_models.saveModel(generator, args.prefix + "_generator_{}".format(iter))
+        load_models.saveModel(gen_disc, args.prefix + "_gendisc_{}".format(iter))
         generated_saver.save(iter)
 
     if restart_disc(iter): # restart discriminator
         print "Restarting discriminator!!!!!!!!!"
         disc_offset = iter
-        vis.saveModel(discriminator, args.prefix + "_discriminator_restarted_{}".format(iter))
+        load_models.saveModel(discriminator, args.prefix + "_discriminator_restarted_{}".format(iter))
         if args.discriminator =="dcgan":
             disc_layers = model_dcgan.discriminator_layers_wgan(discriminator_channels, wd=args.discriminator_wd, bn_allowed=args.use_bn_disc)
         elif args.discriminator == "dense":

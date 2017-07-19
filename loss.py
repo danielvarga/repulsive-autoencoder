@@ -28,9 +28,9 @@ def loss_factory(model, encoder, loss_features, args):
         loss = original_dim * objectives.mean_absolute_error(x, x_decoded)
         return K.mean(loss)
 
-    def arm_loss(x, x_decoded):
-        loss = original_dim * objectives.mean_absolute_error(loss_features.sparse_input, loss_features.sparse_output)
-        return K.mean(loss)
+    # def arm_loss(x, x_decoded):
+    #     loss = original_dim * objectives.mean_absolute_error(loss_features.sparse_input, loss_features.sparse_output)
+    #     return K.mean(loss)
 
     def size_loss(x, x_decoded): # pushing the means towards the origo
         loss = 0.5 * K.sum(K.square(loss_features.z_mean), axis=-1)

@@ -68,7 +68,7 @@ class MixtureLayer(Layer):
             xve = add_two_dims(xv)
             yve = add_two_dims(yv)
         if self.learn_density:
-            densities = inp[:, :, :, self.xv_index]
+            densities = inp[:, :, :, self.densities_index]
             de  = add_two_dims(densities)
         else:
             print "FIXED DENSITY FOR MIXTURE GAUSSIANS!"

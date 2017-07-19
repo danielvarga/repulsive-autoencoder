@@ -16,6 +16,7 @@ from keras import backend as K
 from keras.layers import Input
 
 import vis
+import load_models
 def image_data_format():
     return "channels_last"
 K.image_data_format = image_data_format
@@ -35,8 +36,8 @@ if image_path is not None:
     image_given = True
     batch_size = 1
 else:
-    generator = vis.loadModel(generator_prefix)
-    gendisc = vis.loadModel(gendisc_prefix)
+    generator = load_models.loadModel(generator_prefix)
+    gendisc = load_models.loadModel(gendisc_prefix)
     batch_size = K.int_shape(generator.input)[0]
     latent_dim = K.int_shape(generator.input)[1]
     image_given = False
@@ -108,12 +109,12 @@ else:
 
 
 if image_given:
-    model = vis.loadModel(discriminator_prefix)
+    model = load_models.loadModel(discriminator_prefix)
     input_batch_size = (1,) + img_size
     dream = Input(batch_shape=input_batch_size)
     judgement = model(dream)
 else:
-    model = vis.loadModel(gendisc_prefix)
+    model = load_models.loadModel(gendisc_prefix)
     input_batch_size = (batch_size, latent_dim)
     dream = Input(batch_shape=input_batch_size)
     judgement = K.mean(model(dream))

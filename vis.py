@@ -2,7 +2,7 @@ import matplotlib
 matplotlib.use('Agg')
 from PIL import Image
 import matplotlib.pyplot as plt
-from emd import emd
+from pyemd import emd
 
 import numpy as np
 import math
@@ -357,25 +357,40 @@ def plot2Dprojections(dataset, indices, name):
     plt.savefig(name)
     plt.close()
 
-def displayGaussian(args, ae, encoder, x_train, name):
-    return # todo
-    if args.decoder != "gaussian": return
-    mixture_input = encoder.predict(x_train, batch_size=args.batch_size)
-    mixture_output = args.mixture_model.predict(mixture_input, batch_size=args.batch_size)
+def displayGaussian(args, modelDict, x_train, name):
+    if not "generator_mixture" in modelDict.keys(): return
+    mixture_input = modelDict.encoder.predict(x_train[:args.batch_size], batch_size=args.batch_size)
+    mixture_output = modelDict.generator_mixture.predict(mixture_input, batch_size=args.batch_size)
     mixture_output = np.expand_dims(np.sum(mixture_output, axis=3),3)
     mixture_output -= np.min(mixture_output)
     mixture_output /= np.max(mixture_output)
 
-    if args.original_shape[2] == 1:
-        data_output = ae.predict(x_train, batch_size=args.batch_size)
-        output = np.concatenate([mixture_output, mixture_output, data_output], axis=3)
-    else:
-        output = np.concatenate([mixture_output, mixture_output, mixture_output], axis=3)
-    plotImages(output[:100], 10, 10, name)
-#    empty_channel = np.zeros(mixture_output.shape)
-#    output2 = np.concatenate([mixture_output, mixture_output, empty_channel], axis=3)
-#    plotImages(output2[:100], 10, 10, "%s-mnist2" % args.prefix)
+    output = np.concatenate([mixture_output, mixture_output, mixture_output], axis=3)
+    output = mergeSets((output, x_train[:args.batch_size]))
+    plotImages(output, 20, args.batch_size // 10, "{}".format(name))
 
+def displayGaussianDots(args, modelDict, x_train, name, dots=20, images=20):
+    if not "generator_mixture" in modelDict.keys(): return
+    assert args.batch_size >= images
+    data_batch = x_train[:args.batch_size]
+    latent = modelDict.encoder.predict(data_batch, batch_size=args.batch_size)
+    mixture_output = modelDict.generator_mixture.predict(latent, batch_size=args.batch_size)
+    recons = modelDict.generator.predict(latent, batch_size=args.batch_size)
+
+    rows = [data_batch[:images]]
+    for i in range(dots):
+        r = recons.copy()
+        r[:,:,:,0] += mixture_output[:,:,:,i]
+        current_dot = np.expand_dims(mixture_output[:,:,:,i],3)
+        current_dot -= np.min(current_dot)
+        current_dot /= np.max(current_dot)
+        current_dot = np.concatenate([current_dot, current_dot, current_dot], axis=3)
+        rows.append(r[:images])
+        rows.append(current_dot[:images])
+    rows = np.concatenate(rows, axis=0)
+    plotImages(rows, images, 2*dots + 1, name)
+
+    
 
 """
 def edgeDetect(images):
@@ -389,45 +404,6 @@ def edgeDetect(images):
     edges = horizontalEdges + verticalEdges + diagonalEdges
     return edges
 """
-
-
-
-# return (autoencoder, encoder, encoder_var, generator)
-def rebuild_models(args):
-    models = model.build_model(args)
-    model_names = "model", "encoder", "encoder_var", "generator"
-
-    for i in range(len(models)):
-        curr_model = models[i]
-        curr_model_name = model_names[i]
-        weightFile = args.prefix + "_" + curr_model_name + ".h5"
-        curr_model.summary()
-        print "Loading weights from file: ", weightFile
-        curr_model.load_weights(weightFile)
-    return models
-
-def saveModel(mod, filePrefix):
-    weightFile = filePrefix + ".h5"
-    mod.save_weights(weightFile)
-    jsonFile = filePrefix + ".json"
-    with open(filePrefix + ".json", "w") as json_file:
-        try:
-            json_file.write(mod.to_json())
-        except:
-            print "Failed saving json file {}.json, you have to load this file using vis.rebuild_models(args)".format(filePrefix)
-        else:
-            print "Saved model to files {}, {}".format(jsonFile, weightFile)
-
-def loadModel(filePrefix):
-    jsonFile = filePrefix + ".json"
-    weightFile = filePrefix + ".h5"
-    jFile = open(jsonFile, 'r')
-    loaded_model_json = jFile.read()
-    jFile.close()
-    mod = model_from_json(loaded_model_json)
-    mod.load_weights(weightFile)
-    print "Loaded model from files {}, {}".format(jsonFile, weightFile)
-    return mod
 
 
 def cumulative_view(projected_z, title, name):

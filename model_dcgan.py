@@ -10,6 +10,8 @@ import keras.backend as K
 
 from keras.engine.topology import Layer
 
+import net_blocks
+
 kernel = 4 # do not change this or things might fail
 
 def default_channels(model_type, model_size, last_channel):
@@ -70,11 +72,14 @@ def encoder_layers_wgan(channels, wd, bn_allowed):
     layers.append(Flatten())
     return layers
 
-def generator_layers_dense(latent_dim, batch_size, wd, bn_allowed, image_shape, layer_num=2):
+def generator_layers_dense(latent_dim, batch_size, wd, bn_allowed, image_shape, intermediate_dims):
     layers = []
-    for i in range(layer_num):
-        layers.append(Dense(latent_dim, activation="relu"))
-    layers.append(Dense(np.prod(image_shape), activation="sigmoid"))
+    for id,i in enumerate(intermediate_dims):
+        layers.append(Dense(i, activation="relu"))
+	if bn_allowed: #and id != len(intermediate_dims)-1:
+		layers.append(BatchNormalization())
+    layers.append(Dense(np.prod(image_shape), activation="linear"))
+    #layers = net_blocks.dense_block(intermediate_dims, wd, bn_allowed, activation='relu')
     layers.append(Reshape(image_shape))
     return layers
 

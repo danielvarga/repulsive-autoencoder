@@ -91,8 +91,11 @@ gen_firstY = args.original_shape[1] // reduction
 if args.generator == "dcgan":
     gen_layers = model_dcgan.generator_layers_wgan(generator_channels, args.latent_dim, args.generator_wd, args.use_bn_gen, args.batch_size, gen_firstX, gen_firstY)
 elif args.generator == "dense":
+    #if len(args.intermediate_dims) != args.gen_dense_layers:
+    #    args.gen_dense_layers = len(args.intermediate_dims)  
+    print (args.intermediate_dims)
     gen_layers = model_dcgan.generator_layers_dense(args.latent_dim, args.batch_size, args.generator_wd, 
-            args.use_bn_gen, args.original_shape, args.gen_dense_layers)
+            args.use_bn_gen, args.original_shape, args.intermediate_dims)
 else:
     assert False, "Invalid generator type"
 if args.discriminator =="dcgan":
@@ -271,6 +274,14 @@ for iter in range(1, args.nb_iter+1):
     gen_loss = gen_disc.train_on_batch(gen_in, y_true)
 
     print "Iter: {}, Discriminator: {}, Generator: {}".format(iter, disc_loss, gen_loss)
+
+    # syn-constant-uniform specific: print average variance of images to monitor the spottedness of the images
+    if False and args.dataset == 'syn-constant-uniform':
+        vr = np.average( np.var(x_generated, axis=(1,2)) )
+        with open(args.prefix + '_vars.txt', 'a') as f:
+            f.write(str(vr) + '\n')
+        #print ( np.var(x_generated, axis=(1,2)).shape )
+
     if iter % args.frequency == 0:
         currTime = time.clock()
         display_elapsed(startTime, currTime)
@@ -282,7 +293,7 @@ for iter in range(1, args.nb_iter+1):
         load_models.saveModel(discriminator, args.prefix + "_discriminator")
         load_models.saveModel(generator, args.prefix + "_generator")
         load_models.saveModel(gen_disc, args.prefix + "_gendisc")
-    if iter % 500 == 0:        
+    if iter % (args.nb_iter // 10) == 0:        
         load_models.saveModel(discriminator, args.prefix + "_discriminator_{}".format(iter))
         load_models.saveModel(generator, args.prefix + "_generator_{}".format(iter))
         load_models.saveModel(gen_disc, args.prefix + "_gendisc_{}".format(iter))

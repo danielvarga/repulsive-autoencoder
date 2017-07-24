@@ -53,7 +53,7 @@ import callbacks
 cbs = [callbacks.FlushCallback()]
 get_lr = callbacks.get_lr_scheduler(args.nb_epoch, args.lr, args.lr_decay_schedule)
 cbs.append(LearningRateScheduler(get_lr))
-# cbs.append(callbacks.SaveGeneratedCallback(generator, sampler, args.prefix, args.batch_size, 20, args.latent_dim))
+cbs.append(callbacks.SaveGeneratedCallback(generator, sampler, args.prefix, args.batch_size, 50, args.latent_dim))
 cbs.append(callbacks.ImageDisplayCallback(x_train, x_test, args, modelDict, sampler, data_object.anchor_indices))
 cbs.append(callbacks.SaveModelsCallback(ae, encoder, encoder_var, generator, args.prefix, args.frequency))
 for schedule in args.weight_schedules:

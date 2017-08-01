@@ -378,6 +378,8 @@ def displayGaussianDots(args, modelDict, x_train, name, dots=20, images=20):
     recons = modelDict.generator.predict(latent, batch_size=args.batch_size)
 
     rows = [data_batch[:images]]
+    if args.gaussianParams[0] < dots:
+        dots = args.gaussianParams[0]
     for i in range(dots):
         r = recons.copy()
         r[:,:,:,0] += mixture_output[:,:,:,i]

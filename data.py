@@ -30,7 +30,7 @@ else:
 #    synthetic
 # guaranteed methods
 #    get_data(trainSize, testSize): -> (x_train, x_test)
-#    get_train_flow(batch_size): -> object with next() method to give batch_size number of samples
+#    get_train_flow(batch_size, augmentation_ratio): -> object with next() method to give batch_size number of samples
 #    get_nearest_samples(generated_samples)
 # guaranteed methods for synthetic subclasses
 #    get_uniform_data(): -> x_train
@@ -112,7 +112,7 @@ class Dataset(object):
         self.anchor_indices = [14, 6, 0] # this can be overridden for each dataset
     def get_data(self, trainSize, testSize):
         assert False, "Not Yet Implemented"
-    def get_train_flow(self, batch_size):
+    def get_train_flow(self, batch_size, augmentation_ratio=0):
         assert False, "Not Yet Implemented"
     def get_nearest_samples(self, generated_samples):
         trainSize = generated_samples.shape[0]
@@ -139,10 +139,13 @@ class Dataset(object):
 class Dataset_real(Dataset):
     def __init__(self, name, shape, color=False):
         super(Dataset_real, self).__init__(name, shape, color=color, finite=False, synthetic=False)
-    def get_train_flow(self, batch_size):
-        imageGenerator = ImageDataGenerator()
+    def get_train_flow(self, batch_size, augmentation_ratio=0):
+        imageGenerator = ImageDataGenerator(
+            width_shift_range=augmentation_ratio,
+            height_shift_range=augmentation_ratio
+        )
         try:
-            flow_object = imageGenerator.flow(self.x_train, batch_size = batch_size)
+            flow_object = imageGenerator.flow(self.x_train, self.x_train, batch_size = batch_size)
         except AttributeError:
             assert False, "You need to call get_data to instantiate self.x_train"
         return flow_object
@@ -328,7 +331,8 @@ class Dataset_syn_finite(Dataset_synthetic):
         return (self.x_train, self.x_test)
     def get_uniform_data(self):
         return self.finite_set
-    def get_train_flow(self, batch_size):
+    def get_train_flow(self, batch_size, augmentation_ratio=0):
+        assert augmentation_ratio == 0, "Augmentation_ratio for synthetic datasets should be 0!"
         class FiniteGenerator(object):
             def __init__(self, finite_set, batch_size):
                 self.finite_set = finite_set
@@ -409,7 +413,8 @@ class Dataset_syn_infinite(Dataset_synthetic):
         x_train = self.generate_samples(trainSize)
         x_test = self.generate_samples(testSize)
         return (x_train, x_test)
-    def get_train_flow(self, batch_size):
+    def get_train_flow(self, batch_size, augmentation_ratio=0):
+        assert augmentation_ratio == 0, "Augmentation_ratio for synthetic datasets should be 0!"
         class Generator(object):
             def __init__(self, batch_size, generator):
                 self.generator = generator

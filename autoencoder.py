@@ -64,13 +64,25 @@ if args.monitor_frequency > 0:
     cbs.append(callbacks.CollectActivationCallback(args.nb_epoch, args.monitor_frequency, args.batch_size, batch_per_epoch, ae, x_train[:5000], x_test[:5000], args.layers_to_monitor, "{}_activation_history".format(args.prefix)))
 
 if not args.use_nat:
-    ae.fit(x_train, x_train,
-           verbose=args.verbose,
-           shuffle=True,
-           epochs=args.nb_epoch,
-           batch_size=args.batch_size,
-           callbacks = cbs,
-           validation_data=(x_test, x_test))
+    if args.augmentation_ratio > 0:
+        x_train_flow = data_object.get_train_flow(args.batch_size, args.augmentation_ratio)
+        d = x_train_flow.next()
+        ae.fit_generator(x_train_flow,
+                         verbose=args.verbose,
+                         steps_per_epoch=len(x_train) / args.batch_size,
+                         epochs=args.nb_epoch,
+                         callbacks = cbs,
+                         validation_data=(x_test, x_test)
+        )
+    else:
+        ae.fit(x_train, x_train,
+               verbose=args.verbose,
+               shuffle=True,
+               epochs=args.nb_epoch,
+               batch_size=args.batch_size,
+               callbacks = cbs,
+               validation_data=(x_test, x_test)
+        )
 
 else:
     import kohonen

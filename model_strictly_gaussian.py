@@ -70,6 +70,7 @@ class StrictlyGaussianDecoder(Decoder):
             
             layers = []
             layers.append(Reshape([self.main_channel, self.dots, self.gaussian_params]))
+            layers.append(Activation("sigmoid"))
             layers.append(mixture.MixtureLayer(self.args.original_shape[0], self.args.original_shape[1], learn_variance=learn_variance, learn_density=learn_density, variance=args.gaussianVariance, maxpooling=args.gaussianMaxpooling, name="mixtureLayer"))
 
             for layer in layers:

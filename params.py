@@ -44,7 +44,7 @@ parser.add_argument('--color', dest="color", default=True, type=str2bool, help="
 parser.add_argument('--trainSize', dest="trainSize", type=int, default=0, help="Train set size (0 means default size)")
 parser.add_argument('--testSize', dest="testSize", type=int, default=0, help="Test set size (0 means default size)")
 parser.add_argument('--shape', dest="shape", default="64,64", help="image shape")
-parser.add_argument('--augmentation_ratio', dest="augmentation_ration", default=0, type=float, help="ratio of horizontal and vertical shift augmentation")
+parser.add_argument('--augmentation_ratio', dest="augmentation_ratio", default=0, type=float, help="ratio of horizontal and vertical shift augmentation")
 
 
 # encoder

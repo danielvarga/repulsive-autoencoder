@@ -21,7 +21,6 @@ def get_param_count(learn_variance, learn_density):
 
 class MixtureLayer(Layer):
     def __init__(self, sizeX, sizeY, learn_variance=True, learn_density=False, variance=1.0/200, maxpooling=True, **kwargs):
-        self.output_dim = 2
         self.sizeX = sizeX
         self.sizeY = sizeY
         self.learn_variance = learn_variance

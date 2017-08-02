@@ -15,7 +15,7 @@ def str2bool(v):
 parser = argparse.ArgumentParser()
 
 # architecture
-parser.add_argument('--spherical', dest="spherical", type=str2bool, default=True, help="spherical (True/False)")
+parser.add_argument('--spherical', dest="spherical", type=str2bool, default=None, help="spherical (True/False)")
 parser.add_argument('--sampling', dest="sampling", type=str2bool, default=False, help="use sampling")
 parser.add_argument('--sampling_std', dest="sampling_std", type=float, default=-1.0, help="sampling std, if < 0, then we learn std")
 parser.add_argument('--intermediate_dims', dest="intermediate_dims", default="1000,1000", help="Intermediate dimensions")
@@ -171,5 +171,7 @@ def getArgs():
 
     args.kernel_size = map(int, str(args.kernel_size).split(","))
     assert len(args.kernel_size) == 2
+
+    assert args.spherical is not None
 
     return args

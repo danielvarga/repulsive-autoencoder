@@ -80,11 +80,12 @@ class GaussianDecoder(Decoder):
             recons_main = mainSplitter(recons_output)
             generator_main = mainSplitter(generator_output)
 
+            layers = []
             # add intermediate dense layers
-            layers = net_blocks.dense_block(reversed(args.intermediate_dims), args.decoder_wd, args.decoder_use_bn, args.activation)
+#            layers = net_blocks.dense_block(reversed(args.intermediate_dims), args.decoder_wd, args.decoder_use_bn, args.activation)
 
             # the last layer ensures the feature size aligns with gaussianParams
-            layers.append(Dense(self.main_params, kernel_regularizer=l2(args.decoder_wd)))
+#            layers.append(Dense(self.main_params, kernel_regularizer=l2(args.decoder_wd)))
             layers.append(Reshape([self.main_channel, self.dots, self.gaussian_params]))
             layers.append(Activation("sigmoid"))
             layers.append(mixture.MixtureLayer(self.ys[args.depth], self.xs[args.depth], learn_variance=learn_variance, learn_density=learn_density, variance=args.gaussianVariance, maxpooling=args.gaussianMaxpooling, name="mixtureLayer"))
@@ -133,7 +134,6 @@ class GaussianDecoder(Decoder):
         
         output_shape = K.int_shape(recons_output)[1:]
         assert output_shape == self.args.original_shape, "Expected shape {}, got shape {}".format(self.args.original_shape, output_shape)
-
         return generator_input, recons_output, generator_output, generator_main
 
 def add_noise(x, magnitude, batch_size):

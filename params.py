@@ -69,6 +69,8 @@ parser.add_argument('--discriminator_wd', dest="discriminator_wd", type=float, d
 parser.add_argument('--clipValue', dest="clipValue", type=float, default=0.01, help="Critic clipping range is (-clipValue, clipValue)")
 parser.add_argument('--use_bn_disc', dest="use_bn_disc", type=str2bool, default=False, help="Use batch normalization in discriminator")
 parser.add_argument('--disc_size', dest="disc_size", default="large", help="tiny/small/large")
+parser.add_argument('--gradient_penalty', dest="gradient_penalty", default="no", help="no/grad/grad_orig")
+
 
 # NAT
 parser.add_argument('--ornstein', dest="ornstein", default="1.0", type=float, help="Ornstein process coefficient (1 means no movement")

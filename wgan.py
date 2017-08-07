@@ -67,7 +67,7 @@ def grad_loss(y_true, y_pred):
     gradnorms = K.sqrt(K.sum(K.square(grads), axis=tensor_axes))
     k1 = K.constant(1.0)
     grad_penalty = K.sum(K.square(K.maximum(k1, K.abs(gradnorms)) - k1))
-    return grad_penalty
+    return 100 * grad_penalty
 
 def grad_loss_orig(y_true, y_pred):
     grads = K.gradients(y_pred, disc_input)
@@ -75,7 +75,7 @@ def grad_loss_orig(y_true, y_pred):
     tensor_axes = range(1, K.ndim(grads))
     gradnorms = K.sqrt(K.sum(K.square(grads), axis=tensor_axes))
     grad_penalty = K.sum(K.square(K.abs(gradnorms) - 1))
-    return grad_penalty
+    return 100 * grad_penalty
 
 
 ############################################
@@ -259,7 +259,7 @@ for iter in range(1, args.nb_iter+1):
             if args.gradient_penalty != "no":
                 for i in range(10):
                     weights = np.random.uniform(size=x_true.shape)
-                    interp_points = x_true * weights + x_generated * (1-weights)
+                    interp_points = x_true * weights + np.random.permutation(x_generated) * (1-weights)
                     grad_loss_curr = discriminator_grad.train_on_batch(interp_points, y_true)
             else:
                 grad_loss_curr = 0

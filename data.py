@@ -340,7 +340,8 @@ class Dataset_syn_finite(Dataset_synthetic):
                 self.index_range = range(len(self.finite_set))
             def next(self):
                 selected_indices = np.random.choice(self.index_range, self.batch_size)
-                return self.finite_set[selected_indices]
+                result = self.finite_set[selected_indices]
+                return [result, result]
         return FiniteGenerator(self.finite_set, batch_size)
     def get_nearest_samples(self, generated_samples):
         x_true = self.finite_set(self.finite_set.shape[0], -1)
@@ -420,7 +421,8 @@ class Dataset_syn_infinite(Dataset_synthetic):
                 self.generator = generator
                 self.batch_size = batch_size
             def next(self):
-                return self.generator(batch_size)
+                result = self.generator(batch_size)
+                return [result, result]
         return Generator(batch_size, self.generate_samples)
     def get_uniform_data(self):
         samples = self.get_uniform_samples()
@@ -523,7 +525,6 @@ class Dataset_syn_constant_normal(Dataset_syn_infinite):
         invert_sorter = np.argsort(sorter)
         return true_params[invert_sorter]
 
-        
 
 def resize_bedroom(sizeX, sizeY, count, outputFile):
     directory = "/home/zombori/datasets/bedroom/data"

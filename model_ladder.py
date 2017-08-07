@@ -24,7 +24,7 @@ class LadderDenseEncoder(Encoder):
         z_means = []
         z_log_vars = []
         for intermediate_dim in args.intermediate_dims:
-            h = Dense(intermediate_dim, W_regularizer=l2(args.encoder_wd))(h)
+            h = Dense(intermediate_dim, kernel_regularizer=l2(args.encoder_wd))(h)
             h = Activation(args.activation)(h)
             z, z_mean, z_log_var = model.add_sampling(h, args.sampling, args.sampling_std, args.batch_size, self.latent_by_layer, args.encoder_wd)
             zs.append(z)
@@ -60,14 +60,14 @@ class LadderDenseDecoder(Decoder):
                 recons_output = Merge(mode='concat')([recons_output, recons_input_portion])
                 generator_output = Merge(mode='concat')([generator_output, generator_input_portion])
                 
-            layer = Dense(intermediate_dim, W_regularizer=l2(args.decoder_wd))
+            layer = Dense(intermediate_dim, kernel_regularizer=l2(args.decoder_wd))
             recons_output = layer(recons_output)
             recons_output = Activation(args.activation)(recons_output)
             generator_output = layer(generator_output)
             generator_output = Activation(args.activation)(generator_output)
 
         decoder_top = []
-        decoder_top.append(Dense(np.prod(args.original_shape), activation='sigmoid', name="decoder_top", W_regularizer=l2(args.decoder_wd)))
+        decoder_top.append(Dense(np.prod(args.original_shape), activation='sigmoid', name="decoder_top", kernel_regularizer=l2(args.decoder_wd)))
         decoder_top.append(Reshape(args.original_shape))
         for layer in decoder_top:
             recons_output = layer(recons_output)

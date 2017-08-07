@@ -277,13 +277,13 @@ for epoch in range(1, args.nb_iter+1):
         # perform gradient descent to make matched images more similar
         if epoch > args.no_update_epochs:
             time_sgd -= time.clock()
-            gen_loss = generator.fit(latentMidibatch, dataMidibatch, nb_epoch=1, batch_size=args.batch_size, verbose=0)
+            gen_loss = generator.fit(latentMidibatch, dataMidibatch, epochs=1, batch_size=args.batch_size, verbose=0)
             time_sgd += time.clock()
             if args.use_augmentation:
                 offsets = samplers.gaussian_sampler(args.min_items_in_matching, transform_images.transformation_types)
                 dataMidibatch = transform_images.shift(dataMidibatch, offsets)
                 latentMidibatch[:,:transform_images.transformation_types] = offsets
-                gen_loss = generator.fit(latentMidibatch, dataMidibatch, nb_epoch=1, batch_size=args.batch_size, verbose=0)
+                gen_loss = generator.fit(latentMidibatch, dataMidibatch, epochs=1, batch_size=args.batch_size, verbose=0)
 
     epochDistances = np.array(epochDistances)
     epochSquaredDistances = np.array(epochSquaredDistances)

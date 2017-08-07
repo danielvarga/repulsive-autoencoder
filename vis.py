@@ -365,7 +365,10 @@ def displayGaussian(args, modelDict, x_train, name):
     mixture_output -= np.min(mixture_output)
     mixture_output /= np.max(mixture_output)
 
-    output = np.concatenate([mixture_output, mixture_output, mixture_output], axis=3)
+    if args.original_shape[2] == 3:
+        output = np.concatenate([mixture_output, mixture_output, mixture_output], axis=3)
+    else:
+        output = mixture_output
     output = mergeSets((output, x_train[:args.batch_size]))
     plotImages(output, 20, args.batch_size // 10, "{}".format(name))
 
@@ -378,13 +381,16 @@ def displayGaussianDots(args, modelDict, x_train, name, dots=20, images=20):
     recons = modelDict.generator.predict(latent, batch_size=args.batch_size)
 
     rows = [data_batch[:images]]
+    if args.gaussianParams[0] < dots:
+        dots = args.gaussianParams[0]
     for i in range(dots):
         r = recons.copy()
         r[:,:,:,0] += mixture_output[:,:,:,i]
         current_dot = np.expand_dims(mixture_output[:,:,:,i],3)
         current_dot -= np.min(current_dot)
         current_dot /= np.max(current_dot)
-        current_dot = np.concatenate([current_dot, current_dot, current_dot], axis=3)
+        if args.original_shape[2] == 3:
+            current_dot = np.concatenate([current_dot, current_dot, current_dot], axis=3)
         rows.append(r[:images])
         rows.append(current_dot[:images])
     rows = np.concatenate(rows, axis=0)

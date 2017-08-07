@@ -305,7 +305,7 @@ def test_loss():
     for i in range(megaepoch_count):
         print "================"
         data = sampler(N, input_dim)
-        model.fit(data, data, nb_epoch=epoch_count, batch_size=batch_size, verbose=2)
+        model.fit(data, data, epochs=epoch_count, batch_size=batch_size, verbose=2)
         data = sampler(N, input_dim)
         z = encoder.predict(data, batch_size=batch_size)
         output = model.predict(data, batch_size=batch_size)

@@ -51,12 +51,12 @@ def residual_drop(x, input_shape, output_shape, strides=(1, 1), weight_decay=0.0
 
 
     nb_filter = output_shape[0]
-    conv = Convolution2D(nb_filter, 3, 3, subsample=strides,
-                         border_mode="same", W_regularizer=l2(weight_decay))(x)
+    conv = Convolution2D(nb_filter, (3, 3), strides=strides,
+                         padding="same", kernel_regularizer=l2(weight_decay))(x)
     conv = BatchNormalization(axis=feat_axis)(conv)
     conv = Activation("relu")(conv)
-    conv = Convolution2D(nb_filter, 3, 3,
-                         border_mode="same", W_regularizer=l2(weight_decay))(conv)
+    conv = Convolution2D(nb_filter, (3, 3),
+                         padding="same", kernel_regularizer=l2(weight_decay))(conv)
     conv = BatchNormalization(axis=feat_axis)(conv)
 
     if strides[0] >= 2:
@@ -98,23 +98,21 @@ def residual_drop_deconv(x, input_shape, output_shape, strides=(1, 1), weight_de
     nb_filter = output_shape[0]
     nb_conv = 3
 
-    conv = Convolution2D(nb_filter, 3, 3, subsample=strides,
-                         border_mode="same", W_regularizer=l2(weight_decay))(x)
-    decoder_deconv_1 = Deconvolution2D(nb_filters, nb_conv, nb_conv,
-                                           output_shape,
-                                           border_mode='same',
-                                           subsample=strides,
+    conv = Convolution2D(nb_filter, (3, 3), strides=strides,
+                         padding="same", kernel_regularizer=l2(weight_decay))(x)
+    decoder_deconv_1 = Deconvolution2D(nb_filters, (nb_conv, nb_conv),
+                                           padding='same',
+                                           strides=strides,
                                            activation='linear',
-                                           W_regularizer=l2(weight_decay))
+                                           kernel_regularizer=l2(weight_decay))
  
     conv = BatchNormalization(axis=feat_axis)(conv)
     conv = Activation("relu")(conv)
-    decoder_deconv_1 = Deconvolution2D(nb_filters, nb_conv, nb_conv,
-                                           output_shape,
-                                           border_mode='same',
-                                           subsample=strides,
+    decoder_deconv_1 = Deconvolution2D(nb_filters, (nb_conv, nb_conv),
+                                           padding='same',
+                                           strides=strides,
                                            activation='linear',
-                                           W_regularizer=l2(weight_decay))
+                                           kernel_regularizer=l2(weight_decay))
  
     conv = BatchNormalization(axis=feat_axis)(conv)
     conv = Activation("relu")(conv)
@@ -171,7 +169,7 @@ class ConvEncoder(Encoder):
 
         filter_num_config = self.filter_num_config
 
-        net = Convolution2D(filter_num_config[0], 3, 3, border_mode="same", W_regularizer=l2(weight_decay))(x_reshaped)
+        net = Convolution2D(filter_num_config[0], (3, 3), padding="same", kernel_regularizer=l2(weight_decay))(x_reshaped)
         net = BatchNormalization(axis=feat_axis)(net)
         net = Activation("relu")(net)
 
@@ -268,12 +266,11 @@ class ConvDecoder(Decoder):
         else:
             output_shape = (batch_size, h//2, w//2, nb_filters)
 
-        decoder_deconv_1 = Deconvolution2D(nb_filters, nb_conv, nb_conv,
-                                       output_shape,
-                                       border_mode='same',
-                                       subsample=(1, 1),
+        decoder_deconv_1 = Deconvolution2D(nb_filters, (nb_conv, nb_conv),
+                                       padding='same',
+                                       strides=(1, 1),
                                        activation='relu',
-                                       W_regularizer=l2(self.wd))
+                                       kernel_regularizer=l2(self.wd))
 
         if K.image_dim_ordering() == 'th':
             output_shape = (batch_size, 4, h//2, w//2)
@@ -291,10 +288,9 @@ class ConvDecoder(Decoder):
         else:
             output_shape = (batch_size, h//2, w//2, nb_filters)
 
-        decoder_deconv_2 = Deconvolution2D(nb_filters, nb_conv, nb_conv,
-                                           output_shape,
-                                           border_mode='same',
-                                           subsample=(1, 1),
+        decoder_deconv_2 = Deconvolution2D(nb_filters, (nb_conv, nb_conv),
+                                           padding='same',
+                                           strides=(1, 1),
                                            activation='relu')
 
         if K.image_dim_ordering() == 'th':
@@ -302,21 +298,19 @@ class ConvDecoder(Decoder):
         else:
             output_shape = (batch_size, h-1, w-1, nb_filters)
 
-        decoder_deconv_3_upsamp = Deconvolution2D(nb_filters, 3, 3,
-                                                  output_shape,
-                                                  border_mode='same',
-                                                  subsample=(2, 2),
-                                                  activation='relu', name="upsz",W_regularizer=l2(self.wd))
+        decoder_deconv_3_upsamp = Deconvolution2D(nb_filters, (3, 3),
+                                                  padding='same',
+                                                  strides=(2, 2),
+                                                  activation='relu', name="upsz", kernel_regularizer=l2(self.wd))
 
-        decoder_deconv_4 = Deconvolution2D(nb_filters, nb_conv, nb_conv,
-                                           output_shape,
-                                           border_mode='same',
-                                           subsample=(1, 1),
+        decoder_deconv_4 = Deconvolution2D(nb_filters, (nb_conv, nb_conv),
+                                           padding='same',
+                                           strides=(1, 1),
                                            activation='relu')
 
-        decoder_mean_squash = Convolution2D(img_chns, 2, 2,
-                                            border_mode='same',
-                                            activation='sigmoid', name='reconv_flatten', W_regularizer=l2(self.wd))
+        decoder_mean_squash = Convolution2D(img_chns, (2, 2),
+                                            padding='same',
+                                            activation='sigmoid', name='reconv_flatten', kernel_regularizer=l2(self.wd))
 
         zp = ZeroPadding2D({'top_pad':1, 'left_pad':1, 'right_pad':0, 'bottom_pad':0})
 

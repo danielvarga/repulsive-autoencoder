@@ -32,33 +32,33 @@ def discnet_encoder_drop(nb_filter=32, act=activations.activation, weights_init=
 
     bn_axis = 3
 
-    conv_1 = Convolution2D(nb_filter, 3, 3, subsample=(1,1), border_mode="same", W_regularizer=l2(wd), bias=use_bias)
+    conv_1 = Convolution2D(nb_filter, (3, 3), strides=(1,1), padding="same", kernel_regularizer=l2(wd), use_bias=use_bias)
     layers.append(conv_1)
 
-    bn_1 = BatchNormalization(axis=bn_axis, mode=2)
+    bn_1 = BatchNormalization(axis=bn_axis)
     layers.append(bn_1)
 
     act_1 = Activation(act)
     layers.append(act_1)
 
-    conv_2 = Convolution2D(nb_filter, 3, 3, subsample=(1,1), border_mode="same", W_regularizer=l2(wd), bias=use_bias)
+    conv_2 = Convolution2D(nb_filter, (3, 3), strides=(1,1), padding="same", kernel_regularizer=l2(wd), use_bias=use_bias)
     layers.append(conv_2)
 
-    bn_2 = BatchNormalization(axis=bn_axis, mode=2)
+    bn_2 = BatchNormalization(axis=bn_axis)
     layers.append(bn_2)
 
     act_2 = Activation(act)
     layers.append(act_2)
 
-    deconv_3 = Convolution2D(nb_filter, 2, 2,
+    deconv_3 = Convolution2D(nb_filter, (2, 2),
                                            #output_shape,
-                                           border_mode='same',
-                                           subsample=(2,2),
+                                           padding='same',
+                                           strides=(2,2),
                                            activation='linear',
-                                           W_regularizer=l2(wd), bias=use_bias) # todo
+                                           kernel_regularizer=l2(wd), use_bias=use_bias) # todo
     layers.append(deconv_3)
 
-    bn_3 = BatchNormalization(axis=bn_axis, mode=2)
+    bn_3 = BatchNormalization(axis=bn_axis)
     layers.append(bn_3)
 
     act_3 = Activation(act)
@@ -84,36 +84,36 @@ def discnet_decoder_drop(image_size, nb_filter=32, act=activations.activation, w
 
     bn_axis = 3
 
-    conv_1 = Convolution2D(nb_filter, 3, 3, subsample=(1,1), border_mode="same", W_regularizer=l2(wd), bias=use_bias)
+    conv_1 = Convolution2D(nb_filter, (3, 3), strides=(1,1), padding="same", kernel_regularizer=l2(wd), use_bias=use_bias)
     layers.append(conv_1)
 
     if use_bn:
-        bn_1 = BatchNormalization(axis=bn_axis, mode=2)
+        bn_1 = BatchNormalization(axis=bn_axis)
         layers.append(bn_1)
 
     act_1 = Activation(act)
     layers.append(act_1)
 
-    conv_2 = Convolution2D(nb_filter, 3, 3, subsample=(1,1), border_mode="same", W_regularizer=l2(wd), bias=use_bias)
+    conv_2 = Convolution2D(nb_filter, (3, 3), strides=(1,1), padding="same", kernel_regularizer=l2(wd), use_bias=use_bias)
     layers.append(conv_2)
 
     if use_bn:
-        bn_2 = BatchNormalization(axis=bn_axis, mode=2)
+        bn_2 = BatchNormalization(axis=bn_axis)
         layers.append(bn_2)
 
     act_2 = Activation(act)
     layers.append(act_2)
 
-    deconv_3 = Deconvolution2D(nb_filter, 2, 2,
-                                           output_shape=(batch_size, image_size[0], image_size[1], nb_filter),
-                                           border_mode='same',
-                                           subsample=(2,2),
+    deconv_3 = Deconvolution2D(nb_filter, (2, 2),
+                                           #output_shape=(batch_size, image_size[0], image_size[1], nb_filter),
+                                           padding='same',
+                                           strides=(2,2),
                                            activation='linear',
-                                           W_regularizer=l2(wd), bias=use_bias) # todo
+                                           kernel_regularizer=l2(wd), use_bias=use_bias) # todo
     layers.append(deconv_3)
 
     if use_bn:
-        bn_3 = BatchNormalization(axis=bn_axis, mode=2)
+        bn_3 = BatchNormalization(axis=bn_axis)
         layers.append(bn_3)
 
     act_3 = Activation(act)
@@ -155,7 +155,7 @@ class ConvEncoder(Encoder):
 	    dense = Dense(dim)
 	    layers.append(dense)
 
-	    bn = BatchNormalization(mode=2)
+	    bn = BatchNormalization()
 	    layers.append(bn)
 
 	    act = Activation(activations.activation)
@@ -207,7 +207,7 @@ class ConvDecoder(Decoder):
 	    layers += discnet_decoder_drop(image_size=image_size, nb_filter=self.base_filter_num*(2**d), batch_size=self.batch_size, wd=self.wd, use_bn=self.use_bn)
 
 	# Make the picture
-	conv_out = Convolution2D(self.image_dims[2], 1, 1, subsample=(1,1), border_mode="same")
+	conv_out = Convolution2D(self.image_dims[2], (1, 1), strides=(1,1), padding="same")
         layers.append(conv_out)
 
 	logistic = Activation("sigmoid")

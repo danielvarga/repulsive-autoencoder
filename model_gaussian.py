@@ -63,8 +63,8 @@ class GaussianDecoder(Decoder):
         position_latent_params = args.latent_dim - self.side_params
         def sideFun(x):
             x = x[:,position_latent_params:]
-            x = K.expand_dims(x, dim=1)
-            x = K.expand_dims(x, dim=2)
+            x = K.expand_dims(x, axis=1)
+            x = K.expand_dims(x, axis=2)
             x = K.repeat_elements(x, self.ys[self.depth], axis=1)
             x = K.repeat_elements(x, self.xs[self.depth], axis=2)
             return x
@@ -80,11 +80,12 @@ class GaussianDecoder(Decoder):
             recons_main = mainSplitter(recons_output)
             generator_main = mainSplitter(generator_output)
 
+            layers = []
             # add intermediate dense layers
-            layers = net_blocks.dense_block(reversed(args.intermediate_dims), args.decoder_wd, args.decoder_use_bn, args.activation)
+#            layers = net_blocks.dense_block(reversed(args.intermediate_dims), args.decoder_wd, args.decoder_use_bn, args.activation)
 
             # the last layer ensures the feature size aligns with gaussianParams
-            layers.append(Dense(self.main_params, W_regularizer=l2(args.decoder_wd)))
+#            layers.append(Dense(self.main_params, kernel_regularizer=l2(args.decoder_wd)))
             layers.append(Reshape([self.main_channel, self.dots, self.gaussian_params]))
             layers.append(Activation("sigmoid"))
             layers.append(mixture.MixtureLayer(self.ys[args.depth], self.xs[args.depth], learn_variance=learn_variance, learn_density=learn_density, variance=args.gaussianVariance, maxpooling=args.gaussianMaxpooling, name="mixtureLayer"))
@@ -112,20 +113,20 @@ class GaussianDecoder(Decoder):
         layers = []
         for i in reversed(range(args.depth)):
             if args.gaussianUseSeparableConv:
-                layers.append(SeparableConv2D(self.args.decoder_conv_channels, 3, 3, depth_multiplier=1, border_mode="same"))
+                layers.append(SeparableConv2D(self.args.decoder_conv_channels, (3, 3), depth_multiplier=1, padding="same"))
             else:
-                layers.append(Convolution2D(self.args.decoder_conv_channels, 3, 3, subsample=(1,1), border_mode="same"))
+                layers.append(Convolution2D(self.args.decoder_conv_channels, (3, 3), strides=(1,1), padding="same"))
 
 
             if args.decoder_use_bn:
                 layers.append(BatchNormalization())
             layers.append(Activation(args.activation))
             if upscale>0:
-                layers.append(Deconvolution2D(self.args.decoder_conv_channels, upscale, upscale, output_shape=(args.batch_size, self.ys[i], self.xs[i], self.channel), border_mode='same', subsample=(upscale,upscale), W_regularizer=l2(args.decoder_wd)))
+                layers.append(Deconvolution2D(self.args.decoder_conv_channels, (upscale, upscale), padding='same', strides=(upscale,upscale), kernel_regularizer=l2(args.decoder_wd))) #output_shape=(args.batch_size, self.ys[i], self.xs[i], self.channel),
                 layers.append(Activation(args.activation))
 
 
-        layers.append(Convolution2D(args.original_shape[2], 3, 3, activation="sigmoid", subsample=(1,1), border_mode="same"))
+        layers.append(Convolution2D(args.original_shape[2], (3, 3), activation="sigmoid", strides=(1,1), padding="same"))
 
         for layer in layers:
             generator_output = layer(generator_output)
@@ -133,7 +134,6 @@ class GaussianDecoder(Decoder):
         
         output_shape = K.int_shape(recons_output)[1:]
         assert output_shape == self.args.original_shape, "Expected shape {}, got shape {}".format(self.args.original_shape, output_shape)
-
         return generator_input, recons_output, generator_output, generator_main
 
 def add_noise(x, magnitude, batch_size):

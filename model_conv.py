@@ -53,13 +53,13 @@ def residual_drop(x, input_shape, output_shape, strides=(1, 1), weight_decay=0.0
 
 
     nb_filter = output_shape[3]
-    conv = Convolution2D(nb_filter, 3, 3, subsample=strides,
-                         border_mode="same", W_regularizer=l2(weight_decay))(x)
+    conv = Convolution2D(nb_filter, (3, 3), strides=strides,
+                         padding="same", kernel_regularizer=l2(weight_decay))(x)
     if use_batchnorm:
         conv = BatchNormalization(axis=feat_axis)(conv)
     conv = Activation("relu")(conv)
-    conv = Convolution2D(nb_filter, 3, 3,
-                         border_mode="same", W_regularizer=l2(weight_decay))(conv)
+    conv = Convolution2D(nb_filter, (3, 3),
+                         padding="same", kernel_regularizer=l2(weight_decay))(conv)
 
     if use_batchnorm:
         conv = BatchNormalization(axis=feat_axis)(conv)
@@ -108,30 +108,28 @@ def residual_drop_deconv(x, input_shape, output_shape, strides=(1, 1), weight_de
     nb_filters = output_shape[3]
     nb_conv = 3
 
-    deconv_1 = Deconvolution2D(nb_filters, nb_conv, nb_conv,
-                                           output_shape,
-                                           border_mode='same',
-                                           subsample=strides,
+    deconv_1 = Deconvolution2D(nb_filters, (nb_conv, nb_conv),
+                                           padding='same',
+                                           strides=strides,
                                            activation='linear',
-                                           W_regularizer=l2(weight_decay))
+                                           kernel_regularizer=l2(weight_decay))
     decoder_layers.append(deconv_1)
 
-    bn_1 = BatchNormalization(axis=feat_axis, mode=2)
+    bn_1 = BatchNormalization(axis=feat_axis)
     if with_batchnorm:
 	decoder_layers.append(bn_1)
 
     act_1 = Activation(act)
     decoder_layers.append(act_1)
 
-    deconv_2 = Deconvolution2D(nb_filters, nb_conv, nb_conv,
-                                           output_shape,
-                                           border_mode='same',
-                                           subsample=(1,1),
+    deconv_2 = Deconvolution2D(nb_filters, (nb_conv, nb_conv),
+                                           padding='same',
+                                           strides=(1,1),
                                            activation='linear',
-                                           W_regularizer=l2(weight_decay))
+                                           kernel_regularizer=l2(weight_decay))
  
     decoder_layers.append(deconv_2)
-    bn_2 = BatchNormalization(axis=feat_axis, mode=2)
+    bn_2 = BatchNormalization(axis=feat_axis)
     if with_batchnorm:
         decoder_layers.append(bn_2)
     act_2 = Activation(act)
@@ -207,7 +205,7 @@ class ConvEncoder(Encoder):
 
         filter_num_config = self.filter_num_config
 
-        net = Convolution2D(filter_num_config[0], 3, 3, border_mode="same", W_regularizer=l2(self.wd))(x_reshaped)
+        net = Convolution2D(filter_num_config[0], (3, 3), padding="same", kernel_regularizer=l2(self.wd))(x_reshaped)
         net = BatchNormalization(axis=feat_axis)(net)
         net = Activation("relu")(net)
 
@@ -362,11 +360,11 @@ class ConvDecoder(Decoder):
 	    )
 
         
-        conv_f = Convolution2D(1, 5, 5, subsample=(1,1), border_mode="same")
+        conv_f = Convolution2D(1, (5, 5), strides=(1,1), padding="same")
         decoder_layers.append(conv_f)
         
 	"""
-        bn_f = BatchNormalization(axis=feat_axis, mode=2)
+        bn_f = BatchNormalization(axis=feat_axis)
         decoder_layers.append(bn_f)
 
         act_f = Activation("tanh")

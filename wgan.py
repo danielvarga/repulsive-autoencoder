@@ -8,7 +8,6 @@ from keras.layers.convolutional import Convolution2D, MaxPooling2D, Deconvolutio
 from keras.layers.advanced_activations import LeakyReLU
 from keras.models import Model
 from keras.optimizers import Adam, RMSprop, SGD
-from keras.regularizers import WeightRegularizer
 from keras.preprocessing.image import ImageDataGenerator
 from keras.utils import generic_utils
 
@@ -57,6 +56,18 @@ args.original_shape = x_train.shape[1:]
 def D_loss(y_true, y_pred):
     return - K.mean(y_true * y_pred)
 
+def grad_loss(y_true, y_pred):
+    grads = K.gradients(y_pred, disc_input)
+    grads = grads[0]
+    tensor_axes = range(1, K.ndim(grads))
+    gradnorms = K.sqrt(K.sum(K.square(grads), axis=tensor_axes))
+    k1 = K.constant(1.0)
+    grad_penalty = K.maximum(k1, K.abs(gradnorms)) - 1
+    return grad_penalty
+
+def D_gp_loss(y_true, y_pred):
+    return D_loss(y_true, y_pred) + grad_loss(y_true, y_pred)
+
 def D_acc(y_true, y_pred):
     x = y_true * y_pred
     return 100 * K.mean(x > 0)
@@ -82,13 +93,13 @@ print "building networks"
 generator_channels = model_dcgan.default_channels("generator", args.dcgan_size, args.original_shape[2])
 discriminator_channels = model_dcgan.default_channels("discriminator", args.disc_size, None)
 
-reduction = 2 ** (len(generator_channels)+1)
-assert args.original_shape[0] % reduction == 0
-assert args.original_shape[1] % reduction == 0
-gen_firstX = args.original_shape[0] // reduction
-gen_firstY = args.original_shape[1] // reduction
 
 if args.generator == "dcgan":
+    reduction = 2 ** (len(generator_channels)+1)
+    assert args.original_shape[0] % reduction == 0
+    assert args.original_shape[1] % reduction == 0
+    gen_firstX = args.original_shape[0] // reduction
+    gen_firstY = args.original_shape[1] // reduction
     gen_layers = model_dcgan.generator_layers_wgan(generator_channels, args.latent_dim, args.generator_wd, args.use_bn_gen, args.batch_size, gen_firstX, gen_firstY)
 elif args.generator == "dense":
     #if len(args.intermediate_dims) != args.gen_dense_layers:
@@ -134,12 +145,13 @@ def build_networks(gen_layers, disc_layers):
         disc_output = layer(disc_output)
         gen_disc_output = layer(gen_disc_output)
 
-    generator = Model(input=gen_input, output=gen_output)
-    gen_disc = Model(input=gen_input, output=gen_disc_output)
-    discriminator = Model(disc_input, disc_output)
+    generator = Model(inputs=gen_input, outputs=gen_output)
+    gen_disc = Model(inputs=gen_input, outputs=gen_disc_output)
+    discriminator = Model(inputs=disc_input, outputs=disc_output)
 
     make_trainable(discriminator, True)
-    discriminator.compile(optimizer=optimizer_d, loss=D_loss, metrics=[D_acc])
+#    discriminator.compile(optimizer=optimizer_d, loss=D_gp_loss, metrics=[D_loss, grad_loss])
+    discriminator.compile(optimizer=optimizer_d, loss=D_loss, metrics=[D_loss, grad_loss])
     print "Discriminator"
     discriminator.summary()
     generator.compile(optimizer=optimizer_g, loss="mse")
@@ -248,24 +260,25 @@ for iter in range(1, args.nb_iter+1):
     # update discriminator
     disc_iters = ndisc(iter - disc_offset)
     if False:
-        x_true = np.concatenate([x_true_flow.next() for i in range(disc_iters)], axis=0)
+        x_true = np.concatenate([x_true_flow.next()[0] for i in range(disc_iters)], axis=0)
         gen_in = np.random.normal(size=(args.batch_size * disc_iters, args.latent_dim))
         x_generated = generator.predict(gen_in, batch_size=args.batch_size)
         xs = np.concatenate((x_generated, x_true), axis=0)
         ys = np.concatenate((-1 * np.ones((args.batch_size * disc_iters)), np.ones((args.batch_size * disc_iters))), axis=0).reshape((-1,1)).astype("float32")
-        r = discriminator.fit(xs, ys, verbose=args.verbose, batch_size=args.batch_size, shuffle=True, nb_epoch=1)
+        r = discriminator.fit(xs, ys, verbose=args.verbose, batch_size=args.batch_size, shuffle=True, epochs=1)
         clipper.clip()
         disc_loss = r.history["loss"][0]
     else:
         for disc_iter in range(disc_iters):
-            x_true = x_true_flow.next()
+            x_true = x_true_flow.next()[0]
             gen_in = np.random.normal(size=(args.batch_size, args.latent_dim))
             x_generated = generator.predict(gen_in, batch_size=args.batch_size)
             disc_loss1 = discriminator.train_on_batch(x_true, y_true)
             disc_loss2 = discriminator.train_on_batch(x_generated, y_generated)
             clipper.clip()
             
-        disc_loss = disc_loss1[0] + disc_loss2[0]
+        disc_loss = disc_loss1[1] + disc_loss2[1]
+        grad_loss = disc_loss1[2] + disc_loss2[2]
         xs = np.concatenate((x_generated, x_true), axis=0)
 
     # update generator
@@ -273,7 +286,7 @@ for iter in range(1, args.nb_iter+1):
     gen_in = np.random.normal(size=(args.batch_size, args.latent_dim))
     gen_loss = gen_disc.train_on_batch(gen_in, y_true)
 
-    print "Iter: {}, Discriminator: {}, Generator: {}".format(iter, disc_loss, gen_loss)
+    print "Iter: {}, Discriminator: {}, Generator: {}, grad: {}".format(iter, disc_loss, gen_loss, grad_loss)
 
     # syn-constant-uniform specific: print average variance of images to monitor the spottedness of the images
     if False and args.dataset == 'syn-constant-uniform':

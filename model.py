@@ -48,10 +48,10 @@ def build_model(args):
     else:
         z, z_mean, z_log_var = add_sampling(hidden, args.sampling, args.sampling_std, args.batch_size, args.latent_dim, args.encoder_wd)
 
-    z_normed = Lambda(lambda z_unnormed: K.l2_normalize(z_unnormed, axis=-1))([z])
+    z_normed = Lambda(lambda z_unnormed: K.l2_normalize(z_unnormed, axis=-1))(z)
     if args.spherical:
         z = z_normed
-    z_projected = Lambda(lambda z: K.reshape( K.dot(z, K.l2_normalize(K.random_normal_variable((args.latent_dim, 1), 0, 1), axis=-1)), (args.batch_size,)))([z])
+    z_projected = Lambda(lambda z: K.reshape( K.dot(z, K.l2_normalize(K.random_normal_variable((args.latent_dim, 1), 0, 1), axis=-1)), (args.batch_size,)))(z)
 
     if args.decoder == "dense":
         decoder = dense.DenseDecoder(args.latent_dim, args.intermediate_dims, args.original_shape, args.activation, args.decoder_wd, args.decoder_use_bn)
@@ -134,15 +134,15 @@ def build_model(args):
 
 
 def add_sampling(hidden, sampling, sampling_std, batch_size, latent_dim, wd):
-    z_mean = Dense(latent_dim, W_regularizer=l2(wd))(hidden)
+    z_mean = Dense(latent_dim, kernel_regularizer=l2(wd))(hidden)
     if not sampling:
-        z_log_var = Lambda(lambda x: 0*x, output_shape=[latent_dim])((z_mean))
+        z_log_var = Lambda(lambda x: 0*x, output_shape=[latent_dim])(z_mean)
         return z_mean, z_mean, z_log_var
     else:
         if sampling_std > 0:
-            z_log_var = Lambda(lambda x: 0*x + K.log(K.square(sampling_std)), output_shape=[latent_dim])((z_mean))
+            z_log_var = Lambda(lambda x: 0*x + K.log(K.square(sampling_std)), output_shape=[latent_dim])(z_mean)
         else:
-            z_log_var = Dense(latent_dim, W_regularizer=l2(wd))(hidden)
+            z_log_var = Dense(latent_dim, kernel_regularizer=l2(wd))(hidden)
         def sampling(inputs):
             z_mean, z_log_var = inputs
             epsilon = K.random_normal(shape=(batch_size, latent_dim), mean=0.)

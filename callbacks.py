@@ -215,7 +215,7 @@ class ClipperCallback(Callback):
 	self.layers = layers
         self.clipValue = clipValue
 
-    def on_batch_begin(self):
+    def on_batch_begin(self, batch, logs):
         self.clip()
 
     def clip(self):

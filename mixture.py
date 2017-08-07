@@ -21,7 +21,6 @@ def get_param_count(learn_variance, learn_density):
 
 class MixtureLayer(Layer):
     def __init__(self, sizeX, sizeY, learn_variance=True, learn_density=False, variance=1.0/200, maxpooling=True, **kwargs):
-        self.output_dim = 2
         self.sizeX = sizeX
         self.sizeY = sizeY
         self.learn_variance = learn_variance
@@ -101,9 +100,8 @@ class MixtureLayer(Layer):
         out = tf.transpose(out, [0, 2, 3, 1])
         return out
 
-    def get_output_shape_for(self, input_shape):
+    def compute_output_shape(self, input_shape):
         return (input_shape[0], self.sizeX, self.sizeY, input_shape[1])
-
 
 
 def test_forward():
@@ -213,7 +211,7 @@ def test_learn():
     model.compile(loss='mse', optimizer=Adam())
 
     history = model.fit(X_train, X_train,
-                    batch_size=batch_size, nb_epoch=nb_epoch,
+                    batch_size=batch_size, epochs=nb_epoch,
                     verbose=1, validation_data=(X_test, X_test))
 
     n = 400

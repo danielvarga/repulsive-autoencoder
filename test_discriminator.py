@@ -15,6 +15,7 @@ import callbacks
 
 np.random.seed(100)
 
+epsilon = 0.0001
 trainSize = 50000
 disc_size = "small"
 wd = 0.0
@@ -64,51 +65,27 @@ for layer in disc_layers:
 def D_loss(y_true, y_pred):
     loss = - K.mean(y_true * y_pred)
     return loss
-
+def grad_aux(output, input):
+    grads = K.gradients(output, [input])
+    grads = grads[0]
+    tensor_axes = range(1, K.ndim(grads))
+    grads = K.sqrt(epsilon + K.sum(K.square(grads), axis=tensor_axes))
+    return grads
 def grad_flat(y_true, y_pred):
-    grads = K.gradients(y_pred, disc_input)
-    # grads = grads[0]
-    # tensor_axes = range(1, K.ndim(grads))
-    # gradnorms = K.sqrt(K.sum(K.square(grads), axis=tensor_axes))
-    # k1 = K.constant(1.0)
-    # grad_penalty = K.mean(K.square(K.maximum(k1, gradnorms) - k1))
-    # return grad_penalty
-    
+    grads = grad_aux(y_pred, disc_input)
     k1 = K.constant(1.0)
     grad_penalty = K.mean(K.square(K.maximum(k1, K.abs(grads)) - k1))
     return grad_penalty
-
 def grad_orig(y_true, y_pred):
-    grads = K.gradients(y_pred, disc_input)
-    grads = grads[0]
-    tensor_axes = range(1, K.ndim(grads))
-    gradnorms = K.sqrt(K.sum(K.square(grads), axis=tensor_axes))
+    grads = grad_aux(y_pred, disc_input)
     k1 = K.constant(1.0)
-    grad_penalty = K.mean(K.square(gradnorms - k1))
+    grad_penalty = K.mean(K.square(grads - k1))
     return grad_penalty
-
-#k1 = K.constant(1.0)
-#grad_penalty = K.mean(K.square(K.abs(grads) - k1))
-#return grad_penalty
-
 def grad_hill(y_true, y_pred):
-    grads = K.gradients(y_pred, disc_input)
-    print len(grads)
-    grads = grads[0]
-    print K.int_shape(grads)
-    tensor_axes = range(1, K.ndim(grads))
-    print tensor_axes
-    gradnorms = K.sqrt(K.sum(K.square(grads), axis=tensor_axes))
+    grads = grad_aux(y_pred, disc_input)
     k1 = K.constant(1.0)
-    grad_penalty = K.mean(K.abs(K.square(gradnorms) - k1))
-    print gradnorms
-    print grad_penalty
+    grad_penalty = K.mean(K.abs(K.square(grads) - k1))
     return grad_penalty
-
-
-    #  k1 = K.constant(1.0)
-    # grad_penalty = K.mean(K.abs(K.square(grads)-k1))
-    # return grad_penalty
 
 
 def hill(y_true, y_pred):
@@ -126,8 +103,8 @@ discriminator.compile(optimizer=optimizer, loss="mse", metrics=metrics)
 discriminator.summary()
 discriminator.save_weights("a.h5")
 
-losses = [flat]
-epochs = [1]
+losses = [orig, hill, flat]
+epochs = [5, 5, 5]
 count = len(losses)
 predictions = []
 

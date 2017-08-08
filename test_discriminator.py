@@ -15,11 +15,11 @@ import callbacks
 
 np.random.seed(100)
 
-trainSize = 5000
+trainSize = 50000
 disc_size = "small"
 wd = 0.0
 use_bn = False
-batch_size = 20
+batch_size = 200
 dense_dims = [100,100, 100, 100]
 activation = "relu"
 clipValue = 0.01
@@ -67,16 +67,16 @@ def D_loss(y_true, y_pred):
 
 def grad_flat(y_true, y_pred):
     grads = K.gradients(y_pred, disc_input)
-    grads = grads[0]
-    tensor_axes = range(1, K.ndim(grads))
-    gradnorms = K.sqrt(K.sum(K.square(grads), axis=tensor_axes))
-    k1 = K.constant(1.0)
-    grad_penalty = K.mean(K.square(K.maximum(k1, gradnorms) - k1))
-    return grad_penalty
+    # grads = grads[0]
+    # tensor_axes = range(1, K.ndim(grads))
+    # gradnorms = K.sqrt(K.sum(K.square(grads), axis=tensor_axes))
+    # k1 = K.constant(1.0)
+    # grad_penalty = K.mean(K.square(K.maximum(k1, gradnorms) - k1))
+    # return grad_penalty
     
-#    k1 = K.constant(1.0)
-#    grad_penalty = K.mean(K.square(K.maximum(k1, K.abs(grads)) - k1))
-#    return grad_penalty
+    k1 = K.constant(1.0)
+    grad_penalty = K.mean(K.square(K.maximum(k1, K.abs(grads)) - k1))
+    return grad_penalty
 
 def grad_orig(y_true, y_pred):
     grads = K.gradients(y_pred, disc_input)
@@ -126,8 +126,8 @@ discriminator.compile(optimizer=optimizer, loss="mse", metrics=metrics)
 discriminator.summary()
 discriminator.save_weights("a.h5")
 
-losses = [orig, flat]
-epochs = [1,1]
+losses = [flat]
+epochs = [1]
 count = len(losses)
 predictions = []
 
@@ -152,15 +152,14 @@ colmap = cm.ScalarMappable(cmap=cm.hsv)
 name = prefix + "-output.png"
 print "Saving {}".format(name)
 fig = plt.figure()
-# f, axes = plt.subplots(count, 1, sharex=True)
 for i in range(count):
     if dim == 1:
-        axes[i].scatter(test_points, predictions[i])
+        ax = fig.add_subplot(count, 1, i+1)
+ #       f, axes = plt.subplots(count, 1, sharex=True)
+        ax.scatter(test_points, predictions[i])
     elif dim == 2:
         ax = fig.add_subplot(count, 1, i+1, projection='3d')
         #        ax.scatter(test_points[:,0], test_points[:,1], predictions[i])
-        colmap.set_array(predictions[i])
-        zs = predictions[i]
         ax.scatter(test_points[:,0], test_points[:,1], predictions[i], marker='o')
 plt.savefig(name)
 plt.close()

@@ -19,21 +19,22 @@ epsilon = 0.0001
 trainSize = 50000
 disc_size = "small"
 wd = 0.0
-use_bn = False
+use_bn = True
 batch_size = 200
 dense_dims = [100,100, 100, 100]
 activation = "relu"
 clipValue = 0.01
+gradient_weight = 100.0
 verbose=1
 prefix = "pictures/testdisc"
-dim=2
+dim=1
 
 if dim == 1:
     # x_train = 10.0 * np.sign(np.random.randint(0,3, size=trainSize) - 1.5) # -10 with 2/3 probability and 10 with 1/3 probability
     x_values = np.array([-10, 0, 0, 10, 10])
     x_train = x_values[np.random.randint(0,5, size=trainSize)]
     x_generated = np.random.uniform(-10, 10, size=trainSize) # uniform between -10 and 10
-    test_points = np.linspace(-10, 10, batch_size)
+    test_points = np.linspace(-20, 20, batch_size)
 if dim == 2:
     # x_train = 10.0 * np.sign(np.random.randint(0,3, size=trainSize) - 1.5) # -10 with 2/3 probability and 10 with 1/3 probability
     x_values = np.array([[-10,-10], [-10,10], [0,0], [0,0], [10,-10], [10, 10]])
@@ -74,7 +75,7 @@ def grad_aux(output, input):
 def grad_flat(y_true, y_pred):
     grads = grad_aux(y_pred, disc_input)
     k1 = K.constant(1.0)
-    grad_penalty = K.mean(K.square(K.maximum(k1, K.abs(grads)) - k1))
+    grad_penalty = K.mean(K.square(K.maximum(k1, grads) - k1))
     return grad_penalty
 def grad_orig(y_true, y_pred):
     grads = grad_aux(y_pred, disc_input)
@@ -89,16 +90,16 @@ def grad_hill(y_true, y_pred):
 
 
 def hill(y_true, y_pred):
-    return D_loss(y_true, y_pred) + 10 * grad_hill(y_true, y_pred)
+    return D_loss(y_true, y_pred) + gradient_weight * grad_hill(y_true, y_pred)
 def orig(y_true, y_pred):
-    return D_loss(y_true, y_pred) + 10 * grad_orig(y_true, y_pred)
+    return D_loss(y_true, y_pred) + gradient_weight * grad_orig(y_true, y_pred)
 def flat(y_true, y_pred):
-    return D_loss(y_true, y_pred) + 10 * grad_flat(y_true, y_pred)
+    return D_loss(y_true, y_pred) + gradient_weight * grad_flat(y_true, y_pred)
 
 metrics = [D_loss, grad_flat, grad_orig, grad_hill]
 
 discriminator = Model(disc_input, disc_output)
-optimizer = Adam()
+optimizer = RMSprop()
 discriminator.compile(optimizer=optimizer, loss="mse", metrics=metrics)
 discriminator.summary()
 discriminator.save_weights("a.h5")

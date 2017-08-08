@@ -1,6 +1,7 @@
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 import numpy as np
 from keras.optimizers import Adam, RMSprop, SGD
 from keras.layers import Input, Dense, Reshape, Flatten
@@ -12,32 +13,38 @@ import model_dcgan
 import net_blocks
 import callbacks
 
-np.random.seed(10)
+np.random.seed(100)
 
-trainSize = 50000
+trainSize = 5000
 disc_size = "small"
 wd = 0.0
 use_bn = False
-batch_size = 200
-dense_dims = [100,100,100,100,100,100]
+batch_size = 20
+dense_dims = [100,100, 100, 100]
 activation = "relu"
 clipValue = 0.01
 verbose=1
-nb_epoch = 1
 prefix = "pictures/testdisc"
+dim=2
 
+if dim == 1:
+    # x_train = 10.0 * np.sign(np.random.randint(0,3, size=trainSize) - 1.5) # -10 with 2/3 probability and 10 with 1/3 probability
+    x_values = np.array([-10, 0, 0, 10, 10])
+    x_train = x_values[np.random.randint(0,5, size=trainSize)]
+    x_generated = np.random.uniform(-10, 10, size=trainSize) # uniform between -10 and 10
+    test_points = np.linspace(-10, 10, batch_size)
+if dim == 2:
+    # x_train = 10.0 * np.sign(np.random.randint(0,3, size=trainSize) - 1.5) # -10 with 2/3 probability and 10 with 1/3 probability
+    x_values = np.array([[-10,-10], [-10,10], [0,0], [0,0], [10,-10], [10, 10]])
+    x_train = x_values[np.random.randint(0,6, size=trainSize)]
+    x_generated = np.random.uniform(-10, 10, size=(trainSize, 2))
+    x_coords = np.linspace(-10, 10, batch_size)
+    test_points = np.transpose([np.tile(x_coords, len(x_coords)), np.repeat(x_coords, len(x_coords))])
 
-# x_train = 10.0 * np.sign(np.random.randint(0,3, size=trainSize) - 1.5) # -10 with 2/3 probability and 10 with 1/3 probability
+# x_generated = 3.0 * np.random.normal(size=trainSize) + x_train
 
-x_train = np.random.randint(0,5, size=trainSize)
-x_train[x_train < 1] = -10.0
-x_train[x_train == 1] = 0.0
-x_train[x_train == 2] = 0.0
-x_train[x_train > 2] = 10.0
-
-y_train = np.ones(shape=x_train.shape)
-x_generated = np.random.uniform(-10, 10, size=trainSize) # uniform between -10 and 10
-y_generated = - np.ones(shape=x_generated.shape)
+y_train = np.ones(shape=[len(x_train)])
+y_generated = - y_train
 xs = np.concatenate([x_train, x_generated])
 ys = np.concatenate([y_train, y_generated])
 
@@ -47,12 +54,10 @@ disc_layers = net_blocks.dense_block(dense_dims, wd, use_bn, activation)
 disc_layers.append(Dense(1, activation="linear"))
 
 
-disc_input = Input(batch_shape=[batch_size, 1], name="disc_input")
+disc_input = Input(batch_shape=[batch_size, dim], name="disc_input")
 disc_output = disc_input
 for layer in disc_layers:
     disc_output = layer(disc_output)
-discriminator = Model(disc_input, disc_output)
-discriminator.summary()
 
 # y_true = 1 (real_image) or -1 (generated_image)
 # we push the real examples up, the false examples down
@@ -60,52 +65,102 @@ def D_loss(y_true, y_pred):
     loss = - K.mean(y_true * y_pred)
     return loss
 
-def grad_loss(y_true, y_pred):
+def grad_flat(y_true, y_pred):
     grads = K.gradients(y_pred, disc_input)
+    grads = grads[0]
+    tensor_axes = range(1, K.ndim(grads))
+    gradnorms = K.sqrt(K.sum(K.square(grads), axis=tensor_axes))
     k1 = K.constant(1.0)
-    grad_penalty = K.maximum(k1, K.abs(grads)) - k1
+    grad_penalty = K.mean(K.square(K.maximum(k1, gradnorms) - k1))
+    return grad_penalty
+    
+#    k1 = K.constant(1.0)
+#    grad_penalty = K.mean(K.square(K.maximum(k1, K.abs(grads)) - k1))
+#    return grad_penalty
+
+def grad_orig(y_true, y_pred):
+    grads = K.gradients(y_pred, disc_input)
+    grads = grads[0]
+    tensor_axes = range(1, K.ndim(grads))
+    gradnorms = K.sqrt(K.sum(K.square(grads), axis=tensor_axes))
+    k1 = K.constant(1.0)
+    grad_penalty = K.mean(K.square(gradnorms - k1))
     return grad_penalty
 
-def gp_loss(y_true, y_pred):
+#k1 = K.constant(1.0)
+#grad_penalty = K.mean(K.square(K.abs(grads) - k1))
+#return grad_penalty
+
+def grad_hill(y_true, y_pred):
     grads = K.gradients(y_pred, disc_input)
+    print len(grads)
+    grads = grads[0]
+    print K.int_shape(grads)
+    tensor_axes = range(1, K.ndim(grads))
+    print tensor_axes
+    gradnorms = K.sqrt(K.sum(K.square(grads), axis=tensor_axes))
     k1 = K.constant(1.0)
-    grad_penalty = K.square(K.abs(grads) - k1)
+    grad_penalty = K.mean(K.abs(K.square(gradnorms) - k1))
+    print gradnorms
+    print grad_penalty
     return grad_penalty
 
-def total_gp(y_true, y_pred):
-    return D_loss(y_true, y_pred) + 10 * gp_loss(y_true, y_pred)
-def total_grad(y_true, y_pred):
-    return D_loss(y_true, y_pred) + 10 * grad_loss(y_true, y_pred)
 
-#clipper = callbacks.ClipperCallback(disc_layers, clipValue)
+    #  k1 = K.constant(1.0)
+    # grad_penalty = K.mean(K.abs(K.square(grads)-k1))
+    # return grad_penalty
+
+
+def hill(y_true, y_pred):
+    return D_loss(y_true, y_pred) + 10 * grad_hill(y_true, y_pred)
+def orig(y_true, y_pred):
+    return D_loss(y_true, y_pred) + 10 * grad_orig(y_true, y_pred)
+def flat(y_true, y_pred):
+    return D_loss(y_true, y_pred) + 10 * grad_flat(y_true, y_pred)
+
+metrics = [D_loss, grad_flat, grad_orig, grad_hill]
+
+discriminator = Model(disc_input, disc_output)
 optimizer = Adam()
+discriminator.compile(optimizer=optimizer, loss="mse", metrics=metrics)
+discriminator.summary()
+discriminator.save_weights("a.h5")
 
-discriminator.compile(optimizer=optimizer, loss=total_gp, metrics=[D_loss, grad_loss, gp_loss] )
-discriminator.fit(xs, ys,
-                  verbose=verbose,
-                  shuffle=True,
-                  epochs = nb_epoch,
-                  batch_size=batch_size
-                  )
-test_gp = np.linspace(-10, 10, 10 * batch_size)
-test_result_gp = discriminator.predict(test_gp, batch_size=batch_size)
+losses = [orig, flat]
+epochs = [1,1]
+count = len(losses)
+predictions = []
 
-discriminator.compile(optimizer=optimizer, loss=total_grad, metrics=[D_loss, grad_loss, gp_loss] )
-discriminator.fit(xs, ys,
-                  verbose=verbose,
-                  shuffle=True,
-                  epochs = nb_epoch,
-                  batch_size=batch_size
-                  )
-test_grad = np.linspace(-10, 10, 10 * batch_size)
-test_result_grad = discriminator.predict(test_grad, batch_size=batch_size)
+for i in range(count):
+    loss = losses[i]
+    nb_epoch = epochs[i]
+    optimizer = RMSprop()
+    discriminator.compile(optimizer=optimizer, loss=loss, metrics=metrics)
+    discriminator.load_weights("a.h5")
+    discriminator.fit(xs, ys,
+                      verbose=verbose,
+                      shuffle=True,
+                      epochs = nb_epoch,
+                      batch_size=batch_size
+    )
+    predictions.append(discriminator.predict(test_points, batch_size=batch_size))
 
+from pylab import *
+colmap = cm.ScalarMappable(cmap=cm.hsv)
+
+# display result
 name = prefix + "-output.png"
 print "Saving {}".format(name)
-#plt.figure()
-f, axes = plt.subplots(2, 1, sharex=True)
-axes[0].scatter(test_gp, test_result_gp)
-axes[1].scatter(test_grad, test_result_grad)
-#plt.scatter(test, test_result)
+fig = plt.figure()
+# f, axes = plt.subplots(count, 1, sharex=True)
+for i in range(count):
+    if dim == 1:
+        axes[i].scatter(test_points, predictions[i])
+    elif dim == 2:
+        ax = fig.add_subplot(count, 1, i+1, projection='3d')
+        #        ax.scatter(test_points[:,0], test_points[:,1], predictions[i])
+        colmap.set_array(predictions[i])
+        zs = predictions[i]
+        ax.scatter(test_points[:,0], test_points[:,1], predictions[i], marker='o')
 plt.savefig(name)
 plt.close()

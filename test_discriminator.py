@@ -2,6 +2,7 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
+from pylab import *
 import numpy as np
 from keras.optimizers import Adam, RMSprop, SGD
 from keras.layers import Input, Dense, Reshape, Flatten
@@ -29,7 +30,7 @@ gradient_weight = 100.0
 verbose=1
 prefix = "pictures/testdisc"
 dim=2
-dim2_anim = False
+dim2_anim = True
 
 if dim == 1:
     # x_train = 10.0 * np.sign(np.random.randint(0,3, size=trainSize) - 1.5) # -10 with 2/3 probability and 10 with 1/3 probability
@@ -108,8 +109,6 @@ discriminator.save_weights("a.h5")
 
 losses = [orig, hill, flat]
 epochs = [5, 5, 5]
-#losses=[orig]
-#epochs=[2]
 count = len(losses)
 predictions = []
 
@@ -127,8 +126,6 @@ for i in range(count):
     )
     predictions.append(discriminator.predict(test_points, batch_size=batch_size))
 
-from pylab import *
-#colmap = cm.ScalarMappable(cmap=cm.hsv)
 
 # display result
 name = prefix + "-output.png"
@@ -140,34 +137,38 @@ for i in range(count):
         ax = fig.add_subplot(count, 1, i+1)
  #       f, axes = plt.subplots(count, 1, sharex=True)
         ax.scatter(test_points, predictions[i])
+
     elif dim == 2:
-        # NOTE: Created 3D images and animations dont look good.
+        # NOTE: Created 3D images and animations dont look good on geforce1.
         if dim2_anim:
             print ("Creating animation %d of %d..." % (i+1, count))
+
+        if not os.path.exists('pictures/disc_anim'):
+            os.mkdir('pictures/disc_anim')
         #ax = fig.add_subplot(count, 1, i+1, projection='3d')
         #        ax.scatter(test_points[:,0], test_points[:,1], predictions[i])
+
         xs = test_points[:,0]
         ys = test_points[:,1]
         zs = predictions[i]
-        zs = zs - min(zs)
-        np.save('xs_%d.npy' % i, xs)
-        np.save('ys_%d.npy' % i, ys)
-        np.save('zs_%d.npy' % i, zs)
+        #zs = zs - min(zs)
+        
+        #np.save('xs_%d.npy' % i, xs)
+        #np.save('ys_%d.npy' % i, ys)
+        #np.save('zs_%d.npy' % i, zs)
 
 
-        #os.system("rm pictures/disc_anim/*.png")
         minangle = 0 if dim2_anim else 30
         maxangle = 360 if dim2_anim  else 31
         for angle in range(minangle, maxangle, 10):
             fig = plt.figure(figsize=(8,6))
 
             ax = fig.add_subplot(111,projection='3d')
-            #n = len(xs)
             
             colmap = cm.ScalarMappable(cmap=cm.bone)
             colmap.set_array((zs))
             
-            yg = ax.scatter(xs, ys, zs, c=cm.bone((zs * 5  )[:,0]))
+            yg = ax.scatter(xs, ys, zs, c=cm.bone(((zs-min(zs)) / max((zs-min(zs)))  )[:,0]))
             cb = fig.colorbar(colmap)
 
             ax.set_xlabel('X')
@@ -184,6 +185,3 @@ for i in range(count):
             os.system("rm pictures/disc_anim/*.png")
         else:
             print ("Saved pictures/disc_anim/030.png")
-        #ax.scatter(test_points[:,0], test_points[:,1], predictions[i], marker='o')
-        #plt.savefig(name)
-        #plt.close()

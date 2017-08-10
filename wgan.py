@@ -43,6 +43,7 @@ if keras.backend._BACKEND == "tensorflow":
     set_session(tf.Session(config=config))
 
 
+epsilon = 0.00001
 
 ############################################
 print "loading data"
@@ -60,22 +61,24 @@ print "specify loss functions"
 def D_loss(y_true, y_pred):
     return - K.mean(y_true * y_pred)
 
-def grad_loss(y_true, y_pred):
-    grads = K.gradients(y_pred, disc_input)
+def grad_aux(output, input):
+    grads = K.gradients(output, [input])
     grads = grads[0]
     tensor_axes = range(1, K.ndim(grads))
-    gradnorms = K.sqrt(K.sum(K.square(grads), axis=tensor_axes))
+    grads = K.sqrt(epsilon + K.sum(K.square(grads), axis=tensor_axes))
+    return grads
+
+def grad_loss(y_true, y_pred):
+    grads = grad_aux(y_pred, disc_input)
     k1 = K.constant(1.0)
-    grad_penalty = K.sum(K.square(K.maximum(k1, K.abs(gradnorms)) - k1))
-    return 100 * grad_penalty
+    grad_penalty = K.mean(K.square(K.maximum(k1, grads) - k1))
+    return grad_penalty
 
 def grad_loss_orig(y_true, y_pred):
-    grads = K.gradients(y_pred, disc_input)
-    grads = grads[0]
-    tensor_axes = range(1, K.ndim(grads))
-    gradnorms = K.sqrt(K.sum(K.square(grads), axis=tensor_axes))
-    grad_penalty = K.sum(K.square(K.abs(gradnorms) - 1))
-    return 100 * grad_penalty
+    grads = grad_aux(y_pred, disc_input)
+    k1 = K.constant(1.0)
+    grad_penalty = K.mean(K.square(grads - k1))
+    return grad_penalty
 
 
 ############################################
@@ -257,10 +260,9 @@ for iter in range(1, args.nb_iter+1):
             disc_loss2 = discriminator.train_on_batch(x_generated, y_generated)
 
             if args.gradient_penalty != "no":
-                for i in range(10):
-                    weights = np.random.uniform(size=x_true.shape)
-                    interp_points = x_true * weights + np.random.permutation(x_generated) * (1-weights)
-                    grad_loss_curr = discriminator_grad.train_on_batch(interp_points, y_true)
+                weights = np.random.uniform(size=x_true.shape)
+                interp_points = x_true * weights + x_generated * (1-weights)
+                grad_loss_curr = discriminator_grad.train_on_batch(interp_points, y_true)
             else:
                 grad_loss_curr = 0
             clipper.clip()

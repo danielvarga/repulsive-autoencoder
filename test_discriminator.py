@@ -18,7 +18,7 @@ import callbacks
 np.random.seed(100)
 
 epsilon = 0.00001
-trainSize = 50000
+trainSize = 2000
 disc_size = "small"
 wd = 0.0
 use_bn = True
@@ -29,7 +29,8 @@ clipValue = 0.01
 gradient_weight = 100.0
 verbose=2
 prefix = "pictures/testdisc"
-epochs = [10, 10, 10]
+epochs = [100, 100, 100]
+loss_names = ["orig", "hill", "flat"]
 dim=2
 dim2_anim = True
 create_timeline = True
@@ -108,11 +109,12 @@ optimizer = RMSprop()
 discriminator.compile(optimizer=optimizer, loss="mse", metrics=metrics)
 discriminator.summary()
 discriminator.save_weights("a.h5")
-
-losses = [orig, hill, flat]
-epochs = [10, 10, 10]
-#losses = [orig]
-#epochs = [3]
+losses_dict = {
+    "orig": orig,
+    "hill": hill,
+    "flat": flat
+    }
+losses = [losses_dict[i] for i in loss_names]
 count = len(losses)
 predictions = []
 
@@ -172,12 +174,12 @@ if create_timeline:
     for id,ep in enumerate(epochs):
         for i in range(ep):
             zs = timeline[c_ep][:,0]
-            save3Dplot(test_points[:,0], test_points[:,1], zs, 'pictures/disc_anim_tmp/%02d_%02d.png' % (ep, i), title='%d' % (i+1) )
+            save3Dplot(test_points[:,0], test_points[:,1], zs, 'pictures/disc_anim_tmp/%02d_%02d.png' % (id, i), title='%d' % (i+1) )
             #print np.array(zs).shape
             #sys.exit()
             c_ep += 1
-        os.system("convert -delay 200 -loop 0 pictures/disc_anim_tmp/*.png pictures/disc_anim_timeline_%d.gif" % (id+1))
-        print ("Saved pictures/disc_anim_timeline_%d.gif" % (id+1))
+        os.system("convert -delay 20 -loop 0 pictures/disc_anim_tmp/*.png pictures/disc_anim_timeline_%s.gif" % loss_names[id])
+        print ("Saved pictures/disc_anim_timeline_%s.gif" % loss_names[id])
         os.system("rm pictures/disc_anim_tmp/*.png")
 
 
@@ -215,7 +217,7 @@ for i in range(count):
         minangle = 0 if dim2_anim else 30
         maxangle = 360 if dim2_anim  else 31
         for angle in range(minangle, maxangle, 10):
-            save3Dplot(xs, ys, zs, 'pictures/disc_anim_tmp/%03d_%03d.png' % (i, angle), angle=angle)
+            save3Dplot(xs, ys, zs, 'pictures/disc_anim_tmp/%s_%03d.png' % (loss_names[i], angle), angle=angle)
             #fig = plt.figure(figsize=(8,6))
 
             #ax = fig.add_subplot(111,projection='3d')
@@ -235,8 +237,8 @@ for i in range(count):
             #plt.close()
 
         if dim2_anim:
-            os.system("convert -delay 20 -loop 10 pictures/disc_anim_tmp/*.png pictures/disc_anim_%d.gif" % (i+1))
-            print ("Saved pictures/disc_anim_%d.gif" % (i+1))
+            os.system("convert -delay 20 -loop 10 pictures/disc_anim_tmp/*.png pictures/disc_anim_%s.gif" % loss_names[i])
+            print ("Saved pictures/disc_anim_%s.gif" % loss_names[i])
             os.system("rm pictures/disc_anim_tmp/*.png")
         else:
-            print ("Saved pictures/disc_anim_tmp/%03d_030.png" % i)
+            print ("Saved pictures/disc_anim_tmp/%s_030.png" % loss_names[i])

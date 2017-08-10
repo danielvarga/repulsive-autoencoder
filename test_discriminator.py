@@ -31,6 +31,7 @@ verbose=1
 prefix = "pictures/testdisc"
 dim=2
 dim2_anim = True
+create_timeline = True
 
 if dim == 1:
     # x_train = 10.0 * np.sign(np.random.randint(0,3, size=trainSize) - 1.5) # -10 with 2/3 probability and 10 with 1/3 probability
@@ -108,9 +109,15 @@ discriminator.summary()
 discriminator.save_weights("a.h5")
 
 losses = [orig, hill, flat]
-epochs = [5, 5, 5]
+epochs = [10, 10, 10]
+#losses = [orig]
+#epochs = [3]
 count = len(losses)
 predictions = []
+
+if create_timeline:
+    cb = callbacks.DiscTimelineCallback(test_points, batch_size)
+
 
 for i in range(count):
     loss = losses[i]
@@ -122,9 +129,56 @@ for i in range(count):
                       verbose=verbose,
                       shuffle=True,
                       epochs = nb_epoch,
-                      batch_size=batch_size
+                      batch_size=batch_size,
+                      callbacks=[cb]
     )
     predictions.append(discriminator.predict(test_points, batch_size=batch_size))
+
+
+
+if not os.path.exists('pictures/disc_anim_tmp'):
+    os.mkdir('pictures/disc_anim_tmp')
+        
+os.system("rm -f pictures/disc_anim_tmp/*.png")
+
+#  Creating timeline
+
+def save3Dplot(X, Y, Z, file, angle=70, title=''):
+    
+    fig = plt.figure(figsize=(8,6))
+    ax = fig.add_subplot(111,projection='3d')
+    colmap = cm.ScalarMappable(cmap=cm.bone)
+    Z = np.array(Z).squeeze()
+    colmap.set_array((Z))
+    
+    yg = ax.scatter(X, Y, Z, c=cm.bone(((Z-min(Z)) / max((Z-min(Z)))  )))
+    cb = fig.colorbar(colmap)
+
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    ax.set_zlabel('Z')
+    ax.set_title(title)
+
+    ax.view_init(30, angle)
+    plt.savefig(file)
+    plt.close()
+
+
+if create_timeline:
+    timeline = cb.timeline
+    print ('Creating timeline...')
+    c_ep = 0
+    for id,ep in enumerate(epochs):
+        for i in range(ep):
+            zs = timeline[c_ep][:,0]
+            save3Dplot(test_points[:,0], test_points[:,1], zs, 'pictures/disc_anim_tmp/%02d_%02d.png' % (ep, i), title='%d' % (i+1) )
+            #print np.array(zs).shape
+            #sys.exit()
+            c_ep += 1
+        os.system("convert -delay 200 -loop 0 pictures/disc_anim_tmp/*.png pictures/disc_anim_timeline_%d.gif" % (id+1))
+        print ("Saved pictures/disc_anim_timeline_%d.gif" % (id+1))
+        os.system("rm pictures/disc_anim_tmp/*.png")
+
 
 
 # display result
@@ -137,14 +191,13 @@ for i in range(count):
         ax = fig.add_subplot(count, 1, i+1)
  #       f, axes = plt.subplots(count, 1, sharex=True)
         ax.scatter(test_points, predictions[i])
+        plt.savefig(name)
 
     elif dim == 2:
         # NOTE: Created 3D images and animations dont look good on geforce1.
         if dim2_anim:
             print ("Creating animation %d of %d..." % (i+1, count))
 
-        if not os.path.exists('pictures/disc_anim'):
-            os.mkdir('pictures/disc_anim')
         #ax = fig.add_subplot(count, 1, i+1, projection='3d')
         #        ax.scatter(test_points[:,0], test_points[:,1], predictions[i])
 
@@ -161,27 +214,28 @@ for i in range(count):
         minangle = 0 if dim2_anim else 30
         maxangle = 360 if dim2_anim  else 31
         for angle in range(minangle, maxangle, 10):
-            fig = plt.figure(figsize=(8,6))
+            save3Dplot(xs, ys, zs, 'pictures/disc_anim_tmp/%03d_%03d.png' % (i, angle), angle=angle)
+            #fig = plt.figure(figsize=(8,6))
 
-            ax = fig.add_subplot(111,projection='3d')
+            #ax = fig.add_subplot(111,projection='3d')
             
-            colmap = cm.ScalarMappable(cmap=cm.bone)
-            colmap.set_array((zs))
+            #colmap = cm.ScalarMappable(cmap=cm.bone)
+            #colmap.set_array((zs))
             
-            yg = ax.scatter(xs, ys, zs, c=cm.bone(((zs-min(zs)) / max((zs-min(zs)))  )[:,0]))
-            cb = fig.colorbar(colmap)
+            #yg = ax.scatter(xs, ys, zs, c=cm.bone(((zs-min(zs)) / max((zs-min(zs)))  )[:,0]))
+            #cb = fig.colorbar(colmap)
 
-            ax.set_xlabel('X')
-            ax.set_ylabel('Y')
-            ax.set_zlabel('Z')
+            #ax.set_xlabel('X')
+            #ax.set_ylabel('Y')
+            #ax.set_zlabel('Z')
 
-            ax.view_init(30, angle)
-            plt.savefig('pictures/disc_anim/%03d.png' % angle)
-            plt.close()
+            #ax.view_init(30, angle)
+            #plt.savefig('pictures/disc_anim_tmp/%03d.png' % angle)
+            #plt.close()
 
         if dim2_anim:
-            os.system("convert -delay 20 -loop 10 pictures/disc_anim/*.png pictures/disc_anim_%d.gif" % (i+1))
+            os.system("convert -delay 20 -loop 10 pictures/disc_anim_tmp/*.png pictures/disc_anim_%d.gif" % (i+1))
             print ("Saved pictures/disc_anim_%d.gif" % (i+1))
-            os.system("rm pictures/disc_anim/*.png")
+            os.system("rm pictures/disc_anim_tmp/*.png")
         else:
-            print ("Saved pictures/disc_anim/030.png")
+            print ("Saved pictures/disc_anim_tmp/%03d_030.png" % i)

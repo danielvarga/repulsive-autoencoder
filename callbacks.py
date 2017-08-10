@@ -25,14 +25,16 @@ def get_lr_scheduler(nb_epoch, base_lr, lr_decay_schedule):
     return get_lr
 
 class SaveGeneratedCallback(Callback):
-    def __init__(self, generator, sampler, prefix, batch_size, frequency, latent_dim, sample_size=100000, **kwargs):
+    def __init__(self, generator, sampler, prefix, batch_size, frequency, latent_dim, dataset=None, sample_size=100000, save_histogram=False, **kwargs):
         self.generator = generator
         self.sampler = sampler
         self.prefix = prefix
         self.batch_size = batch_size
         self.frequency = frequency
         self.latent_dim = latent_dim
+	self.dataset = dataset
         self.sample_size = sample_size
+	self.save_histogram = save_histogram
         super(SaveGeneratedCallback, self).__init__(**kwargs)
 
     def save(self, iteration):
@@ -41,6 +43,8 @@ class SaveGeneratedCallback(Callback):
         file = "{}_generated_{}.npy".format(self.prefix, iteration)
         print "Saving generated samples to {}".format(file)
         np.save(file, generated)
+	if self.save_histogram and self.dataset is not None:
+	    vis.print_nearest_histograms(self.dataset, file)
         
     def on_epoch_end(self, epoch, logs):
         if (epoch+1) % self.frequency == 0:
@@ -227,3 +231,19 @@ class ClipperCallback(Callback):
             for i in range(len(weights)):
                 weights[i] = np.clip(weights[i], - self.clipValue, self.clipValue)
             layer.set_weights(weights)
+
+class DiscTimelineCallback(Callback):
+    def __init__(self, test_points, batch_size):
+	#self.layers = ayers
+	#self.discriminator = self.model
+	self.test_points = test_points
+	self.batch_size = batch_size
+	self.timeline = []
+	#self.filename = filename
+
+    def on_epoch_end(self, epoch, logs):
+    	self.timeline.append(self.model.predict(self.test_points, batch_size=self.batch_size))
+    
+#    def on_epoch_end(self, epoch, logs):
+#	self.saveimg(epoch)
+

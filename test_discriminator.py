@@ -17,7 +17,7 @@ import callbacks
 
 np.random.seed(100)
 
-epsilon = 0.0001
+epsilon = 0.00001
 trainSize = 50000
 disc_size = "small"
 wd = 0.0
@@ -27,8 +27,9 @@ dense_dims = [100,100, 100, 100]
 activation = "relu"
 clipValue = 0.01
 gradient_weight = 100.0
-verbose=1
+verbose=2
 prefix = "pictures/testdisc"
+epochs = [10, 10, 10]
 dim=2
 dim2_anim = True
 
@@ -37,13 +38,13 @@ if dim == 1:
     x_values = np.array([-10, 0, 0, 10, 10])
     x_train = x_values[np.random.randint(0,5, size=trainSize)]
     x_generated = np.random.uniform(-10, 10, size=trainSize) # uniform between -10 and 10
-    test_points = np.linspace(-20, 20, batch_size)
+    test_points = np.linspace(-15, 15, batch_size)
 if dim == 2:
     # x_train = 10.0 * np.sign(np.random.randint(0,3, size=trainSize) - 1.5) # -10 with 2/3 probability and 10 with 1/3 probability
-    x_values = np.array([[-10,-10], [-10,10], [0,0], [0,0], [10,-10], [10, 10]])
+    x_values = np.array([[-10,-10], [-10,-10], [0,0], [0,0], [10,10], [10, 10]])
     x_train = x_values[np.random.randint(0,6, size=trainSize)]
     x_generated = np.random.uniform(-10, 10, size=(trainSize, 2))
-    x_coords = np.linspace(-10, 10, batch_size)
+    x_coords = np.linspace(-15, 15, batch_size)
     test_points = np.transpose([np.tile(x_coords, len(x_coords)), np.repeat(x_coords, len(x_coords))])
 
 # x_generated = 3.0 * np.random.normal(size=trainSize) + x_train
@@ -108,10 +109,9 @@ discriminator.summary()
 discriminator.save_weights("a.h5")
 
 losses = [orig, hill, flat]
-epochs = [5, 5, 5]
+
 count = len(losses)
 predictions = []
-
 for i in range(count):
     loss = losses[i]
     nb_epoch = epochs[i]

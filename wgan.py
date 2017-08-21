@@ -1,6 +1,6 @@
 import numpy as np
 from keras.models import Sequential
-from keras.layers import Input, Dense, Reshape, Flatten
+from keras.layers import Input, Dense, Reshape, Flatten, Lambda
 from keras.layers.core import Activation
 from keras.layers.normalization import BatchNormalization
 from keras.layers.convolutional import UpSampling2D
@@ -61,25 +61,43 @@ print "specify loss functions"
 def D_loss(y_true, y_pred):
     return - K.mean(y_true * y_pred)
 
-def grad_aux(output, input):
+def disc_loss_fun(y_true, y_pred):
+    disc_output_real = y_pred[0]
+    disc_output_generated = y_pred[1]
+    disc_grad_interp = y_pred[2]
+    loss = K.mean(disc_output_generated) - K.mean(disc_output_real)
+    if args.gradient_penalty != "no":
+        loss += 100 * K.mean(disc_grad_interp)
+    return loss
+
+# def disc_loss(inputs):
+#     (disc_output_real, disc_output_generated, disc_output_interp, disc_input_interp) = inputs
+#     loss = K.mean(disc_output_generated) - K.mean(disc_output_real)
+#     if args.gradient_penalty == "grad":
+#         loss += grad_loss((disc_input_interp, disc_output_interp))
+#     elif args.gradient_penalty == "grad_orig":
+#         loss += grad_loss_orig((disc_input_interp, disc_output_interp))
+    
+def grad_aux(input, output):
     grads = K.gradients(output, [input])
     grads = grads[0]
     tensor_axes = range(1, K.ndim(grads))
     grads = K.sqrt(epsilon + K.sum(K.square(grads), axis=tensor_axes))
     return grads
 
-def grad_loss(y_true, y_pred):
-    grads = grad_aux(y_pred, disc_input)
+def grad_loss(inout):
+    input, output = inout
+    grads = grad_aux(output, input)
     k1 = K.constant(1.0)
-    grad_penalty = K.mean(K.square(K.maximum(k1, grads) - k1))
+    grad_penalty = K.square(K.maximum(k1, grads) - k1)
     return grad_penalty
 
-def grad_loss_orig(y_true, y_pred):
-    grads = grad_aux(y_pred, disc_input)
+def grad_loss_orig(inout):
+    input, output = inout
+    grads = grad_aux(output, input)
     k1 = K.constant(1.0)
-    grad_penalty = K.mean(K.square(grads - k1))
+    grad_penalty = K.square(grads - k1)
     return grad_penalty
-
 
 ############################################
 print "auxiliary functions"
@@ -145,7 +163,8 @@ else:
     assert False, "Invalid discriminator type"
 
 gen_input = Input(batch_shape=(args.batch_size,args.latent_dim), name="gen_input")
-disc_input = Input(batch_shape=[args.batch_size] + list(args.original_shape), name="disc_input")
+disc_input_real = Input(batch_shape=[args.batch_size] + list(args.original_shape), name="disc_input_real")
+disc_input_generated = Input(batch_shape=[args.batch_size] + list(args.original_shape), name="disc_input_generated")
 
 if args.optimizer == "adam":
     optimizer_d = Adam(lr=args.lr)
@@ -162,22 +181,38 @@ sampler = samplers.gaussian_sampler
 
 def build_networks(gen_layers, disc_layers):
     gen_output = gen_input
-    disc_output = disc_input
+    disc_output_real = disc_input_real
+    disc_output_generated = disc_input_generated
     gen_disc_output = gen_output
 
+    def interpFun(inputs):
+        real, generated = inputs
+        weights = K.random_uniform(shape=(args.batch_size,1,1,1))
+        return weights * real  + generated * (1-weights)
+    disc_input_interp = Lambda(interpFun, output_shape=args.original_shape)([disc_output_real, disc_output_generated])
+    disc_output_interp = disc_input_interp
+    
     for layer in gen_layers:
         gen_output = layer(gen_output)
         gen_disc_output = layer(gen_disc_output)
 
     for layer in disc_layers:
-        disc_output = layer(disc_output)
+        disc_output_real = layer(disc_output_real)
+        disc_output_generated = layer(disc_output_generated)
+        disc_output_interp = layer(disc_output_interp)
         gen_disc_output = layer(gen_disc_output)
 
+        if args.gradient_penalty == "grad":
+            disc_grad_interp = Lambda(grad_loss, output_shape=(1,))([disc_output_interp, disc_input_interp])
+        if args.gradient_penalty == "grad_orig":
+            disc_grad_interp = Lambda(grad_loss_orig, output_shape=(1,))([disc_output_interp, disc_input_interp])
+        else:
+            disc_grad_interp = disc_output_interp
+            
     generator = Model(inputs=gen_input, outputs=gen_output)
     gen_disc = Model(inputs=gen_input, outputs=gen_disc_output)
-    discriminator = Model(inputs=disc_input, outputs=disc_output)
-    discriminator_grad = Model(inputs=disc_input, outputs=disc_output)
-
+    discriminator = Model(inputs=[disc_input_real, disc_input_generated], outputs=[disc_output_real, disc_output_generated, disc_grad_interp])
+ 
     # callback for clipping weights
     clipper = callbacks.ClipperCallback(discriminator.layers, args.clipValue)
 
@@ -185,32 +220,24 @@ def build_networks(gen_layers, disc_layers):
     generated_saver = callbacks.SaveGeneratedCallback(generator, sampler, args.prefix, args.batch_size, args.frequency, args.latent_dim)
 
     make_trainable(discriminator, True)
-    discriminator.compile(optimizer=optimizer_d, loss=D_loss)
-    make_trainable(discriminator_grad, True)
-    discriminator_grad.compile(optimizer=optimizer_d, loss=grad_loss)
-    generator.compile(optimizer=optimizer_g, loss="mse")
+    discriminator.compile(optimizer=optimizer_d, loss=disc_loss_fun)
+#    generator.compile(optimizer=optimizer_g, loss="mse")
     make_trainable(discriminator, False)
     gen_disc.compile(loss=D_loss, optimizer=optimizer_g)
 
-    return (generator, discriminator, discriminator_grad, gen_disc, clipper, generated_saver)
+    return (generator, discriminator, gen_disc, clipper, generated_saver)
 
 if args.modelPath is None:
-    (generator, discriminator, discriminator_grad, gen_disc, clipper, generated_saver) = build_networks(gen_layers, disc_layers)
+    (generator, discriminator, gen_disc, clipper, generated_saver) = build_networks(gen_layers, disc_layers)
 else:
     print "Loading models from " +args.modelPath
     generator = load_models.loadModel(args.modelPath + "_generator")
     discriminator = load_models.loadModel(args.modelPath + "_discriminator")
-    discriminator_grad = load_models.loadModel(args.modelPath + "_discriminator_grad")
     gen_disc = load_models.loadModel(args.modelPath + "_gendisc")
     clipper = callbacks.ClipperCallback(discriminator.layers, args.clipValue)
     make_trainable(discriminator, True)
-    discriminator.compile(optimizer=optimizer_d, loss=D_loss)
-    make_trainable(discriminator_grad, True)
-    if args.gradient_penalty == "grad":
-        discriminator_grad.compile(optimizer=optimizer_d, loss=grad_loss)
-    elif args.gradient_penalty == "grad_orig":
-        discriminator_grad.compile(optimizer=optimizer_d, loss=grad_orig_loss)
-    generator.compile(optimizer=optimizer_g, loss="mse")
+    discriminator.compile(optimizer=optimizer_d, loss=disc_loss_fun)
+#    generator.compile(optimizer=optimizer_g, loss="mse")
     make_trainable(discriminator, False)
     gen_disc.compile(loss=D_loss, optimizer=optimizer_g)
 
@@ -218,12 +245,15 @@ print "Discriminator"
 discriminator.summary()
 print "Generator:"
 generator.summary()
+print "Gendisc:"
+gen_disc.summary()
 
 ############################################
 print "y values for evaluation"
 y_generated = np.array([-1.0] *  args.batch_size).reshape((-1,1)).astype("float32")
 y_true = np.array([1.0] *  args.batch_size).reshape((-1,1)).astype("float32")
-    
+
+
 
 ############################################
 print "starting training"
@@ -246,38 +276,29 @@ for iter in range(1, args.nb_iter+1):
         
         r = discriminator.fit(xs, ys, verbose=args.verbose, batch_size=args.batch_size, shuffle=True, epochs=1)
         clipper.clip()
-        disc_loss = r.history["loss"][0]
-        grad_loss = r.history["grad_loss"][0]
+        discloss = r.history["loss"][0]
     else:
-        disc_loss = 0
-        grad_loss = 0
+        discloss = 0
         for disc_iter in range(disc_iters):
             x_true = x_true_flow.next()[0]
             gen_in = np.random.normal(size=(args.batch_size, args.latent_dim))
             x_generated = generator.predict(gen_in, batch_size=args.batch_size)
+            curr_disc_loss = discriminator.train_on_batch([x_true, x_generated], [y_true, y_generated, y_true])
+            discloss += curr_disc_loss[0]
 
-            disc_loss1 = discriminator.train_on_batch(x_true, y_true)
-            disc_loss2 = discriminator.train_on_batch(x_generated, y_generated)
-
-            if args.gradient_penalty != "no":
-                weights = np.random.uniform(size=x_true.shape)
-                interp_points = x_true * weights + x_generated * (1-weights)
-                grad_loss_curr = discriminator_grad.train_on_batch(interp_points, y_true)
-            else:
-                grad_loss_curr = 0
             clipper.clip()
             
-            disc_loss += disc_loss1 + disc_loss2
-            grad_loss += grad_loss_curr
-        disc_loss /= disc_iters
-        grad_loss /= disc_iters
+        discloss /= disc_iters
 
     # update generator
-#    make_trainable(discriminator, False)
-    gen_in = np.random.normal(size=(args.batch_size, args.latent_dim))
-    gen_loss = gen_disc.train_on_batch(gen_in, y_true)
+    #    gen_in = np.random.normal(size=(args.batch_size, args.latent_dim))
+    #    gen_loss = gen_disc.train_on_batch(gen_in, y_true)
+    gen_in = np.random.normal(size=(disc_iters * args.batch_size, args.latent_dim))
+    y_true_long = np.array([1.0] *  disc_iters * args.batch_size).reshape((-1,1)).astype("float32")
+    gen_loss = gen_disc.fit(gen_in, y_true_long, shuffle=False, epochs=1, batch_size=args.batch_size)
+    gen_loss = gen_loss.history['loss'][0]
 
-    print "Iter: {}, Discriminator: {}, Generator: {}, grad: {}".format(iter, disc_loss, gen_loss, grad_loss)
+    print "Iter: {}, Discriminator: {}, Generator: {}".format(iter, discloss, gen_loss)
 
     # syn-constant-uniform specific: print average variance of images to monitor the spottedness of the images
     if False and args.dataset == 'syn-constant-uniform':
@@ -294,13 +315,11 @@ for iter in range(1, args.nb_iter+1):
         latent_samples = np.random.normal(size=(2, args.latent_dim))
         vis.interpBetween(latent_samples[0], latent_samples[1], generator, args.batch_size, args.prefix + "_interpBetween-{}".format(iter))
         vis.interpBetween(latent_samples[0], latent_samples[1], generator, args.batch_size, args.prefix + "_interpBetween")
+    if iter % (args.nb_iter // 10) == 0:        
         load_models.saveModel(discriminator, args.prefix + "_discriminator")
-        load_models.saveModel(discriminator_grad, args.prefix + "_discriminator_grad")
         load_models.saveModel(generator, args.prefix + "_generator")
         load_models.saveModel(gen_disc, args.prefix + "_gendisc")
-    if iter % (args.nb_iter // 10) == 0:        
         load_models.saveModel(discriminator, args.prefix + "_discriminator_{}".format(iter))
-        load_models.saveModel(discriminator_grad, args.prefix + "_discriminator_grad_{}".format(iter))
         load_models.saveModel(generator, args.prefix + "_generator_{}".format(iter))
         load_models.saveModel(gen_disc, args.prefix + "_gendisc_{}".format(iter))
         generated_saver.save(iter)
@@ -315,7 +334,7 @@ for iter in range(1, args.nb_iter+1):
             disc_layers = model_dcgan.discriminator_layers_dense(args.discriminator_wd, args.use_bn_disc)
         else:
             assert False, "Invalid discriminator type"
-        (generator, discriminator, discriminator_grad, gen_disc, clipper, generated_saver) = build_networks(gen_layers, disc_layers)
+        (generator, discriminator, gen_disc, clipper, generated_saver) = build_networks(gen_layers, disc_layers)
 
 
 ############################################

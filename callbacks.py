@@ -32,9 +32,9 @@ class SaveGeneratedCallback(Callback):
         self.batch_size = batch_size
         self.frequency = frequency
         self.latent_dim = latent_dim
-	self.dataset = dataset
+        self.dataset = dataset
         self.sample_size = sample_size
-	self.save_histogram = save_histogram
+        self.save_histogram = save_histogram
         super(SaveGeneratedCallback, self).__init__(**kwargs)
 
     def save(self, iteration):
@@ -43,9 +43,9 @@ class SaveGeneratedCallback(Callback):
         file = "{}_generated_{}.npy".format(self.prefix, iteration)
         print "Saving generated samples to {}".format(file)
         np.save(file, generated)
-	if self.save_histogram and self.dataset is not None:
-	    vis.print_nearest_histograms(self.dataset, file)
-        
+        if self.save_histogram and self.dataset is not None:
+            vis.print_nearest_histograms(self.dataset, file)
+
     def on_epoch_end(self, epoch, logs):
         if (epoch+1) % self.frequency == 0:
             self.save(epoch+1)

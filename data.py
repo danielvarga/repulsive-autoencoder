@@ -12,6 +12,7 @@ import annoy
 import csv
 
 import vis
+import clocks
 
 if K.image_dim_ordering() == 'th':
     feature_axis = 1
@@ -60,6 +61,10 @@ def load(dataset, shape=None, color=True):
         return Dataset_syn_constant_uniform(shape)
     elif dataset == "syn-constant-normal":
         return Dataset_syn_constant_normal(shape)
+    elif dataset == "syn-clocks2":
+        print shape
+        assert shape == (28, 28) and not color
+        return Dataset_clocks2(shape)
     else:
         raise Exception("Invalid dataset: ", dataset)
 
@@ -267,8 +272,6 @@ class Dataset_celeba(Dataset_real):
             labelNamesHandle.close()
         return self.label_names, self.labels
 
-        
-
 
 class Dataset_bedroom(Dataset_real):
     def __init__(self, shape=(64,64)):
@@ -467,7 +470,7 @@ class Dataset_syn_rectangles(Dataset_syn_infinite):
                         samples.append(sample)
         samples = np.array(samples)
         return samples
-        
+
 class Dataset_syn_gradient(Dataset_syn_infinite):
     def __init__(self, shape):
         super(Dataset_syn_gradient, self).__init__("syn-gradient", shape=shape)
@@ -526,16 +529,28 @@ class Dataset_syn_constant_normal(Dataset_syn_infinite):
         return true_params[invert_sorter]
 
 
+class Dataset_clocks2(Dataset_syn_infinite):
+    def __init__(self, shape):
+        assert shape == (28, 28)
+        super(Dataset_clocks2, self).__init__("syn-clocks2", shape=shape)
+        self.number_of_hands = 2
+    def sampler(self, size):
+        return np.random.uniform(0, 2*np.pi, size=(size, self.number_of_hands))
+    def generate_one_sample(self, data, params):
+        data[:, :] = clocks.clock(params).astype(np.float32) / 255
+    def generate_finite_set(self):
+        assert False, "NYI"
+
+
 def resize_bedroom(sizeX, sizeY, count, outputFile):
     directory = "/home/zombori/datasets/bedroom/data"
     def auxFun(path, count):
-        if count <= 0: return (0, [])        
+        if count <= 0: return (0, [])
         if path.endswith('.webp'):
             img = Image.open(path)
             arr = np.array(img)
             arr = scipy.misc.imresize(arr, size=(sizeX, sizeY, 3))
             return (1, [arr])
-        
         images=[]
         imgCount = 0
         for f in sorted(os.listdir(path)):
@@ -549,6 +564,7 @@ def resize_bedroom(sizeX, sizeY, count, outputFile):
     np.save(outputFile, images)
     return images
 
+
 def resize_images(dataset, sizeX, sizeY, sizeZ, outputFile=None):
     result = []
     for i in range(dataset.shape[0]):
@@ -559,7 +575,8 @@ def resize_images(dataset, sizeX, sizeY, sizeZ, outputFile=None):
     if outputFile is not None: 
         np.save(outputFile, result)
     return result
-                    
+
+
 def load_celeba_labels():
     labelFile = "/home/daniel/autoencoding_beyond_pixels/datasets/celeba/list_attr_celeba.txt"
     fileHandle = open(labelFile, 'rb')

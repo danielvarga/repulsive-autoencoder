@@ -79,6 +79,14 @@ def loss_factory(model, encoder, loss_features, args):
         loss = -1 -K.log(average_distances + FUDGE) + FUDGE + average_distances
         return args.latent_dim * K.mean(loss)
 
+    # Forces z_1^2+z_2^2 toward 1, similarly with z_3^2+z_4^2 etc.
+    def toroid_loss(x, x_decoded):
+        z = loss_features.z_mean
+        z_odd = z[:, 1::2]
+        z_even = z[:, 0::2]
+        loss = K.mean((z_odd ** 2 + z_even ** 2 - 1) ** 2, axis=1)
+        return loss
+
     def mean_loss(x, x_decoded): # pushing the average of the points to zero
         # pre sampling!
         loss = K.abs(K.mean(loss_features.z_mean, axis = 0))

@@ -235,7 +235,7 @@ def displayNearest(x_train, x_train_latent, generator, batch_size, name, origo="
     x_train_latent = x_train_latent[:cnt_aligned]
     x_decoded = generator.predict(x_train_latent, batch_size=batch_size)
     plotImages(x_decoded[:cnt], nx, ny, name)
-    
+
 
 def displaySet(imageBatch, batchSize, n, generator, name):
     nsqrt = int(np.ceil(np.sqrt(n)))
@@ -250,7 +250,7 @@ def displaySet(imageBatch, batchSize, n, generator, name):
 
 def displayInterp(x_train, x_test, batch_size, dim,
         encoder, encoder_var, do_latent_variances, generator, gridSize, name,
-        anchor_indices=None):
+        anchor_indices=None, toroidal=False):
     if anchor_indices is None:
         anchor_indices = [14, 6, 0] # TODO Not a very good choice for mnist, 1-1-7.
         anchor_indices = [12, 9, 50]
@@ -265,12 +265,15 @@ def displayInterp(x_train, x_test, batch_size, dim,
         test_latent_logvar = encoder_var.predict(x_test[:batch_size], batch_size=batch_size)
         train_latent = np.random.normal(size=train_latent_mean.shape) * np.exp(train_latent_logvar/2) + train_latent_mean
         test_latent = np.random.normal(size=test_latent_mean.shape) * np.exp(test_latent_logvar/2) + test_latent_mean
-        
+
     anchor1, anchor2 = train_latent[anchor_indices[:2]]
     anchor3 = test_latent[anchor_indices[2]]
     anchor4 = anchor3 + anchor2 - anchor1
     anchors = np.array([anchor1, anchor2, anchor3, anchor4])
-    interpGrid = grid_layout.create_mine_grid(gridSize, gridSize, dim, gridSize-1, anchors, False, False) # TODO different interpolations for different autoencoders!!!    
+    if toroidal:
+        print "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! TOROIDAL INTERPOLATION"
+    # TODO different interpolations for different autoencoders!!!
+    interpGrid = grid_layout.create_mine_grid(gridSize, gridSize, dim, gridSize-1, anchors, False, False, toroidal=toroidal)
     n = interpGrid.shape[0]
     if n < batch_size:
         target_size = batch_size
@@ -287,6 +290,7 @@ def displayInterp(x_train, x_test, batch_size, dim,
     reshapedGrid = grid.reshape([grid.shape[0]] + list(x_train.shape[1:]))
     plotImages(reshapedGrid, gridSize, gridSize+1, name)
 
+
 def interpBetween(latent_x, latent_y, generator, batch_size, name):
     assert latent_x.shape == latent_y.shape
     shape = [batch_size] + list(latent_x.shape)
@@ -296,7 +300,7 @@ def interpBetween(latent_x, latent_y, generator, batch_size, name):
         latent_set[i] = latent_x * (1.0-ii) + latent_y * ii
     predicted_set = generator.predict(latent_set, batch_size=batch_size)
     plotImages(predicted_set, 20, batch_size // 20, name)
-    
+
 
 # returns matrix M, such that M[i][j] is the distance between the j-th row in x and the i-th row in y
 def distanceMatrix(x, y):

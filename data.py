@@ -533,7 +533,7 @@ class Dataset_clocks2(Dataset_syn_infinite):
     def __init__(self, shape):
         assert shape == (28, 28)
         super(Dataset_clocks2, self).__init__("syn-clocks2", shape=shape)
-        self.number_of_hands = 2
+        self.number_of_hands = 1
     def sampler(self, size):
         return np.random.uniform(0, 2*np.pi, size=(size, self.number_of_hands))
     def generate_one_sample(self, data, params):

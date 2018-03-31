@@ -70,9 +70,10 @@ def create_chain_grid(rows, cols, dim, space, anchors, spherical, gaussian):
     u_grid = u_list.reshape(num_row_anchors * num_col_anchors, dim)
     return create_mine_grid(rows, cols, dim, space, u_grid, spherical, gaussian)
 
-def create_mine_grid(rows, cols, dim, space, anchors, spherical, gaussian):
+
+def create_mine_grid(rows, cols, dim, space, anchors, spherical, gaussian, toroidal=False):
     """Create a grid of latents with splash layout"""
-    lerpv = get_interpfn(spherical, gaussian)
+    lerpv = get_interpfn(spherical, gaussian, toroidal=toroidal)
 
     u_list = np.zeros((rows, cols, dim))
     # compute anchors
@@ -106,6 +107,7 @@ def create_mine_grid(rows, cols, dim, space, anchors, spherical, gaussian):
     u_grid = u_list.reshape(rows * cols, dim)
 
     return u_grid
+
 
 def create_gradient_grid(rows, cols, dim, analogy, anchors, spherical, gaussian):
     """Create a grid of latents with gradient layout (includes analogy)"""

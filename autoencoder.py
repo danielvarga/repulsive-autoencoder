@@ -136,7 +136,8 @@ vis.displaySet(x_test[:args.batch_size], args.batch_size, args.batch_size, ae, "
 vis.displaySet(x_train[:args.batch_size], args.batch_size, args.batch_size, ae, "%s-train" % args.prefix)
 
 # display image interpolation
-vis.displayInterp(x_train, x_test, args.batch_size, args.latent_dim, encoder, encoder_var, args.sampling, generator, 10, "%s-interp" % args.prefix, anchor_indices = data_object.anchor_indices)
+vis.displayInterp(x_train, x_test, args.batch_size, args.latent_dim, encoder, encoder_var, args.sampling, generator, 10, "%s-interp" % args.prefix,
+                anchor_indices = data_object.anchor_indices, toroidal=args.toroidal)
 
 vis.plotMVhist(x_train, encoder, args.batch_size, "{}-mvhist.png".format(args.prefix))
 vis.plotMVVM(x_train, encoder, encoder_var, args.batch_size, "{}-mvvm.png".format(args.prefix))

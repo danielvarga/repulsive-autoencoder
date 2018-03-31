@@ -85,16 +85,17 @@ class ImageDisplayCallback(Callback):
         vis.plotImages(randomImages, 10, self.batch_size // 10, "{}-random".format(self.name))
 
         trainImages = self.ae.predict(self.x_train[:self.batch_size], batch_size = self.batch_size)
-        images = vis.mergeSets((trainImages, self.x_train[:self.batch_size]))        
+        images = vis.mergeSets((trainImages, self.x_train[:self.batch_size]))
         vis.plotImages(images, 2 * 10, self.batch_size // 10, "{}-train-{}".format(self.name, epoch+1))
         vis.plotImages(images, 2 * 10, self.batch_size // 10, "{}-train".format(self.name))
 
         testImages = self.ae.predict(self.x_test[:self.batch_size], batch_size = self.batch_size)
-        images = vis.mergeSets((testImages, self.x_test[:self.batch_size]))        
+        images = vis.mergeSets((testImages, self.x_test[:self.batch_size]))
         vis.plotImages(images, 2 * 10, self.batch_size // 10, "{}-test-{}".format(self.name, epoch+1))
         vis.plotImages(images, 2 * 10, self.batch_size // 10, "{}-test".format(self.name))
 
-        vis.displayInterp(self.x_train, self.x_test, self.batch_size, self.latent_dim, self.encoder, self.encoder_var, self.is_sampling, self.generator, 10, "%s-interp-%i" % (self.name,epoch+1), anchor_indices=self.anchor_indices)
+        vis.displayInterp(self.x_train, self.x_test, self.batch_size, self.latent_dim, self.encoder, self.encoder_var, self.is_sampling, self.generator, 10,
+            "%s-interp-%i" % (self.name,epoch+1), anchor_indices=self.anchor_indices, toroidal=self.args.toroidal)
         if self.encoder != self.encoder_var:
             vis.plotMVVM(self.x_train, self.encoder, self.encoder_var, self.batch_size, "{}-mvvm-{}.png".format(self.name, epoch+1))
         vis.plotMVhist(self.x_train, self.encoder, self.batch_size, "{}-mvhist-{}.png".format(self.name, epoch+1))

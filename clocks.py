@@ -4,7 +4,7 @@ import numpy as np
 
 sizeOfImage = 28
 numberOfHands = 2
-handWidth = 4
+handWidth = 10
 
 clockHandColor = 255
 clockBorderColor = 128

@@ -271,7 +271,7 @@ def displayInterp(x_train, x_test, batch_size, dim,
     anchor4 = anchor3 + anchor2 - anchor1
     anchors = np.array([anchor1, anchor2, anchor3, anchor4])
     if toroidal:
-        print "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! TOROIDAL INTERPOLATION"
+        print "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! TOROIDAL INTERPOLATION! anchor4 calculation is affine, not toroidal."
     # TODO different interpolations for different autoencoders!!!
     interpGrid = grid_layout.create_mine_grid(gridSize, gridSize, dim, gridSize-1, anchors, False, False, toroidal=toroidal)
     n = interpGrid.shape[0]

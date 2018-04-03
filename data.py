@@ -61,10 +61,12 @@ def load(dataset, shape=None, color=True):
         return Dataset_syn_constant_uniform(shape)
     elif dataset == "syn-constant-normal":
         return Dataset_syn_constant_normal(shape)
-    elif dataset == "syn-clocks2":
-        print shape
+    elif dataset.startswith("syn-clocks-hand"):
         assert shape == (28, 28) and not color
-        return Dataset_clocks2(shape)
+        suffix = dataset.split("-", 2)[2]
+        assert suffix.startswith("hand")
+        number_of_hands = int(suffix[4:])
+        return Dataset_clocks2(shape, number_of_hands=number_of_hands)
     else:
         raise Exception("Invalid dataset: ", dataset)
 
@@ -530,10 +532,10 @@ class Dataset_syn_constant_normal(Dataset_syn_infinite):
 
 
 class Dataset_clocks2(Dataset_syn_infinite):
-    def __init__(self, shape):
+    def __init__(self, shape, number_of_hands=1):
         assert shape == (28, 28)
         super(Dataset_clocks2, self).__init__("syn-clocks2", shape=shape)
-        self.number_of_hands = 1
+        self.number_of_hands = number_of_hands
     def sampler(self, size):
         return np.random.uniform(0, 2*np.pi, size=(size, self.number_of_hands))
     def generate_one_sample(self, data, params):

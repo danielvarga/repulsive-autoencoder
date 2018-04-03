@@ -102,6 +102,32 @@ class ImageDisplayCallback(Callback):
         vis.displayGaussian(self.args, self.modelDict, self.x_train, "{}-dots-{}".format(self.name, epoch+1))
         vis.displayGaussianDots(self.args, self.modelDict, self.x_train, "{}-singledots-{}".format(self.name, epoch+1), 15, 20)
 
+        # TODO move these to vis.py
+        if self.latent_dim == 2:
+            grid_size = 30
+            x = np.linspace(-1.1, +1.1, grid_size)
+            y = x
+            xx, yy = np.meshgrid(x, y)
+            plane = np.vstack([ xx.reshape(-1), yy.reshape(-1) ]).T.reshape((grid_size, grid_size, -1))
+            vis.displayPlane(x_train=self.x_train, latent_dim=self.latent_dim, plane=plane,
+                         generator=self.generator, name="{}-plane-{}".format(self.name, epoch+1),
+                         batch_size=self.batch_size)
+        if self.args.toroidal and self.latent_dim == 4:
+            grid_size = 30
+            x = np.linspace(0, 2*np.pi, grid_size, endpoint=False)
+            y = x
+            xx, yy = np.meshgrid(x, y)
+            # cxc as in circle x circle, a Descartes product
+            cxc = np.vstack([ xx.reshape(-1), yy.reshape(-1) ]).T
+            assert cxc.shape == (grid_size*grid_size, 2)
+            # turning two points on the circle into a point of the torus embedded in 4d:
+            embedded = np.vstack([np.cos(cxc[:, 0]), np.sin(cxc[:, 0]), np.cos(cxc[:, 1]), np.sin(cxc[:, 1])]).T
+            assert embedded.shape == (grid_size*grid_size, 4)
+            plane = embedded.reshape((grid_size, grid_size, 4))
+            vis.displayPlane(x_train=self.x_train, latent_dim=self.latent_dim, plane=plane,
+                         generator=self.generator, name="{}-flattorus-{}".format(self.name, epoch+1),
+                         batch_size=self.batch_size)
+
 #        vis.displayGaussian(self.args, self.ae, self.x_train, "%s-dots-%i" % (self.name, epoch+1))
         # vis.displayRandom(10, self.x_train, self.latent_dim, self.sampler, self.generator, "%s-random-%i" % (self.name, epoch+1), batch_size=self.batch_size)
         # vis.displayRandom(10, self.x_train, self.latent_dim, self.sampler, self.generator, "%s-random" % (self.name), batch_size=self.batch_size)

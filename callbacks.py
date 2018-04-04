@@ -102,6 +102,18 @@ class ImageDisplayCallback(Callback):
         vis.displayGaussian(self.args, self.modelDict, self.x_train, "{}-dots-{}".format(self.name, epoch+1))
         vis.displayGaussianDots(self.args, self.modelDict, self.x_train, "{}-singledots-{}".format(self.name, epoch+1), 15, 20)
 
+        latent_cloud = self.encoder.predict(self.x_test, batch_size=self.batch_size)
+        if self.latent_dim >= 2:
+            z1, z2 = latent_cloud[:, 0], latent_cloud[:, 1]
+            plt.clf()
+            plt.scatter(z1, z2)
+            plt.savefig("{}-latent-{}.png".format(self.name, epoch+1))
+            if self.args.toroidal:
+                rot = np.arctan2(z1, z2)
+                plt.clf()
+                n, bins, patches = plt.hist(rot, 50, normed=1)
+                plt.savefig("{}-latenthist-{}.png".format(self.name, epoch+1))
+
         # TODO move these to vis.py
         if self.latent_dim == 2:
             grid_size = 30
@@ -112,6 +124,7 @@ class ImageDisplayCallback(Callback):
             vis.displayPlane(x_train=self.x_train, latent_dim=self.latent_dim, plane=plane,
                          generator=self.generator, name="{}-plane-{}".format(self.name, epoch+1),
                          batch_size=self.batch_size)
+
         if self.args.toroidal and self.latent_dim == 4:
             grid_size = 30
             x = np.linspace(0, 2*np.pi, grid_size, endpoint=False)

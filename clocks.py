@@ -2,9 +2,11 @@ from PIL import ImageDraw, Image
 import random, math
 import numpy as np
 
-sizeOfImage = 28
+antialiasFactor = 4
+targetSizeOfImage = 28
+sizeOfImage = targetSizeOfImage * antialiasFactor
 numberOfHands = 2
-handWidth = 10
+handWidth = 10 * antialiasFactor
 
 clockHandColor = 255
 clockBorderColor = 128
@@ -21,6 +23,7 @@ def randomClockHandCoords(randomAngle):
 
 
 def clock(params):
+    antialiasFactor = 4
     img = Image.new("L", (sizeOfImage, sizeOfImage), 0)
     draw = ImageDraw.Draw(img)
 
@@ -34,6 +37,8 @@ def clock(params):
         else :
             clockHandColor = 127
         draw.line(randomClockHandCoords(handAngle), clockHandColor, handWidth)
+
+    img = img.resize((targetSizeOfImage, targetSizeOfImage), Image.ANTIALIAS)
 
     return np.array(img)
 

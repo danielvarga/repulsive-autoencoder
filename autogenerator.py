@@ -100,7 +100,7 @@ gen_dense_decoder = model.DenseDecoder(gen_latent_dim, intermediate_dims, gen_or
 gen_nonvariational = args.model=="nvae"
 gen_nonvariational = False
 gen_vae, gen_encoder, gen_generator = model.build_model(
-                	        batch_size, gen_original_dim,
+                                batch_size, gen_original_dim,
                                 gen_dense_encoder, gen_latent_dim, gen_dense_decoder,
                                 nonvariational=gen_nonvariational)
 

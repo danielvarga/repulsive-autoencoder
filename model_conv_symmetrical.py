@@ -94,36 +94,36 @@ class ConvEncoder(Encoder):
     def __init__(self, depth, latent_dim, intermediate_dims, image_dims, base_filter_nums, batch_size, wd=0.003):
         self.depth = depth
         self.latent_dim = latent_dim
-	self.intermediate_dims = intermediate_dims
-	self.image_dims = image_dims
+        self.intermediate_dims = intermediate_dims
+        self.image_dims = image_dims
         self.batch_size = batch_size
-	self.base_filter_nums = base_filter_nums
+        self.base_filter_nums = base_filter_nums
         self.wd = wd
 
     def __call__(self, x):
 
 
-	layers = []
+        layers = []
 
-#	reshape = Reshape(self.image_dims)
-#	layers.append(reshape)
+#        reshape = Reshape(self.image_dims)
+#        layers.append(reshape)
 
-	for d in range(self.depth):
-	    layers += discnet_encoder_drop(d, self.base_filter_nums, self.batch_size)
+        for d in range(self.depth):
+            layers += discnet_encoder_drop(d, self.base_filter_nums, self.batch_size)
 
-	layers.append(Flatten())
+        layers.append(Flatten())
 
-	# Decoder MLP
-	## bn rect, 1st, linear 2nd act
+        # Decoder MLP
+        ## bn rect, 1st, linear 2nd act
         for dim in self.intermediate_dims:
-	    dense = Dense(dim)
-	    layers.append(dense)
+            dense = Dense(dim)
+            layers.append(dense)
 
-#	    bn = BatchNormalization(mode=2)
-#	    layers.append(bn)
+#            bn = BatchNormalization(mode=2)
+#            layers.append(bn)
 
-	    act = Activation("relu")
-	    layers.append(act)
+            act = Activation("relu")
+            layers.append(act)
 
 
         for layer in layers:
@@ -139,48 +139,48 @@ class ConvDecoder(Decoder):
     def __init__(self, depth, latent_dim, intermediate_dims, image_dims, base_filter_nums, batch_size, wd=0.003):
         self.depth = depth
         self.latent_dim = latent_dim
-	self.intermediate_dims = intermediate_dims
-	self.image_dims = image_dims
+        self.intermediate_dims = intermediate_dims
+        self.image_dims = image_dims
         self.batch_size = batch_size
-	self.base_filter_nums = base_filter_nums
+        self.base_filter_nums = base_filter_nums
         self.wd = wd
 
     def __call__(self, z):
 
-	layers = []
+        layers = []
 
-	# Decoder MLP
+        # Decoder MLP
         image_size = (self.image_dims[0]//(2**(self.depth)), self.image_dims[1]//(2**(self.depth)), self.base_filter_nums[0] * (2**self.depth))
         self.encoder_filters = np.prod(image_size)
 
-	intermediate_dims = self.intermediate_dims + [self.encoder_filters]
+        intermediate_dims = self.intermediate_dims + [self.encoder_filters]
         for dim in intermediate_dims:
-	    dense = Dense(dim, activation="relu")
-	    layers.append(dense)
-	layers.append(Reshape(image_size))
+            dense = Dense(dim, activation="relu")
+            layers.append(dense)
+        layers.append(Reshape(image_size))
 
-	for d in range(self.depth-1, -1, -1):
+        for d in range(self.depth-1, -1, -1):
             if d == 0:
                 nb_features = self.image_dims[2]
             else:
                 nb_features = self.base_filter_nums[0] * (2**(d-1))
 
-	    image_size = (self.image_dims[0]//(2**d), self.image_dims[1]//(2**d), nb_features)
-	    # print(image_size)
-	    layers += discnet_decoder_drop(image_size, d, self.base_filter_nums, self.batch_size)
+            image_size = (self.image_dims[0]//(2**d), self.image_dims[1]//(2**d), nb_features)
+            # print(image_size)
+            layers += discnet_decoder_drop(image_size, d, self.base_filter_nums, self.batch_size)
 
-	# Make the picture
-#	conv_out = Convolution2D(1, 1, 1, subsample=(1,1), border_mode="same")
+        # Make the picture
+#        conv_out = Convolution2D(1, 1, 1, subsample=(1,1), border_mode="same")
 #        layers.append(conv_out)
-#	logistic = Activation("sigmoid")
-#	layers.append(logistic)
+#        logistic = Activation("sigmoid")
+#        layers.append(logistic)
 
-#	layers.append(Flatten())
+#        layers.append(Flatten())
 
         # we instantiate these layers separately so as to reuse them both for reconstruction and generation
         decoder_input = Input(batch_shape=(self.batch_size, self.latent_dim,))
 
-	x = z
+        x = z
         _x = decoder_input
         for layer in layers:
             x = layer(x)

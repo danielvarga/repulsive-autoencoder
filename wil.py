@@ -79,9 +79,9 @@ for layer in gen_layers:
 pair_outs = []
 for enc_out in enc_outs:
     if enc_out.name.lower().startswith("relu"):
-	for gen_out in gen_outs:
-	    if gen_out.name.lower().startswith("relu") and gen_out.shape == enc_out.shape:
-	        pair_outs.append((enc_out, gen_out))
+        for gen_out in gen_outs:
+            if gen_out.name.lower().startswith("relu") and gen_out.shape == enc_out.shape:
+                pair_outs.append((enc_out, gen_out))
 
 
 print(pair_outs)
@@ -105,7 +105,7 @@ for critic_data in critics_data:
     
     filter_nums = []
     for i in range(int(math.log(batch_shape[1],2))-2):
-	filter_nums.append(32*(2**i))
+        filter_nums.append(32*(2**i))
     filter_nums.append(1)
 
     print(filter_nums)
@@ -166,7 +166,7 @@ def ae_loss(x, x_decoded):
 
     summ = 0.0 * mse_loss(x, x_decoded)
     for pair in pair_outs:
-	summ += mse_loss(K.flatten(pair[0]), K.flatten(pair[1]))
+        summ += mse_loss(K.flatten(pair[0]), K.flatten(pair[1]))
     return summ
     return mse_loss(x, x_decoded) + summ # + K.mean(K.square(ae_z)) # + critic_loss(x, x_decoded)
 
@@ -239,7 +239,7 @@ def ndisc(gen_iters):
     if gen_iters < 25:
         return 100
     elif gen_iters % 500 == 0:
-	return 100
+        return 100
     else:
         return 5
 
@@ -252,14 +252,14 @@ def gaussian_sampler(batch_size, latent_dim):
 from keras.callbacks import Callback
 class ClipperCallback(Callback):
     def __init__(self, layers, clipValue):
-	self.layers = layers
+        self.layers = layers
         self.clipValue = clipValue
 
     def on_batch_begin(self, x, y):
         self.clip()
 
     def clip(self):
-	for layer in self.layers:
+        for layer in self.layers:
 #            if layer.__class__.__name__ not in ("Convolution2D", "BatchNormalization"): continue
             weights = layer.get_weights()
             for i in range(len(weights)):
@@ -310,20 +310,20 @@ for iter in range(args.nb_epoch):
     for i in range(disc_iters):
         clipper.clip()
         #r = disc.fit(xs, ys, verbose=args.verbose, batch_size=args.batch_size, shuffle=False, nb_epoch=1, callbacks=[clipper])
-	bs = args.batch_size
+        bs = args.batch_size
 
         rnd = np.random.normal(size=(args.batch_size, args.latent_dim))
 
-	x_generated = generator.predict(rnd, batch_size=args.batch_size)
-	x_true = x_true_flow.next()
-	x_encoded   = encoder.predict(x_true, batch_size=args.batch_size)
-	x_true_pairs = [x_true, x_encoded]
-	x_fake_pairs = [x_generated, rnd]
+        x_generated = generator.predict(rnd, batch_size=args.batch_size)
+        x_true = x_true_flow.next()
+        x_encoded   = encoder.predict(x_true, batch_size=args.batch_size)
+        x_true_pairs = [x_true, x_encoded]
+        x_fake_pairs = [x_generated, rnd]
 
-	r = disc.train_on_batch(x_fake_pairs, -np.ones(bs))
-	r = disc.train_on_batch(x_true_pairs, np.ones(bs))
+        r = disc.train_on_batch(x_fake_pairs, -np.ones(bs))
+        r = disc.train_on_batch(x_true_pairs, np.ones(bs))
         #disc_loss = r.history["loss"][0]
-	disc_loss = r
+        disc_loss = r
 
     #images = [x_true_flow.next() for i in range(disc_iters)]
     images = x_true_flow.next()

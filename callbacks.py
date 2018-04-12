@@ -256,7 +256,7 @@ class CollectActivationCallback(Callback):
 
 class ClipperCallback(Callback):
     def __init__(self, layers, clipValue):
-	self.layers = layers
+        self.layers = layers
         self.clipValue = clipValue
 
     def on_batch_begin(self, batch, logs):
@@ -264,7 +264,7 @@ class ClipperCallback(Callback):
 
     def clip(self):
         if self.clipValue == 0: return
-	for layer in self.layers:
+        for layer in self.layers:
 #            if layer.__class__.__name__ not in ("Convolution2D"): continue
 #            if layer.__class__.__name__ not in ("BatchNormalization"): continue
             weights = layer.get_weights()
@@ -274,16 +274,16 @@ class ClipperCallback(Callback):
 
 class DiscTimelineCallback(Callback):
     def __init__(self, test_points, batch_size):
-	#self.layers = ayers
-	#self.discriminator = self.model
-	self.test_points = test_points
-	self.batch_size = batch_size
-	self.timeline = []
-	#self.filename = filename
+        #self.layers = ayers
+        #self.discriminator = self.model
+        self.test_points = test_points
+        self.batch_size = batch_size
+        self.timeline = []
+        #self.filename = filename
 
     def on_epoch_end(self, epoch, logs):
-    	self.timeline.append(self.model.predict(self.test_points, batch_size=self.batch_size))
+        self.timeline.append(self.model.predict(self.test_points, batch_size=self.batch_size))
     
 #    def on_epoch_end(self, epoch, logs):
-#	self.saveimg(epoch)
+#        self.saveimg(epoch)
 

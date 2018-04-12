@@ -76,8 +76,8 @@ def generator_layers_dense(latent_dim, batch_size, wd, bn_allowed, image_shape, 
     layers = []
     for id,i in enumerate(intermediate_dims):
         layers.append(Dense(i, activation="relu"))
-	if bn_allowed: #and id != len(intermediate_dims)-1:
-		layers.append(BatchNormalization())
+        if bn_allowed: #and id != len(intermediate_dims)-1:
+                layers.append(BatchNormalization())
     layers.append(Dense(np.prod(image_shape), activation="linear"))
     #layers = net_blocks.dense_block(intermediate_dims, wd, bn_allowed, activation='relu')
     layers.append(Reshape(image_shape))

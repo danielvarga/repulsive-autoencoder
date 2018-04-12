@@ -72,7 +72,7 @@ def residual_drop(x, input_shape, output_shape, strides=(1, 1), weight_decay=0.0
         pad_shape = (1,
                      output_shape[1],
                      output_shape[2],
-		     output_shape[3] - input_shape[3])
+                     output_shape[3] - input_shape[3])
         padding = K.zeros(pad_shape)
         print(output_shape)
         padding = K.repeat_elements(padding, output_shape[0], axis=0)
@@ -117,7 +117,7 @@ def residual_drop_deconv(x, input_shape, output_shape, strides=(1, 1), weight_de
 
     bn_1 = BatchNormalization(axis=feat_axis)
     if with_batchnorm:
-	decoder_layers.append(bn_1)
+        decoder_layers.append(bn_1)
 
     act_1 = Activation(act)
     decoder_layers.append(act_1)
@@ -147,7 +147,7 @@ def residual_drop_deconv(x, input_shape, output_shape, strides=(1, 1), weight_de
         pad_shape = (1,
                      output_shape[1],
                      output_shape[2],
-		     output_shape[3] - input_shape[3])
+                     output_shape[3] - input_shape[3])
         padding = K.zeros(pad_shape)
         print(output_shape)
         padding = K.repeat_elements(padding, output_shape[0], axis=0)
@@ -264,7 +264,7 @@ class ConvDecoder(Decoder):
 
     def __call__(self, z):
 
-	filter_num_config = self.filter_num_config
+        filter_num_config = self.filter_num_config
         img_chns = 1
 
         if K.image_dim_ordering() == 'th':
@@ -299,9 +299,9 @@ class ConvDecoder(Decoder):
         #reshape_1 = Reshape((self.img_size[0]//4, self.img_size[1]//4, self.filter_num_config[2]))
 
         reshape_1 = Reshape((18,15, self.filter_num_config[2]//4))
-	decoder_layers.append(reshape_1)
+        decoder_layers.append(reshape_1)
 
-	net = None
+        net = None
 
         #decoder_layers.append(Flatten())
 
@@ -315,7 +315,7 @@ class ConvDecoder(Decoder):
                 output_shape=(self.batch_size, self.img_size[0]//4, self.img_size[1]//4, filter_num_config[2]),
                 input_shape=(self.batch_size, self.img_size[0]//4, self.img_size[1]//4, filter_num_config[2]),
                 act="relu",
-	        with_batchnorm = False
+                with_batchnorm = False
 
             )
         
@@ -325,8 +325,8 @@ class ConvDecoder(Decoder):
             output_shape=(self.batch_size, self.img_size[0]//2, self.img_size[1]//2, filter_num_config[1]),
             input_shape=(self.batch_size, self.img_size[0]//4, self.img_size[1]//4, filter_num_config[2]),
             strides=(2, 2),
-	    act="relu",
-	    with_batchnorm = False
+            act="relu",
+            with_batchnorm = False
         )
 
         
@@ -336,7 +336,7 @@ class ConvDecoder(Decoder):
                 output_shape=(self.batch_size, self.img_size[0]//2, self.img_size[1]//2, filter_num_config[1]),
                 input_shape=(self.batch_size, self.img_size[0]//2, self.img_size[1]//2, filter_num_config[1]),
                 act="relu",
-	        with_batchnorm = False
+                with_batchnorm = False
 
             )
         
@@ -345,25 +345,25 @@ class ConvDecoder(Decoder):
             output_shape=(self.batch_size, self.img_size[0], self.img_size[1], filter_num_config[0]),
             input_shape=(self.batch_size, self.img_size[0]//2, self.img_size[1]//2, filter_num_config[1]),
             strides=(2, 2),
-	    act="tanh",
-	    with_batchnorm = False
+            act="tanh",
+            with_batchnorm = False
         )
         
 
         for i in range(N):
             net = residual_drop_deconv(
-		    net, 
-		    output_shape=(self.batch_size, self.img_size[0], self.img_size[1], filter_num_config[0]), 
-		    input_shape=(self.batch_size, self.img_size[0], self.img_size[1], filter_num_config[0]),
-		    act="tanh",
-		    with_batchnorm = False
-	    )
+                    net, 
+                    output_shape=(self.batch_size, self.img_size[0], self.img_size[1], filter_num_config[0]), 
+                    input_shape=(self.batch_size, self.img_size[0], self.img_size[1], filter_num_config[0]),
+                    act="tanh",
+                    with_batchnorm = False
+            )
 
         
         conv_f = Convolution2D(1, (5, 5), strides=(1,1), padding="same")
         decoder_layers.append(conv_f)
         
-	"""
+        """
         bn_f = BatchNormalization(axis=feat_axis)
         decoder_layers.append(bn_f)
 
@@ -374,7 +374,7 @@ class ConvDecoder(Decoder):
         flatten_f = Flatten()
         decoder_layers.append(flatten_f)
 
-	"""
+        """
         dense_f = Dense(h*w)
         decoder_layers.append(dense_f)
         """
@@ -383,13 +383,13 @@ class ConvDecoder(Decoder):
         decoder_layers.append(re_f)
         """
 
-	x = decoder_input
+        x = decoder_input
         for layer in decoder_layers:
-	    print(K.shape(x))
+            print(K.shape(x))
             x = layer(x)
         _x_decoded_mean = x
             
-	x = z
+        x = z
         for layer in decoder_layers:
             x = layer(x)
         x_decoded_mean = x

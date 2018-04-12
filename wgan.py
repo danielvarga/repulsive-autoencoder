@@ -98,7 +98,7 @@ def ndisc(gen_iters):
     if gen_iters <= 25:
         return 100
     elif gen_iters % 500 == 0:
-	return 100
+        return 100
     else:
         return 5
 
@@ -158,7 +158,7 @@ elif args.optimizer == "sgd":
     optimizer_g = SGD(lr=args.lr)
 
 sampler = samplers.gaussian_sampler
-		    
+                    
 
 def build_networks(gen_layers, disc_layers):
     gen_output = gen_input

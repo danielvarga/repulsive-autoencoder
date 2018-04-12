@@ -58,9 +58,9 @@ def mergeParamsWithInis(args_param, ini_files_param="ini_file"):
         args[k] = args_param_dict[k]
 
     if args_param_dict[ini_files_param]:
-	for ini_file in args_param_dict[ini_files_param]:
-    	    args_ini_dict = paramsFromConf(file(ini_file))
-    	    for k in args_ini_dict:
+        for ini_file in args_param_dict[ini_files_param]:
+            args_ini_dict = paramsFromConf(file(ini_file))
+            for k in args_ini_dict:
                 if (k in args_param_dict) and isinstance(args[k], bool): # convert parameter from ini file to bool
                     args[k] = str2bool(args_ini_dict[k])
                 else:

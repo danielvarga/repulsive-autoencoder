@@ -23,7 +23,7 @@ class ConvEncoder(Encoder):
         wd = 0.003
         nb_conv=3
         nb_filters = 64
-	batch_size = 1000
+        batch_size = 1000
         image_chns = 1
         xr = Reshape(self.img_size)(x)
         conv_1 = Convolution2D(nb_filters, (nb_conv, nb_conv), padding='same', activation='relu', kernel_regularizer=l2(wd))(xr)
@@ -59,7 +59,7 @@ class ConvDecoder(Decoder):
         nb_filters = 64
         batch_size = 1000
 
-	img_chns = 1
+        img_chns = 1
         h = self.img_size[0]
         w = self.img_size[1]
         # we instantiate these layers separately so as to reuse them both for reconstruction and generation

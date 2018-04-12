@@ -23,7 +23,7 @@ center_variances = np.var(mean, axis=0)
 working_mask = (center_variances > 0.2)
 # print "\n".join(map(str, list(enumerate(working_mask))))
 
-print mean.shape, var.shape
+print(mean.shape, var.shape)
 assert mean.shape == var.shape
 n, d = mean.shape
 

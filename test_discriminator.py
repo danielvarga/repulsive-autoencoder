@@ -75,7 +75,7 @@ def D_loss(y_true, y_pred):
 def grad_aux(output, input):
     grads = K.gradients(output, [input])
     grads = grads[0]
-    tensor_axes = range(1, K.ndim(grads))
+    tensor_axes = list(range(1, K.ndim(grads)))
     grads = K.sqrt(epsilon + K.sum(K.square(grads), axis=tensor_axes))
     return grads
 def grad_flat(y_true, y_pred):
@@ -179,7 +179,7 @@ if create_timeline:
             #sys.exit()
             c_ep += 1
         os.system("convert -delay 20 -loop 0 pictures/disc_anim_tmp/*.png pictures/disc_anim_timeline_%s.gif" % loss_names[id])
-        print ("Saved pictures/disc_anim_timeline_%s.gif" % loss_names[id])
+        print(("Saved pictures/disc_anim_timeline_%s.gif" % loss_names[id]))
         os.system("rm pictures/disc_anim_tmp/*.png")
 
 
@@ -190,7 +190,7 @@ fig = plt.figure()
 for i in range(count):
     if dim == 1:
         
-        print "Saving {}".format(name)
+        print("Saving {}".format(name))
         ax = fig.add_subplot(count, 1, i+1)
  #       f, axes = plt.subplots(count, 1, sharex=True)
         ax.scatter(test_points, predictions[i])
@@ -199,7 +199,7 @@ for i in range(count):
     elif dim == 2:
         # NOTE: Created 3D images and animations dont look good on geforce1.
         if dim2_anim:
-            print ("Creating animation %d of %d..." % (i+1, count))
+            print(("Creating animation %d of %d..." % (i+1, count)))
 
         #ax = fig.add_subplot(count, 1, i+1, projection='3d')
         #        ax.scatter(test_points[:,0], test_points[:,1], predictions[i])
@@ -238,7 +238,7 @@ for i in range(count):
 
         if dim2_anim:
             os.system("convert -delay 20 -loop 10 pictures/disc_anim_tmp/*.png pictures/disc_anim_%s.gif" % loss_names[i])
-            print ("Saved pictures/disc_anim_%s.gif" % loss_names[i])
+            print(("Saved pictures/disc_anim_%s.gif" % loss_names[i]))
             os.system("rm pictures/disc_anim_tmp/*.png")
         else:
-            print ("Saved pictures/disc_anim_tmp/%s_030.png" % loss_names[i])
+            print(("Saved pictures/disc_anim_tmp/%s_030.png" % loss_names[i]))

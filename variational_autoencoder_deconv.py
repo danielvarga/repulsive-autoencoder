@@ -119,7 +119,7 @@ x_train = x_train.reshape((x_train.shape[0],) + original_img_size)
 x_test = x_test.astype('float32') / 255.
 x_test = x_test.reshape((x_test.shape[0],) + original_img_size)
 
-print('x_train.shape:', x_train.shape)
+print(('x_train.shape:', x_train.shape))
 
 vae.fit(x_train, x_train,
         shuffle=True,
@@ -162,7 +162,7 @@ for i, yi in enumerate(grid_x):
         z_sample = np.tile(z_sample, batch_size).reshape(batch_size, 2)
         x_decoded = generator.predict(z_sample, batch_size=batch_size)
         digit = x_decoded[0].reshape(digit_size, digit_size)
-        print np.max(digit)
+        print(np.max(digit))
         figure[i * digit_size: (i + 1) * digit_size,
                j * digit_size: (j + 1) * digit_size] = digit
 

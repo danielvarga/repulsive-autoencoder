@@ -45,22 +45,22 @@ def main():
     with tf.Session() as sess:
         init = tf.initialize_all_variables()
         sess.run(init)
-        for step in xrange(epochs):
+        for step in range(epochs):
             sess.run(train_step)
-            print frobenius.eval(session=sess)
+            print(frobenius.eval(session=sess))
 
         x_val = x_norm.eval(session=sess)
-        print "============== X"
-        print x_val
+        print("============== X")
+        print(x_val)
         rsc = rowwise_scalar_product.eval(session=sess)
 
-        print "============== XX^T"
-        print rsc
-        print "============== eigenvalues of XX^T"
+        print("============== XX^T")
+        print(rsc)
+        print("============== eigenvalues of XX^T")
         w, v = np.linalg.eig(rsc)
-        print sorted(w.real.tolist(), reverse=True)
-        print "============== Frobenius(XX^T)"
-        print frobenius.eval(session=sess)
+        print(sorted(w.real.tolist(), reverse=True))
+        print("============== Frobenius(XX^T)")
+        print(frobenius.eval(session=sess))
 
     interactive = True
     if interactive:

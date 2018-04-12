@@ -73,11 +73,11 @@ def test_pairwise_distances():
     y = 2 * np.random.normal(size=(m, f))
 
     f = K.function([x_ph, y_ph], [mean_pairwise_squared_distances(x_ph, y_ph, n, m)])
-    print np.sqrt(f([x, y]))
+    print(np.sqrt(f([x, y])))
 
     import kohonen
     # stupid kohonen.distanceMatrix() gives back the transpose of what would be logical.
-    print kohonen.distanceMatrix(x, y).T
+    print(kohonen.distanceMatrix(x, y).T)
 
 
 def test_eigenvec():
@@ -90,9 +90,9 @@ def test_eigenvec():
     # putting some correlation in there:
     data[:, 0] += 2 * data[:, 1]
 
-    print data.shape
+    print(data.shape)
     cov = np.cov(data.T)
-    print "empirical cov", cov
+    print("empirical cov", cov)
 
     # This corresponds to the above specific data[:, 0] += 2 * data[:, 1]
     theo_cov = np.eye(latent_dim)
@@ -101,28 +101,28 @@ def test_eigenvec():
     theo_cov[0, 1] = 2
 
     eigVals, eigVects = np.linalg.eigh(cov)
-    print "eigvals = ", list(reversed(eigVals))
-    print "dominant eigvect = ", eigVects[:, -1]
+    print("eigvals = ", list(reversed(eigVals)))
+    print("dominant eigvect = ", eigVects[:, -1])
 
     theo_eigVals, theo_eigVects = np.linalg.eigh(theo_cov)
-    print "theoretical eigvals = ", list(reversed(theo_eigVals))
-    print "theoretical dominant eigvect = ", theo_eigVects[:, -1]
+    print("theoretical eigvals = ", list(reversed(theo_eigVals)))
+    print("theoretical dominant eigvect = ", theo_eigVects[:, -1])
 
-    print "======="
+    print("=======")
 
     f = K.function([input], list(eigvec_of_cov(input, bs, latent_dim, iterations=3)))
     domEigVect, domEigVal = f([data])
-    print domEigVect.shape, domEigVal.shape
-    print "iterative keras-based dominant eigenvalue", domEigVal[0][0]
-    print "iterative keras-based dominant eigenvector", domEigVect[:, 0]
+    print(domEigVect.shape, domEigVal.shape)
+    print("iterative keras-based dominant eigenvalue", domEigVal[0][0])
+    print("iterative keras-based dominant eigenvector", domEigVect[:, 0])
 
-    print "======="
+    print("=======")
 
     WW = K.dot(K.transpose(input), input)
     f = K.function([input], list(extreme_eigvals(WW, bs, latent_dim, iterations=3, inner_normalization=True)))
     mineigval, maxeigval = f([data])
-    print "iterative keras-based extreme eigenvalues", mineigval, maxeigval
-    print "numpy extreme eigenvalues", eigVals[0], eigVals[-1]
+    print("iterative keras-based extreme eigenvalues", mineigval, maxeigval)
+    print("numpy extreme eigenvalues", eigVals[0], eigVals[-1])
 
     theo_cov_shifted = np.eye(latent_dim) * theo_eigVals[0] - theo_cov
     eigVals, eigVects = np.linalg.eigh(theo_cov_shifted)

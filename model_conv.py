@@ -385,7 +385,7 @@ class ConvDecoder(Decoder):
 
         x = decoder_input
         for layer in decoder_layers:
-            print(K.shape(x))
+            print((K.shape(x)))
             x = layer(x)
         _x_decoded_mean = x
             

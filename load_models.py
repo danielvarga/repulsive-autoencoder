@@ -10,7 +10,7 @@ def loadModel(filePrefix):
     jFile.close()
     mod = model_from_json(loaded_model_json)
     mod.load_weights(weightFile)
-    print "Loaded model from files {}, {}".format(jsonFile, weightFile)
+    print("Loaded model from files {}, {}".format(jsonFile, weightFile))
     return mod
 
 def saveModel(mod, filePrefix):
@@ -21,9 +21,9 @@ def saveModel(mod, filePrefix):
         try:
             json_file.write(mod.to_json())
         except:
-            print "Failed saving json file {}.json, you have to load this file using load_models.rebuild_models(args)".format(filePrefix)
+            print("Failed saving json file {}.json, you have to load this file using load_models.rebuild_models(args)".format(filePrefix))
         else:
-            print "Saved model to files {}, {}".format(jsonFile, weightFile)
+            print("Saved model to files {}, {}".format(jsonFile, weightFile))
 
 
 def load_autoencoder(args):
@@ -44,7 +44,7 @@ def load_autoencoder(args):
 # return (autoencoder, encoder, encoder_var, generator)
 def rebuild_models(args):
     modelDict = model.build_model(args)
-    for key in modelDict.keys():
+    for key in list(modelDict.keys()):
         if key == "ae":
             curr_model_name = "model"
         else:
@@ -52,10 +52,10 @@ def rebuild_models(args):
         curr_model = modelDict[key]
         weightFile = args.prefix + "_" + curr_model_name + ".h5"
         curr_model.summary()
-        print "Loading weights from file: ", weightFile
+        print("Loading weights from file: ", weightFile)
         try:
             curr_model.load_weights(weightFile)
         except:
-            print "Failed to load weights from file {}".format(weightFile)
+            print("Failed to load weights from file {}".format(weightFile))
     return modelDict
 

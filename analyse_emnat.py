@@ -34,23 +34,23 @@ def biflatten(x):
 def averageDistance(dataBatch, fakeBatch):
     return np.mean(np.linalg.norm(biflatten(dataBatch) - biflatten(fakeBatch), axis=1))
 
-print "loading data"
+print("loading data")
 data_object = data.load(args.dataset, shape=args.shape, color=args.color)
 (x_train, x_test) = data_object.get_data(args.trainSize, args.testSize)
 
-print "loading latent points"
+print("loading latent points")
 latent_file = prefix + "_latent.npy"
 latent = np.load(latent_file)
 fake_original = generator.predict(latent, batch_size=args.batch_size)
 xxx
 if True:
-    print "Checking covariance matrix of latent points"
+    print("Checking covariance matrix of latent points")
     cov_latent = np.cov(latent.T)
     eigVals, eigVects = np.linalg.eigh(cov_latent)
-    print "cov_latent eigvals = ", list(reversed(eigVals))
+    print("cov_latent eigvals = ", list(reversed(eigVals)))
 
 if False:
-    print "displaying images along latent axes"
+    print("displaying images along latent axes")
     ls = []
     steps = np.linspace(-1, 1, num=args.batch_size)
     for dim in range(args.latent_dim):
@@ -62,7 +62,7 @@ if False:
     vis.plotImages(images, args.batch_size, args.latent_dim, prefix + "_latent_axes")
     
 if True:
-    print "displaying latent structure projected to 2 dimensions"
+    print("displaying latent structure projected to 2 dimensions")
     tsne_points = 2000
     display_points = 150
     images = fake_original[:tsne_points]
@@ -91,7 +91,7 @@ if True:
 
     plt.scatter(reduced[:, 0], reduced[:, 1])
     file = prefix + "_latent_structure.png"
-    print "Saving {}".format(file)
+    print("Saving {}".format(file))
     plt.savefig(file)
     plt.close()
 
@@ -100,7 +100,7 @@ xxx
 
 
 recons = averageDistance(x_train, fake_original)
-print "Reconstruction loss: {}".format(recons)
+print("Reconstruction loss: {}".format(recons))
 
 assert latent.shape[1] == args.latent_dim
 for dim in range(args.latent_dim):
@@ -110,7 +110,7 @@ for dim in range(args.latent_dim):
     fake = generator.predict(l, batch_size=args.batch_size)
     recons_to_orig = averageDistance(x_train, fake)
     recons_to_recons = averageDistance(fake_original, fake)
-    print "Reconstruction without {}th dim: {} to x_train, {} to original reconstruction".format(dim, recons_to_orig, recons_to_recons)
+    print("Reconstruction without {}th dim: {} to x_train, {} to original reconstruction".format(dim, recons_to_orig, recons_to_recons))
 
 
 xxx
@@ -137,11 +137,11 @@ fake_images = fake_images.reshape((fake_images.shape[0], fake_images.shape[1], -
 
 point_limit = 1000
 if args.trainSize > point_limit:
-    print "Restricting analysis to the first {} points".format(point_limit)
+    print("Restricting analysis to the first {} points".format(point_limit))
     x_train = x_train[:point_limit]
     fake_images = fake_images[:,:point_limit]
 
-print "Calculating distance matrix"
+print("Calculating distance matrix")
 distances = []
 distances10 = []
 for i in range(len(fake_epochs)):
@@ -150,7 +150,7 @@ for i in range(len(fake_epochs)):
 distances = np.array(distances)
 distances10 = np.array(distances)
 
-print "Finding greedy matching"
+print("Finding greedy matching")
 greedy_matching = np.zeros(len(fake_epochs))
 greedy_matching10 = np.zeros(len(fake_epochs))
 for i in range(len(fake_epochs)):
@@ -158,14 +158,14 @@ for i in range(len(fake_epochs)):
     p10 = np.array(kohonen.greedyPairing(fake_images[i], x_train, distances10[i]))
     greedy_matching[i] = float(np.sum(p == np.arange(len(p)))) / len(p)
     greedy_matching10[i] = float(np.sum(p10 == np.arange(len(p10)))) / len(p10)
-print "Fixed point ratio when using greedy matching: ", greedy_matching
-print "Fixed point ratio when using greedy matching and 10 dim projection: ", greedy_matching10
+print("Fixed point ratio when using greedy matching: ", greedy_matching)
+print("Fixed point ratio when using greedy matching and 10 dim projection: ", greedy_matching10)
 
 
-print "Finding optimal matching"
+print("Finding optimal matching")
 optimal_limit = 1000
 if args.trainSize > optimal_limit:
-    print "Restricting optimal matching to the first {} points".format(optimal_limit)
+    print("Restricting optimal matching to the first {} points".format(optimal_limit))
     x_train = x_train[:optimal_limit]
     fake_images = fake_images[:,:optimal_limit]
 
@@ -176,5 +176,5 @@ for i in range(len(fake_epochs)):
     p10 = np.array(kohonen.optimalPairing(fake_images[i], x_train, distances10[i]))
     optimal_matching[i] = float(np.sum(p == np.arange(len(p)))) / len(p)
     optimal_matching10[i] = float(np.sum(p10 == np.arange(len(p10)))) / len(p10)
-print "Fixed point ratio when using optimal matching: ", optimal_matching
-print "Fixed point ratio when using optimal matching and 10 dim projection: ", optimal_matching10
+print("Fixed point ratio when using optimal matching: ", optimal_matching)
+print("Fixed point ratio when using optimal matching and 10 dim projection: ", optimal_matching10)

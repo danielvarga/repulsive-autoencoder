@@ -16,7 +16,7 @@ print(args)
 
 # limit memory usage
 import keras
-print "Keras version: ", keras.__version__
+print("Keras version: ", keras.__version__)
 if keras.backend._BACKEND == "tensorflow":
     import tensorflow as tf
     from keras.backend.tensorflow_backend import set_session
@@ -30,7 +30,7 @@ args.original_shape = x_train.shape[1:]
 imageGenerator = ImageDataGenerator()
 x_train_size = args.batch_size * (x_train.shape[0] // args.batch_size)
 x_train = x_train[:x_train_size]
-print "Train set size: ", x_train_size 
+print("Train set size: ", x_train_size) 
 x_true_flow = imageGenerator.flow(x_train, batch_size = args.batch_size)
 
 
@@ -115,7 +115,7 @@ for critic_data in critics_data:
     disc_layers_latent = model_dcgan.discriminator_layers_dense(0.0, True)
     print(disc_layers)
 
-    print(gen_output.shape.as_list())
+    print((gen_output.shape.as_list()))
     gen_disc_output = gen_o
     
 
@@ -228,11 +228,11 @@ ae.compile(optimizer=ae_optimizer, loss=ae_loss, metrics = [mse_loss, covariance
 
 #make_trainable(disc, True)
 
-print "Discriminator"
+print("Discriminator")
 disc.summary()
-print "AE"
+print("AE")
 ae.summary()
-print "Enc_Disc"
+print("Enc_Disc")
 gen_disc.summary()
 
 def ndisc(gen_iters):
@@ -270,7 +270,7 @@ clipper = ClipperCallback(disc_layers + disc_layers_latent, args.clipValue)
 y_generated = np.array([-1.0] * args.batch_size).reshape((-1,1)).astype("float32")
 y_gaussian = np.array([1.0] * args.batch_size).reshape((-1,1)).astype("float32")
 
-print "starting training"
+print("starting training")
 startTime = time.clock()
 for iter in range(args.nb_epoch):
 
@@ -288,7 +288,7 @@ for iter in range(args.nb_epoch):
     rnd = np.random.normal(size=(args.batch_size, args.latent_dim))
     #r = gen_disc.fit(rnd, - np.ones(args.batch_size), verbose=args.verbose, batch_size=args.batch_size, nb_epoch=1)
     disc.trainable = False
-    r = gen_disc.train_on_batch([rnd, x_true_flow.next()], np.ones(args.batch_size))
+    r = gen_disc.train_on_batch([rnd, next(x_true_flow)], np.ones(args.batch_size))
     disc.trainable = True
     enc_loss = r
 
@@ -315,7 +315,7 @@ for iter in range(args.nb_epoch):
         rnd = np.random.normal(size=(args.batch_size, args.latent_dim))
 
         x_generated = generator.predict(rnd, batch_size=args.batch_size)
-        x_true = x_true_flow.next()
+        x_true = next(x_true_flow)
         x_encoded   = encoder.predict(x_true, batch_size=args.batch_size)
         x_true_pairs = [x_true, x_encoded]
         x_fake_pairs = [x_generated, rnd]
@@ -326,7 +326,7 @@ for iter in range(args.nb_epoch):
         disc_loss = r
 
     #images = [x_true_flow.next() for i in range(disc_iters)]
-    images = x_true_flow.next()
+    images = next(x_true_flow)
     r = ae.fit(images, images, verbose=args.verbose, batch_size=args.batch_size, epochs=1)
     cov_monitor = r.history['covariance_monitor'][0]
 
@@ -336,7 +336,7 @@ for iter in range(args.nb_epoch):
     #enc_loss = 0
 
     #print "Iter: {}, Disc: {}, Enc: {}, Ae: {}, Cov: {}, Mse: {}, Critic: {}".format(iter+1, disc_loss, enc_loss, recons_loss, cov_monitor, mse_monitor, critic_monitor)
-    print "Iter: {}, Disc: {}, Enc: {}, Cov: {}".format(iter+1, disc_loss, enc_loss, cov_monitor)
+    print("Iter: {}, Disc: {}, Enc: {}, Cov: {}".format(iter+1, disc_loss, enc_loss, cov_monitor))
 
     #print "Iter: {}, Disc: {}, Enc: {}".format(iter+1, disc_loss, enc_loss)
     if (iter+1) % args.frequency == 0:
@@ -344,7 +344,7 @@ for iter in range(args.nb_epoch):
         elapsed = currTime - startTime
         second = elapsed % 60
         minute = int(elapsed / 60)
-        print "Elapsed time: {}:{:.0f}".format(minute, second)
+        print("Elapsed time: {}:{:.0f}".format(minute, second))
         vis.displayRandom(10, x_train, args.latent_dim, gaussian_sampler, generator, "{}-random-{}".format(args.prefix, iter+1), batch_size=args.batch_size)
         vis.displayRandom(10, x_train, args.latent_dim, gaussian_sampler, generator, "{}-random".format(args.prefix), batch_size=args.batch_size)
         if (iter+1) % 200 == 0: 

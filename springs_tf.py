@@ -25,8 +25,8 @@ def squaredDistanceTest():
     bL2S = tf.reduce_sum(b**2, -1, keep_dims=True)
     aL2SM = tf.reshape(tf.tile(aL2S, (l_b, 1)), (l_b, l_a))
     bL2SM = tf.reshape(tf.tile(bL2S, (l_a, 1)), (l_a, l_b))
-    print aL2SM.get_shape().as_list()
-    print bL2SM.get_shape().as_list()
+    print(aL2SM.get_shape().as_list())
+    print(bL2SM.get_shape().as_list())
     squaredDistances = aL2SM + tf.transpose(bL2SM) - 2.0 * tf.matmul(b, tf.transpose(a))
     with tf.Session() as sess:
         init = tf.initialize_all_variables()
@@ -34,9 +34,9 @@ def squaredDistanceTest():
         a_val = a.eval(session=sess)
         b_val = b.eval(session=sess)
         sd = squaredDistances.eval(session=sess)
-        print sd
-        print "----"
-        print np.array([[(al-bl).dot(al-bl) for al in a_val] for bl in b_val])
+        print(sd)
+        print("----")
+        print(np.array([[(al-bl).dot(al-bl) for al in a_val] for bl in b_val]))
 
 
 def main():
@@ -54,17 +54,17 @@ def main():
     with tf.Session() as sess:
         init = tf.initialize_all_variables()
         sess.run(init)
-        for step in xrange(epochs):
+        for step in range(epochs):
             sess.run(train_step)
-            print energy.eval(session=sess)
+            print(energy.eval(session=sess))
 
         x_val = x_norm.eval(session=sess)
-        print "============== X"
-        print x_val
+        print("============== X")
+        print(x_val)
         distances_val = distances.eval(session=sess)
 
-        print "============== Pairwise distances"
-        print distances_val
+        print("============== Pairwise distances")
+        print(distances_val)
 
     interactive = True
     if interactive:

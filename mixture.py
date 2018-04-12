@@ -70,7 +70,7 @@ class MixtureLayer(Layer):
             densities = inp[:, :, :, self.densities_index]
             de  = add_two_dims(densities)
         else:
-            print "FIXED DENSITY FOR MIXTURE GAUSSIANS!"
+            print("FIXED DENSITY FOR MIXTURE GAUSSIANS!")
             de = 1.0
 
         xi = tf.linspace(0.0, 1.0, sizeX)
@@ -111,11 +111,11 @@ def test_forward():
     net = MixtureLayer(size,size,learn_variance=False)(inputs)
     model = Model(input=inputs, output=net)
     out = model.predict([np.expand_dims(inp, 0)])
-    print out.shape
+    print(out.shape)
     out = out[0]
     out = np.clip(out, 0.0, 1.0)
     out *= 255.0
-    print out.shape
+    print(out.shape)
     img = Image.fromarray(out.astype(dtype='uint8'), mode="L")
     img.save("vis.png")
 
@@ -129,14 +129,14 @@ def plotImages(data, n_x, n_y, name):
 
     mode = "L"
     image_data = np.zeros((height_inc * n_y + 1, width_inc * n_x - 1), dtype='uint8')
-    for idx in xrange(n):
+    for idx in range(n):
         x = idx % n_x
         y = idx / n_x
         sample = data[idx]
         image_data[height_inc*y:height_inc*y+height, width_inc*x:width_inc*x+width] = 255*sample.clip(0, 0.99999)
     img = Image.fromarray(image_data,mode=mode)
     fileName = name + ".png"
-    print "Creating file " + fileName
+    print("Creating file " + fileName)
     img.save(fileName)
 
 
@@ -248,14 +248,14 @@ def test_learn():
             i += 1
     collect(3, anim_phases)
     collect(5, anim_phases)
-    targets += range(anim_phases)
-    print "Animation phase count %d" % len(targets)
+    targets += list(range(anim_phases))
+    print("Animation phase count %d" % len(targets))
 
     for i in range(len(targets)-1):
         interp = interpolate(X_train[targets[i]], X_train[targets[i+1]], encoder, decoder, frame_count, output_image_size)
         animation.extend(interp[:-1])
 
-    print "Creating frames of animation"
+    print("Creating frames of animation")
     for i, frame_i in enumerate(animation):
         img = Image.fromarray((255 * np.clip(frame_i, 0.0, 1.0)).astype(dtype='uint8'), mode="L")
         img.save("gif/%03d.gif" % i)

@@ -78,13 +78,13 @@ def test(file):
     color = True
     result = []
     for dataset in datasets:
-        print "Testing dataset: {}".format(dataset)
+        print("Testing dataset: {}".format(dataset))
         data_object = load(dataset, shape, color)
         x_train, x_test = data_object.get_data(trainSize, testSize)
         if x_train.shape[feature_axis] == 1:
             x_train = np.concatenate([x_train, x_train, x_train], axis=feature_axis)
         result.append(x_train)
-        x_batch = data_object.get_train_flow(trainSize).next()
+        x_batch = next(data_object.get_train_flow(trainSize))
         if x_batch.shape[feature_axis] == 1:
             x_batch = np.concatenate([x_batch, x_batch, x_batch], axis=feature_axis)
         result.append(x_batch)
@@ -99,7 +99,7 @@ def test_uniform(file):
     color = False
     result = []
     for dataset in datasets:
-        print "Testing dataset: {}".format(dataset)
+        print("Testing dataset: {}".format(dataset))
         data_object = load(dataset, shape, color)
         x_uniform = data_object.get_uniform_data()
         result.append(x_uniform[:400])
@@ -251,7 +251,7 @@ class Dataset_celeba(Dataset_real):
         if not color:
             self.input = np.expand_dims(self.input, feature_axis)
         if shape==(64, 64):
-            print "Truncated faces to get shape", shape
+            print("Truncated faces to get shape", shape)
             self.input = self.input[:,4:68,:,:]
     def get_data(self, trainSize, testSize):
         self.x_train, self.x_test = self.get_normalized_image_data(self.input, trainSize, testSize)
@@ -342,8 +342,8 @@ class Dataset_syn_finite(Dataset_synthetic):
             def __init__(self, finite_set, batch_size):
                 self.finite_set = finite_set
                 self.batch_size = batch_size
-                self.index_range = range(len(self.finite_set))
-            def next(self):
+                self.index_range = list(range(len(self.finite_set)))
+            def __next__(self):
                 selected_indices = np.random.choice(self.index_range, self.batch_size)
                 result = self.finite_set[selected_indices]
                 return [result, result]
@@ -391,7 +391,8 @@ class Dataset_circles_centered(Dataset_syn_finite):
 class Dataset_moving_circles(Dataset_syn_finite):
     def __init__(self, shape):
         super(Dataset_moving_circles, self).__init__("syn-moving-circles", shape=shape)
-    def generate_one_sample(self, data, (center_x, center_y)):
+    def generate_one_sample(self, data, xxx_todo_changeme):
+        (center_x, center_y) = xxx_todo_changeme
         radius = min(data.shape) // 8
         for y in range(data.shape[0]):
             for x in range(data.shape[1]):
@@ -400,8 +401,8 @@ class Dataset_moving_circles(Dataset_syn_finite):
     def generate_finite_set(self):
         shape = self.shape
         radius = min(shape) // 8
-        y_range = range(radius, shape[0] - radius)
-        x_range = range(radius, shape[1] - radius)
+        y_range = list(range(radius, shape[0] - radius))
+        x_range = list(range(radius, shape[1] - radius))
         set_size = len(y_range) * len(x_range)
 
         data = np.zeros((set_size, shape[0], shape[1]))
@@ -425,7 +426,7 @@ class Dataset_syn_infinite(Dataset_synthetic):
             def __init__(self, batch_size, generator):
                 self.generator = generator
                 self.batch_size = batch_size
-            def next(self):
+            def __next__(self):
                 result = self.generator(batch_size)
                 return [result, result]
         return Generator(batch_size, self.generate_samples)
@@ -595,6 +596,6 @@ def load_celeba_labels():
         fileNames.append(fileName)
     labels = np.array(labels)
 
-    sorter = sorted(range(len(fileNames)), key=lambda k: fileNames[k])
+    sorter = sorted(list(range(len(fileNames))), key=lambda k: fileNames[k])
     labels = labels[sorter]
     return label_names, labels

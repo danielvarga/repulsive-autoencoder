@@ -15,7 +15,7 @@ print(args)
 
 # limit memory usage
 import keras
-print "Keras version: ", keras.__version__
+print("Keras version: ", keras.__version__)
 if keras.backend._BACKEND == "tensorflow":
     import tensorflow as tf
     from keras.backend.tensorflow_backend import set_session
@@ -109,11 +109,11 @@ make_trainable(disc, False)
 enc_disc.compile(optimizer=enc_disc_optimizer, loss = D_loss)
 ae.compile(optimizer=ae_optimizer, loss=ae_loss, metrics = [ae_loss, mse_loss, critic_loss, covariance_monitor])
 
-print "Discriminator"
+print("Discriminator")
 disc.summary()
-print "AE"
+print("AE")
 ae.summary()
-print "Enc_Disc"
+print("Enc_Disc")
 enc_disc.summary()
 
 def ndisc(gen_iters):
@@ -151,13 +151,13 @@ clipper = ClipperCallback(disc_layers, args.clipValue)
 y_generated = np.array([-1.0] *  args.batch_size).reshape((-1,1)).astype("float32")
 y_gaussian = np.array([1.0] *  args.batch_size).reshape((-1,1)).astype("float32")
 
-print "starting training"
+print("starting training")
 startTime = time.clock()
 for iter in range(args.nb_epoch):
 
     # update autoencoder
     recons_iters = nrecons(iter)
-    images = np.concatenate([x_true_flow.next() for i in range(recons_iters)], axis=0)
+    images = np.concatenate([next(x_true_flow) for i in range(recons_iters)], axis=0)
     r = ae.fit(images, images, verbose=args.verbose, batch_size=args.batch_size, nb_epoch=1)
     recons_loss = r.history["loss"][0]
     loss_monitor = r.history["ae_loss"][0]
@@ -167,7 +167,7 @@ for iter in range(args.nb_epoch):
 
     # update discriminator
     disc_iters = ndisc(iter)
-    images = np.concatenate([x_true_flow.next() for i in range(disc_iters)], axis=0)
+    images = np.concatenate([next(x_true_flow) for i in range(disc_iters)], axis=0)
     x_generated = encoder.predict(images, batch_size=args.batch_size)
     x_gaussian = np.random.normal(size=(disc_iters * args.batch_size, args.latent_dim))
     xs = np.concatenate((x_generated, x_gaussian), axis=0)
@@ -176,13 +176,13 @@ for iter in range(args.nb_epoch):
     r = disc.fit(xs, ys, verbose=args.verbose, batch_size=args.batch_size, shuffle=True, nb_epoch=1)
     disc_loss = r.history["loss"][0]
 
-    print "Iter: {}, Disc: {}, Ae: {}-{}, Cov: {}, Mse: {}, Critic: {}".format(iter+1, disc_loss, recons_loss, loss_monitor, cov_monitor, mse_monitor, critic_monitor)
+    print("Iter: {}, Disc: {}, Ae: {}-{}, Cov: {}, Mse: {}, Critic: {}".format(iter+1, disc_loss, recons_loss, loss_monitor, cov_monitor, mse_monitor, critic_monitor))
     if (iter+1) % args.frequency == 0:
         currTime = time.clock()
         elapsed = currTime - startTime
         second = elapsed % 60
         minute = int(elapsed / 60)
-        print "Elapsed time: {}:{:.0f}".format(minute, second)
+        print("Elapsed time: {}:{:.0f}".format(minute, second))
         vis.displayRandom(10, x_train, args.latent_dim, gaussian_sampler, generator, "{}-random-{}".format(args.prefix, iter+1), batch_size=args.batch_size)
         vis.displayRandom(10, x_train, args.latent_dim, gaussian_sampler, generator, "{}-random".format(args.prefix), batch_size=args.batch_size)
         vis.displaySet(x_test[:args.batch_size], args.batch_size, args.batch_size, ae, "%s-test" % args.prefix)

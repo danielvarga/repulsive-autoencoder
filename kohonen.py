@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import math
 import random
 import sys
-import cPickle
+import pickle
 import gzip
 from collections import defaultdict
 from scipy.optimize import linear_sum_assignment
@@ -12,7 +12,7 @@ from scipy.optimize import linear_sum_assignment
 
 def pretty(m):
     for row in m:
-        print "\t".join(map(str, row))
+        print("\t".join(map(str, row)))
 
 def halfCircle():
     x = 1.0
@@ -39,7 +39,7 @@ def sampleFromTarget():
     # return triangle()
 
 def samplesFromTarget(n):
-    return np.array([sampleFromTarget() for i in xrange(n)])
+    return np.array([sampleFromTarget() for i in range(n)])
 
 def samplesFromInit(n, d, e):
     norm = np.random.normal(loc=0.0, scale=1.0, size=(n,e))
@@ -65,7 +65,7 @@ def slowOptimalPairing(x,y):
     assert y.shape==(n,d)
     bestDist = np.inf
     bestP = None
-    for p in next_permutation.next_permutation(range(n)):
+    for p in next_permutation.next_permutation(list(range(n))):
         dist = sumOfDistances(x[p],y)
         if dist<bestDist:
             bestDist = dist
@@ -132,7 +132,7 @@ def greedyPairing(x, y, distances=None):
             if i not in done:
                 s[j].add(i)
         # print s
-        for j, preimage in s.iteritems():
+        for j, preimage in s.items():
             preimage = sorted(preimage)
             localI = distances[preimage, j].argmin()
             i = preimage[localI]
@@ -238,7 +238,7 @@ def findMapping(n, e, f, learningRate):
     if dumpMapping:
         f = LocalMapping(source, gradient)
         for xp,yp in zip(x,y):
-            print xp, yp, f(xp), np.linalg.norm(xp-yp), np.linalg.norm(f(xp)-yp)
+            print(xp, yp, f(xp), np.linalg.norm(xp-yp), np.linalg.norm(f(xp)-yp))
     return source, gradient
 
 def iteration():
@@ -262,7 +262,7 @@ def iteration():
         # That's much the same as
         # f = lambda x: LocalMapping(source, gradient)(f(x))
         f = GlobalMapping(source, gradient, f)
-        print i,
+        print(i, end=' ')
         sys.stdout.flush()
         if i%plotEvery==0:
             plotIndex = i/plotEvery
@@ -273,7 +273,7 @@ def iteration():
             sampleFromLearned = np.array([ f(p) for p in gaussSample ])
             axarr[plotIndex][2].scatter(sampleFromLearned[:,0], sampleFromLearned[:,1])
 
-    print
+    print()
     plt.savefig("vis.pdf")
 
 def iterationMNIST():
@@ -297,7 +297,7 @@ def iterationMNIST():
         # That's much the same as
         # f = lambda x: LocalMapping(source, gradient)(f(x))
         f = GlobalMapping(source, gradient, f)
-        print i,
+        print(i, end=' ')
         sys.stdout.flush()
         if i%plotEvery==0:
             plotIndex = i/plotEvery
@@ -308,13 +308,13 @@ def iterationMNIST():
             sampleFromLearned = np.array([ f(p) for p in gaussSample ])
             axarr[plotIndex][2].scatter(sampleFromLearned[:,0], sampleFromLearned[:,1])
 
-    print
+    print()
     plt.savefig("vis.pdf")
 
 def mnist():
     datasetFile = "../rbm/data/mnist.pkl.gz"
     f = gzip.open(datasetFile, 'rb')
-    datasets = cPickle.load(f)
+    datasets = pickle.load(f)
     train_set, valid_set, test_set = datasets
     f.close()
     return train_set

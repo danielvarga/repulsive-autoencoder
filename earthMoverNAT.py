@@ -32,10 +32,10 @@ np.random.seed(10)
 
 # limit memory usage
 import keras
-print "Keras version: ", keras.__version__
+print("Keras version: ", keras.__version__)
 if keras.backend._BACKEND == "tensorflow":
     import tensorflow as tf
-    print "Tensorflow version: ", tf.__version__
+    print("Tensorflow version: ", tf.__version__)
     from keras.backend.tensorflow_backend import set_session
     config = tf.ConfigProto()
     config.gpu_options.per_process_gpu_memory_fraction = args.memory_share
@@ -44,9 +44,9 @@ if keras.backend._BACKEND == "tensorflow":
 def display_elapsed(elapsed):
     second = elapsed % 60
     minute = int(elapsed / 60)
-    print "Elapsed time: {}m:{:.0f}s".format(minute, second)
+    print("Elapsed time: {}m:{:.0f}s".format(minute, second))
 
-print "loading data"
+print("loading data")
 data_object = data.load(args.dataset, shape=args.shape, color=args.color)
 (x_train, x_test) = data_object.get_data(args.trainSize, args.testSize)
 x_true_flow = data_object.get_train_flow(args.batch_size)
@@ -130,11 +130,11 @@ if args.modelPath is None:
         gen_output = layer(gen_output)
     generator = Model(input=gen_input, output=gen_output)
 else:
-    print "Loading generator from " +args.modelPath
+    print("Loading generator from " +args.modelPath)
     generator = load_models.loadModel(args.modelPath + "_generator")
 
 generator.compile(optimizer=optimizer_g, loss="mse")
-print "Generator:"
+print("Generator:")
 generator.summary()
 
 def biflatten(x):
@@ -202,7 +202,7 @@ for epoch in range(1, args.nb_iter+1):
     if (epoch % 50 == 0):
         fake = generator.predict(latent[masterPermutation], batch_size = args.batch_size)
         file = "{}_fake.npy".format(args.prefix)
-        print "Saving matched fake pairs to {}".format(file)
+        print("Saving matched fake pairs to {}".format(file))
         np.save(file, fake)
 
     if epoch > args.no_update_epochs:
@@ -251,7 +251,7 @@ for epoch in range(1, args.nb_iter+1):
             time_matching += time.clock()
 
             if args.oversampling > 0:
-                extra_latent_indices = np.setdiff1d(range(len(latentMidibatch)), midibatchPermutation, assume_unique=True)
+                extra_latent_indices = np.setdiff1d(list(range(len(latentMidibatch))), midibatchPermutation, assume_unique=True)
                 latent[masterPermutation[dataMidiIndices]] = latentMidibatch[midibatchPermutation] # the new latent pairs
                 extra_latent = latentMidibatch[extra_latent_indices] # the new extra points
                 extraLatentRatio = float(np.sum(midibatchPermutation >= args.min_items_in_matching)) / args.min_items_in_matching
@@ -263,7 +263,7 @@ for epoch in range(1, args.nb_iter+1):
             fixedPointRatios.append(fixedPointRatio)
                 
             if epoch <= args.no_update_epochs:
-                print "midibatch {}, fixedPointRatio {}".format(j, fixedPointRatio)
+                print("midibatch {}, fixedPointRatio {}".format(j, fixedPointRatio))
                 sys.stdout.flush()
 
             latentMidibatch = latent[masterPermutation[dataMidiIndices]] # recalculated
@@ -303,7 +303,7 @@ for epoch in range(1, args.nb_iter+1):
         else:
             latent = latent_unnormed
 
-    print "epoch %d epochFixedPointRatio %f epochInterimMean %f epochInterimMedian %f epochInterimSquaredMean %f epochExtraLatentRatio %f" % (epoch, epochFixedPointRatio, epochInterimMean, epochInterimMedian, epochInterimSquaredMean, epochExtraLatentRatio)
+    print("epoch %d epochFixedPointRatio %f epochInterimMean %f epochInterimMedian %f epochInterimSquaredMean %f epochExtraLatentRatio %f" % (epoch, epochFixedPointRatio, epochInterimMean, epochInterimMedian, epochInterimSquaredMean, epochExtraLatentRatio))
     sys.stdout.flush()
     if epoch % args.frequency == 0:
         currTime = time.clock()
@@ -325,33 +325,33 @@ for epoch in range(1, args.nb_iter+1):
         load_models.saveModel(generator, args.prefix + "_generator")
 
         file = "{}_latent.npy".format(args.prefix)
-        print "Saving latent points to {}".format(file)
+        print("Saving latent points to {}".format(file))
         np.save(file, latent[masterPermutation])
 
         if args.oversampling:
             file = "{}_extra_latent.npy".format(args.prefix)
-            print "Saving extra latent points to {}".format(file)
+            print("Saving extra latent points to {}".format(file))
             np.save(file, extra_latent)
 
     if epoch % 200 == 0:
         load_models.saveModel(generator, args.prefix + "_generator_{}".format(epoch))
         generated_saver.save(epoch)
 
-print "Time spent on calculating the distance matrix:"
+print("Time spent on calculating the distance matrix:")
 display_elapsed(time_distanceMatrix)
-print "Time spent on matching:"
+print("Time spent on matching:")
 display_elapsed(time_matching)
-print "Time spent on sgd:"
+print("Time spent on sgd:")
 display_elapsed(time_sgd)
 
 
 
 if args.dataset == "celeba":
     check_all_separability()
-    print "separability results for greater than 1 % change"
+    print("separability results for greater than 1 % change")
     for name in label_names:
-        for k in separability_results[name].keys():
+        for k in list(separability_results[name].keys()):
             results = separability_results[name][k]
             change = np.abs(results[0] - results[-1])
             if change > 0.01:
-                print "{} {}: {} -> {}".format(name, k, results[0], results[-1])
+                print("{} {}: {} -> {}".format(name, k, results[0], results[-1]))

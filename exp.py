@@ -12,7 +12,7 @@ def dumpParams(params, ini_file):
         os.makedirs(os.path.dirname(ini_file))
     f = open(ini_file, "w+")
     for k in sorted(params.keys()):
-        print >>f, k+"\t"+str(params[k])
+        print(k+"\t"+str(params[k]), file=f)
 
 def heuristicCast(s):
     s = s.strip() # Don't let some stupid whitespace fool you.
@@ -59,7 +59,7 @@ def mergeParamsWithInis(args_param, ini_files_param="ini_file"):
 
     if args_param_dict[ini_files_param]:
         for ini_file in args_param_dict[ini_files_param]:
-            args_ini_dict = paramsFromConf(file(ini_file))
+            args_ini_dict = paramsFromConf(open(ini_file))
             for k in args_ini_dict:
                 if (k in args_param_dict) and isinstance(args[k], bool): # convert parameter from ini file to bool
                     args[k] = str2bool(args_ini_dict[k])

@@ -36,7 +36,7 @@ class GaussianDecoder(Decoder):
         self.main_params = self.main_channel * self.dots * self.gaussian_params
         self.side_params = args.gaussianParams[2]
 
-        print "Main params: {}, Side params: {}".format(self.main_params, self.side_params)
+        print("Main params: {}, Side params: {}".format(self.main_params, self.side_params))
 
         self.side_channel = self.side_params
         self.channel = self.main_channel + self.side_channel
@@ -44,7 +44,7 @@ class GaussianDecoder(Decoder):
         if upscale > 0:
             assert args.original_shape[0] % (upscale ** args.depth) == 0
             assert args.original_shape[1] % (upscale ** args.depth) == 0
-            factors = range(args.depth+1)
+            factors = list(range(args.depth+1))
         else:
             factors = [0] * (args.depth+1)
         self.ys = []
@@ -111,7 +111,7 @@ class GaussianDecoder(Decoder):
 #        layers = net_blocks.conv_block(channels, 3, 3, args.decoder_wd, args.decoder_use_bn, args.activation, subsample=(1,1), border_mode="same", upscale=upscale)
 
         layers = []
-        for i in reversed(range(args.depth)):
+        for i in reversed(list(range(args.depth))):
             if args.gaussianUseSeparableConv:
                 layers.append(SeparableConv2D(self.args.decoder_conv_channels, (3, 3), depth_multiplier=1, padding="same"))
             else:

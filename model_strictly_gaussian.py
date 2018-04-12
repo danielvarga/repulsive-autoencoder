@@ -36,7 +36,7 @@ class StrictlyGaussianDecoder(Decoder):
         self.main_params = self.main_channel * self.dots * self.gaussian_params
         self.side_params = args.gaussianParams[2]
 
-        print "Main params: {}, Side params: {}".format(self.main_params, self.side_params)
+        print("Main params: {}, Side params: {}".format(self.main_params, self.side_params))
 
     def __call__(self, recons_input):
         args = self.args

@@ -26,10 +26,10 @@ def sampler_factory(args, x_train):
             return x_train[:batch_size]
         return train_sampler
     elif args.toroidal:
-        print "toroidal sampling"
+        print("toroidal sampling")
         return toroidal_sampler
     elif args.spherical:
-        print "spherical sampling"
+        print("spherical sampling")
         return spherical_sampler
     else:
         return gaussian_sampler

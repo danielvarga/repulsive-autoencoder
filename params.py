@@ -119,9 +119,9 @@ exp.dumpParams(args, ini_file)
 def getArgs():
 
     if args.xent_weight != -200:
-        print "xent_weight argument is deprecated and it is not doing anything!"
+        print("xent_weight argument is deprecated and it is not doing anything!")
     if args.gen_size is not None:
-        print "gen_size argument is deprecated, please use dcgan_size instead! Now forwarding its value to dcgan_size"
+        print("gen_size argument is deprecated, please use dcgan_size instead! Now forwarding its value to dcgan_size")
 
     # put output files in a separate directory
     if not os.path.exists(args.prefix):
@@ -136,14 +136,14 @@ def getArgs():
     if type(args.intermediate_dims) is int:
         args.intermediate_dims = [args.intermediate_dims]
     elif len(args.intermediate_dims) > 0:
-        args.intermediate_dims = map(int, str(args.intermediate_dims).split(","))
+        args.intermediate_dims = list(map(int, str(args.intermediate_dims).split(",")))
     else:
         args.intermediate_dims = []
 
     if type(args.lr_decay_schedule) is float:
         args.lr_decay_schedule = [args.lr_decay_schedule]
     elif len(args.lr_decay_schedule) > 0:
-        args.lr_decay_schedule = map(float, str(args.lr_decay_schedule).split(","))
+        args.lr_decay_schedule = list(map(float, str(args.lr_decay_schedule).split(",")))
     else:
         args.lr_decay_schedule = []
 
@@ -156,7 +156,7 @@ def getArgs():
         import keras.backend as K
         for schedule in str(args.weight_schedules).split(","):
             schedule_list = schedule.split("|")
-            schedule_list[1:5] = map(float,schedule_list[1:5])
+            schedule_list[1:5] = list(map(float,schedule_list[1:5]))
             var = K.variable(value=schedule_list[1])
             schedule_list.append(var)
             weight_schedules.append(schedule_list)
@@ -165,14 +165,14 @@ def getArgs():
     if type(args.layers_to_monitor) is int:
         args.layers_to_monitor = [args.layers_to_monitor]
     elif len(args.layers_to_monitor) > 0:
-        args.layers_to_monitor = map(int, str(args.layers_to_monitor).split(","))
+        args.layers_to_monitor = list(map(int, str(args.layers_to_monitor).split(",")))
     else:
         args.layers_to_monitor = []
 
-    args.gaussianParams = map(int, str(args.gaussianParams).split(","))
+    args.gaussianParams = list(map(int, str(args.gaussianParams).split(",")))
     assert len(args.gaussianParams) == 3
 
-    args.kernel_size = map(int, str(args.kernel_size).split(","))
+    args.kernel_size = list(map(int, str(args.kernel_size).split(",")))
     assert len(args.kernel_size) == 2
 
     assert args.spherical is not None

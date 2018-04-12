@@ -7,9 +7,9 @@ def main_effect_of_sampling():
     A = np.random.normal(size=(N, n))
 
     cov = np.cov(A.T)
-    print cov.shape
+    print(cov.shape)
     eigvals = list(np.linalg.eigvals(cov).real)
-    print "cov eigvals = ", sorted(eigvals, reverse=True)
+    print("cov eigvals = ", sorted(eigvals, reverse=True))
     import matplotlib.pyplot as plt
     plt.hist(eigvals, bins=30)
     plt.savefig("simulated_eigs_N%d_n%d.png" % (N, n))
@@ -32,7 +32,7 @@ def main_pseudorandomness():
             cov[p][q] = (float(inters) / m) ** 2
 
     eigvals = list(np.linalg.eigvals(cov).real)
-    print "cov eigvals = ", sorted(eigvals, reverse=True)
+    print("cov eigvals = ", sorted(eigvals, reverse=True))
     import matplotlib.pyplot as plt
     plt.hist(eigvals, bins=30)
     plt.savefig("pseudorandom_eigs_N%d_n%d_m%d.png" % (N, n, m))

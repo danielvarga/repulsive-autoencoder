@@ -33,10 +33,10 @@ np.random.seed(10)
 
 # limit memory usage
 import keras
-print "Keras version: ", keras.__version__
+print("Keras version: ", keras.__version__)
 if keras.backend._BACKEND == "tensorflow":
     import tensorflow as tf
-    print "Tensorflow version: ", tf.__version__
+    print("Tensorflow version: ", tf.__version__)
     from keras.backend.tensorflow_backend import set_session
     config = tf.ConfigProto()
     config.gpu_options.per_process_gpu_memory_fraction = args.memory_share
@@ -46,7 +46,7 @@ if keras.backend._BACKEND == "tensorflow":
 epsilon = 0.00001
 
 ############################################
-print "loading data"
+print("loading data")
 
 data_object = data.load(args.dataset, shape=args.shape, color=args.color)
 (x_train, x_test) = data_object.get_data(args.trainSize, args.testSize)
@@ -54,7 +54,7 @@ x_true_flow = data_object.get_train_flow(args.batch_size)
 args.original_shape = x_train.shape[1:]
 
 ############################################
-print "specify loss functions"
+print("specify loss functions")
 
 # y_true = 1 (real_image) or -1 (generated_image)
 # we push the real examples up, the false examples down
@@ -64,7 +64,7 @@ def D_loss(y_true, y_pred):
 def grad_aux(output, input):
     grads = K.gradients(output, [input])
     grads = grads[0]
-    tensor_axes = range(1, K.ndim(grads))
+    tensor_axes = list(range(1, K.ndim(grads)))
     grads = K.sqrt(epsilon + K.sum(K.square(grads), axis=tensor_axes))
     return grads
 
@@ -82,13 +82,13 @@ def grad_loss_orig(y_true, y_pred):
 
 
 ############################################
-print "auxiliary functions"
+print("auxiliary functions")
 
 def display_elapsed(startTime, endTime):
     elapsed = endTime - startTime
     second = elapsed % 60
     minute = int(elapsed / 60)
-    print "Elapsed time: {}:{:.0f}".format(minute, second)
+    print("Elapsed time: {}:{:.0f}".format(minute, second))
 # Freeze weights in the discriminator for stacked training
 def make_trainable(net, val):
     net.trainable = val
@@ -118,7 +118,7 @@ def randomize(a, b):
     return shuffled_a, shuffled_b
 
 ############################################
-print "building networks"
+print("building networks")
 
 generator_channels = model_dcgan.default_channels("generator", args.dcgan_size, args.original_shape[2])
 discriminator_channels = model_dcgan.default_channels("discriminator", args.disc_size, None)
@@ -197,7 +197,7 @@ def build_networks(gen_layers, disc_layers):
 if args.modelPath is None:
     (generator, discriminator, discriminator_grad, gen_disc, clipper, generated_saver) = build_networks(gen_layers, disc_layers)
 else:
-    print "Loading models from " +args.modelPath
+    print("Loading models from " +args.modelPath)
     generator = load_models.loadModel(args.modelPath + "_generator")
     discriminator = load_models.loadModel(args.modelPath + "_discriminator")
     discriminator_grad = load_models.loadModel(args.modelPath + "_discriminator_grad")
@@ -214,25 +214,25 @@ else:
     make_trainable(discriminator, False)
     gen_disc.compile(loss=D_loss, optimizer=optimizer_g)
 
-print "Discriminator"
+print("Discriminator")
 discriminator.summary()
-print "Generator:"
+print("Generator:")
 generator.summary()
 
 ############################################
-print "y values for evaluation"
+print("y values for evaluation")
 y_generated = np.array([-1.0] *  args.batch_size).reshape((-1,1)).astype("float32")
 y_true = np.array([1.0] *  args.batch_size).reshape((-1,1)).astype("float32")
     
 
 ############################################
-print "starting training"
+print("starting training")
 vis.plotImages(x_train[:100], 10, 10, args.prefix + "-orig")
 disc_offset = 0
 startTime = time.clock()
 
 if args.gradient_penalty != "no" and args.clipValue > 0:
-    print "!!!!!! WARNING: both clipping and gradient penality enabled. Are you sure this is intended?"
+    print("!!!!!! WARNING: both clipping and gradient penality enabled. Are you sure this is intended?")
 
 for iter in range(1, args.nb_iter+1):
     # update discriminator
@@ -277,7 +277,7 @@ for iter in range(1, args.nb_iter+1):
     gen_in = np.random.normal(size=(args.batch_size, args.latent_dim))
     gen_loss = gen_disc.train_on_batch(gen_in, y_true)
 
-    print "Iter: {}, Discriminator: {}, Generator: {}, grad: {}".format(iter, disc_loss, gen_loss, grad_loss)
+    print("Iter: {}, Discriminator: {}, Generator: {}, grad: {}".format(iter, disc_loss, gen_loss, grad_loss))
 
     # syn-constant-uniform specific: print average variance of images to monitor the spottedness of the images
     if False and args.dataset == 'syn-constant-uniform':
@@ -306,7 +306,7 @@ for iter in range(1, args.nb_iter+1):
         generated_saver.save(iter)
 
     if restart_disc(iter): # restart discriminator
-        print "Restarting discriminator!!!!!!!!!"
+        print("Restarting discriminator!!!!!!!!!")
         disc_offset = iter
         load_models.saveModel(discriminator, args.prefix + "_discriminator_restarted_{}".format(iter))
         if args.discriminator =="dcgan":
@@ -319,7 +319,7 @@ for iter in range(1, args.nb_iter+1):
 
 
 ############################################
-print "dead code chunks"
+print("dead code chunks")
 
 
 # def update_lr(gen_iters):

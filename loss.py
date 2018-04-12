@@ -105,7 +105,7 @@ def loss_factory(model, encoder, loss_features, args):
         return 0.01 * K.mean(loss)
 
     def covariance_loss(x, x_decoded):
-        print "pre-sampling covariance loss!"
+        print("pre-sampling covariance loss!")
         z = loss_features.z_mean # pre sampling!
 #        z = loss_features.z_sampled
         z_centered = z - K.mean(z, axis=0)
@@ -114,11 +114,11 @@ def loss_factory(model, encoder, loss_features, args):
         # with previous version, will get rid of it TODO:
 
         SCALE_HACK = 1.53
-        print "Hey hey hey, hacked scaling of covariance loss!"
+        print("Hey hey hey, hacked scaling of covariance loss!")
         loss = K.mean(K.square(K.eye(K.int_shape(z_centered)[1])*SCALE_HACK - cov)) * (args.batch_size ** 2)
         use_diag_loss = False
         if use_diag_loss:
-            print "Adding extra diagonal penalty term to covariance_loss"
+            print("Adding extra diagonal penalty term to covariance_loss")
             diag = K.maximum(tf.diag_part(cov), 0.01)
             extra_diag_loss = K.mean(diag - K.log(diag) - 1)
             loss += extra_diag_loss
@@ -176,7 +176,7 @@ def loss_factory(model, encoder, loss_features, args):
         model_nodes = model.nodes_by_depth
         encOutputs = []
         decInputs = []
-        for j in reversed(range(len(model_nodes))):
+        for j in reversed(list(range(len(model_nodes)))):
             node = model_nodes[j][0]
             outLayer = node.outbound_layer
             if outLayer.name.find("dec_conv") != -1:
@@ -240,7 +240,7 @@ def loss_factory(model, encoder, loss_features, args):
     weightDict = {}
     for schedule in args.weight_schedules:
         weightDict[schedule[0]] = schedule[5]
-    print "weight dict", weightDict
+    print("weight dict", weightDict)
 
     def lossFun(x, x_decoded):
         lossValue = 0
@@ -250,7 +250,7 @@ def loss_factory(model, encoder, loss_features, args):
             currentLoss = loss(x, x_decoded)
             weight = weightDict.get(lossName, 1.0)
             currentLoss *= weight
-            print lossName, "weight", weight
+            print(lossName, "weight", weight)
             lossValue += currentLoss
         return lossValue
     return lossFun, metrics

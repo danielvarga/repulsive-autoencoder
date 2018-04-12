@@ -28,9 +28,9 @@ else:
 
 if False:
     m, mprime, l = data_object.get_M_Mprime_L(generated_images)
-    print m, mprime, l
+    print(m, mprime, l)
     emd = vis.dataset_emd(x_test, generated_images[:1000])
-    print m, mprime, l, emd
+    print(m, mprime, l, emd)
     xxx
 
 x_generated = generated_images.reshape(generated_images.shape[0], -1)
@@ -57,13 +57,13 @@ for g in x_generated:
 plt.plot(hist)
 prefix = generated.split('.')[0]
 fileName = prefix + "_success.png"
-print "Saving histogram to {}".format(fileName)
+print("Saving histogram to {}".format(fileName))
 plt.savefig(fileName)
 
 nearest_points = np.array(nearest_points)
 mu = np.mean(nearest_points)
 sigma = np.std(nearest_points)
-print "mu: {}, sigma: {}".format(mu, sigma)
+print("mu: {}, sigma: {}".format(mu, sigma))
 vis.cumulative_view(nearest_points, "Nearest points cdf", prefix + "_cdf.png")
 
 sorter = reversed(np.argsort(hist)[-20:])

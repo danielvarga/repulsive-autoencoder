@@ -62,12 +62,12 @@ def test_toroidal():
     z2 = samplers.toroidal_sampler(6, 4)
 
     if False:
-        print z1
-        print z2
-        print lerp_toroidal(0.0, z1, z2)
-        print lerp_toroidal(1.0, z1, z2)
-        print lerp_toroidal(0.1, z1, z2)
-        print lepr_toroidal(0.5, z1, z2)
+        print(z1)
+        print(z2)
+        print(lerp_toroidal(0.0, z1, z2))
+        print(lerp_toroidal(1.0, z1, z2))
+        print(lerp_toroidal(0.1, z1, z2))
+        print(lepr_toroidal(0.5, z1, z2))
 
     xs = []
     ys = []

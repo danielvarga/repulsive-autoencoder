@@ -29,11 +29,11 @@ def main():
     x_train = x_train.astype('float32') / 255
     x_test = x_test.astype('float32') / 255
     x = x_train[:, :, :, np.newaxis]
-    print x.shape
+    print(x.shape)
 
     filename = "pictures/earthmover_mnist_exp_fake_200.npy"
     y = np.load(filename)
-    print y.shape
+    print(y.shape)
 
     assert len(x)==len(y)
     data_count = len(x)
@@ -63,7 +63,7 @@ def main():
             else:
                 midibatchPermutation = np.array(kohonen.greedyPairing(biflatten(fakeMidibatch), biflatten(dataMidibatch), distanceMatrix))
 
-            projectedTotalMidibatchDistance = distanceMatrix[range(len(fakeMidibatch)), midibatchPermutation].sum()
+            projectedTotalMidibatchDistance = distanceMatrix[list(range(len(fakeMidibatch))), midibatchPermutation].sum()
 
             if j==0:
                 show(x, y, masterPermutation, dataMidiIndices, "matching_test/before", i)
@@ -78,11 +78,11 @@ def main():
             totalDistance += totalMidibatchDistance
 
             fixedPointRatio = float(np.sum(midibatchPermutation == np.arange(midibatchPermutation.shape[0]))) / midibatchPermutation.shape[0]
-            print i, j, fixedPointRatio, projectedTotalMidibatchDistance / midibatchSize, totalMidibatchDistance / midibatchSize
+            print(i, j, fixedPointRatio, projectedTotalMidibatchDistance / midibatchSize, totalMidibatchDistance / midibatchSize)
             sys.stdout.flush()
         globalFixedPointRatio = float(np.sum(masterPermutation == np.arange(data_count))) / data_count
 
-        print i, globalFixedPointRatio, totalDistance / data_count
+        print(i, globalFixedPointRatio, totalDistance / data_count)
 
 
 main()

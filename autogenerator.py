@@ -39,14 +39,14 @@ args = parser.parse_args()
 assert args.prefix is not None, "Please specify an output file prefix with the --output arg."
 
 assert args.model in ("rae", "vae", "nvae", "vae_conv", "nvae_conv", "universal"), "Unknown model type."
-print "Training model of type %s" % args.model
+print("Training model of type %s" % args.model)
 
 (x_train, x_test), (height, width) = data.load(args.dataset)
 
 
 batch_size = 500
 original_dim = x_test.shape[1]
-intermediate_dims = map(int, args.intermediate_dims_string.split(","))
+intermediate_dims = list(map(int, args.intermediate_dims_string.split(",")))
 
 # Using modules where normal people would use classes.
 if args.model == "rae":
@@ -70,7 +70,7 @@ elif args.model in ("vae", "nvae"):
                                     nonvariational=nonvariational)
 elif args.model in ("vae_conv", "nvae_conv"):
     sampler = model.gaussian_sampler
-    def __init__(self, levels_config, filter_num_config, latent_dim, img_size, activation_config=None, batch_size=32, wd=0.003):
+    # def __init__(self, levels_config, filter_num_config, latent_dim, img_size, activation_config=None, batch_size=32, wd=0.003):
 
     conv_encoder = model_conv.ConvEncoder([2,2,2], [32,32,32], 20, [60, 72, 1], batch_size=batch_size)
     conv_decoder = model_conv.ConvDecoder([2,2,2], [32,32,32], 20, [60, 72, 1], batch_size=batch_size)

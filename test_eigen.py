@@ -58,9 +58,9 @@ def test_kstest_tf():
     data = np.random.normal(size=(batch_size,))
     out = minieval(eigen.kstest_tf, data)
     top = np.sort(data)[::-1][:20]
-    print top
-    print norm.cdf(top, 0.0, 1.0)
-    print out[:20]
+    print(top)
+    print(norm.cdf(top, 0.0, 1.0))
+    print(out[:20])
 
 
 def l2_loss(z):
@@ -116,23 +116,23 @@ def test_matrix_log():
 
     def inspect(m):
         eigVals, eigVects = np.linalg.eigh(m)
-        print "eigvals =", list(reversed(eigVals))
-        print "max/min eigval ratio =", eigVals[-1]/eigVals[0]
-        print "dominant eigvect =", eigVects[:, -1]
+        print("eigvals =", list(reversed(eigVals)))
+        print("max/min eigval ratio =", eigVals[-1]/eigVals[0])
+        print("dominant eigvect =", eigVects[:, -1])
 
     logarithm = minieval(matrix_log, matrix)
-    print logarithm
-    print "----"
+    print(logarithm)
+    print("----")
     exponential = minieval(matrix_exp, logarithm)
-    print exponential
+    print(exponential)
 
-    print "positive definite symmetric matrix"
+    print("positive definite symmetric matrix")
     inspect(matrix)
-    print "sum of eigenvalue logarithms", np.sum(np.log(np.linalg.eigh(matrix)[0]))
-    print "====="
-    print "log of matrix"
+    print("sum of eigenvalue logarithms", np.sum(np.log(np.linalg.eigh(matrix)[0])))
+    print("=====")
+    print("log of matrix")
     inspect(logarithm)
-    print "trace of matrix", np.trace(logarithm)
+    print("trace of matrix", np.trace(logarithm))
 
 
 # Abandoned experiment, Taylor series of matrix_log did not converge, probably buggy as well.
@@ -153,23 +153,23 @@ def dominant_eigvect_layer(z):
 
 def cholesky(d):
     cov = np.cov(d.T)
-    print "cov =", cov
+    print("cov =", cov)
     mean = np.mean(d, axis=0)
 
-    print "means =", mean
-    print "deviations = ", np.std(d, axis=0)
-    print "data sample = "
-    print d[:5]
+    print("means =", mean)
+    print("deviations = ", np.std(d, axis=0))
+    print("data sample = ")
+    print(d[:5])
 
     eigVals, eigVects = np.linalg.eigh(cov)
-    print "sqrt eigvals =", list(reversed(np.sqrt(eigVals)))
-    print "sqrt of max/min eigval ratio =", math.sqrt(eigVals[-1]/eigVals[0])
-    print "dominant eigvect =", eigVects[:, -1]
+    print("sqrt eigvals =", list(reversed(np.sqrt(eigVals))))
+    print("sqrt of max/min eigval ratio =", math.sqrt(eigVals[-1]/eigVals[0]))
+    print("dominant eigvect =", eigVects[:, -1])
 
     return
 
     cho = np.linalg.cholesky(cov)
-    print "cholesky =", cho
+    print("cholesky =", cho)
 
     N = 10000
     z = np.random.normal(0.0, 1.0, (N, latent_dim))
@@ -188,14 +188,14 @@ def test_eigen():
     d = np.random.normal(size=(N, latent_dim))
     d[:, 0] += d[:, 1]
     cov = np.cov(d.T)
-    print "cov", cov
-    print "---"
+    print("cov", cov)
+    print("---")
     eigVals, eigVects = np.linalg.eigh(cov)
     for eigVal, eigVect in zip(eigVals, eigVects.T):
-        print eigVal, "*", eigVect, "=", cov.dot(eigVect)
-    print "---"
+        print(eigVal, "*", eigVect, "=", cov.dot(eigVect))
+    print("---")
     eigvects_per_minibatch = model.predict(d, batch_size=batch_size)[::batch_size]
-    print eigvects_per_minibatch
+    print(eigvects_per_minibatch)
 
 
 # Autoencoder that maps uniform -> gaussian -> uniform.
@@ -266,7 +266,7 @@ def test_loss():
     else:
         assert False, "unknown loss name"
 
-    print "loss:", loss_name, "weight:", LOSS_WEIGHT
+    print("loss:", loss_name, "weight:", LOSS_WEIGHT)
 
     def total_loss(x, x_pred):
         recons_loss = K.mean(K.square(x-x_pred))
@@ -299,11 +299,11 @@ def test_loss():
     datasets = {"uniform": sampler_uniform, "bicube": sampler_bicube, "expcube": sampler_expcube}
 
     dataset = "uniform"
-    print "dataset:", dataset
+    print("dataset:", dataset)
     sampler = datasets[dataset]
 
     for i in range(megaepoch_count):
-        print "================"
+        print("================")
         data = sampler(N, input_dim)
         model.fit(data, data, epochs=epoch_count, batch_size=batch_size, verbose=2)
         data = sampler(N, input_dim)
@@ -312,18 +312,18 @@ def test_loss():
         cholesky(z)
 
     for i in range(min((latent_dim, 10))):
-        print "KS for dim", i, "=", kstest(z[:, i], 'norm')
-    print "histogram for standard normal"
-    print np.histogram(np.random.normal(size=N), 20)
+        print("KS for dim", i, "=", kstest(z[:, i], 'norm'))
+    print("histogram for standard normal")
+    print(np.histogram(np.random.normal(size=N), 20))
     for i in range(min((latent_dim, 10))):
-        print "---"
+        print("---")
         projector = np.random.normal(size=(latent_dim,))
         projector /= np.linalg.norm(projector)
         projected_z = z.dot(projector)
-        print projected_z.shape
+        print(projected_z.shape)
         projected_z = projected_z.flatten()
-        print np.histogram(projected_z, 20)
-        print "KS for random projection", i, "=", kstest(projected_z, 'norm')
+        print(np.histogram(projected_z, 20))
+        print("KS for random projection", i, "=", kstest(projected_z, 'norm'))
 
     import matplotlib.pyplot as plt
     import matplotlib

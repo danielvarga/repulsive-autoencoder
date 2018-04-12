@@ -20,7 +20,7 @@ def grid2img(arr, rows, cols, with_space):
     I = np.zeros((channels, total_height, total_width))
     I.fill(1)
 
-    for i in xrange(rows*cols):
+    for i in range(rows*cols):
         if i < N:
             r = i // cols
             c = i % cols
@@ -226,11 +226,11 @@ def create_fan_grid(z_dim, cols, rows, gaussian_prior=True, interleaves=0, shuff
         for c in range(cols):
             # yf = lerp(c / (cols-1.0), -1.0, 1.0)
             yf = (c - (cols / 2.0) + 0.5) / ((cols-1) / 2.0 + 0.5)
-            coords = map(lambda o: np.dot([xf, yf], o), offsets)
-            ranged = map(lambda n, d:lerpIt(n, d, range_low, range_high), coords, displacements)
+            coords = [np.dot([xf, yf], o) for o in offsets]
+            ranged = list(map(lambda n, d:lerpIt(n, d, range_low, range_high), coords, displacements))
             # ranged = map(lambda n:lerpTo(n, range_low, range_high), coords)
             if(gaussian_prior):
-                cdfed = map(ndtri, ranged)
+                cdfed = list(map(ndtri, ranged))
             else:
                 cdfed = ranged
             ul.append(cdfed)

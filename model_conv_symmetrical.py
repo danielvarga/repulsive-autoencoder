@@ -60,7 +60,7 @@ def discnet_decoder_drop(image_size, depth, base_filter_nums, batch_size, use_bi
     layer_count = len(base_filter_nums)
     image_filters = image_size[2]
     filter_nums = [image_filters] + list(base_filter_nums[:layer_count-1])
-    for i in reversed(range(layer_count)):
+    for i in reversed(list(range(layer_count))):
         nb_filter = filter_nums[i] * (2**depth)
         if i < (layer_count - 1):
             deconv = Convolution2D(nb_filter, (3, 3), strides=(1,1), padding="same", kernel_regularizer=l2(wd), use_bias=use_bias,

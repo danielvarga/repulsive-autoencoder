@@ -22,7 +22,7 @@ print(args)
 
 # limit memory usage
 import keras
-print "Keras version: ", keras.__version__
+print("Keras version: ", keras.__version__)
 if keras.backend._BACKEND == "tensorflow":
     import tensorflow as tf
     from keras.backend.tensorflow_backend import set_session
@@ -99,8 +99,8 @@ def check_ellipse_likelihoods():
 
     likelihoods = volumes * density
     likelihoods = np.sort(likelihoods)
-    print "that's just an estimate, instead of integrating over it, we use likelihood of center"
-    print likelihoods[:10], likelihoods[-10:], likelihoods[::5000]
+    print("that's just an estimate, instead of integrating over it, we use likelihood of center")
+    print(likelihoods[:10], likelihoods[-10:], likelihoods[::5000])
 
 
 # check_ellipse_likelihoods()
@@ -153,7 +153,7 @@ if do_latent_variances:
         ellipsoid_dist = 1 / np.sqrt(np.sum(np.square(nearestDirection / (ellipsoid_size * sigma)), axis=1))
         nearest_ellipsoid_dist = 1 / np.sqrt(np.sum(np.square(nearestDirection / (ellipsoid_size * nearestSigma)), axis=1))
         extraSpace = nearestDist - (ellipsoid_dist + nearest_ellipsoid_dist)
-        print "Sigma {}, Extra avg space {}, avg nearest {}, avg distance {}".format(ellipsoid_size, np.mean(extraSpace), np.mean(nearestDist), np.mean(dist))
+        print("Sigma {}, Extra avg space {}, avg nearest {}, avg distance {}".format(ellipsoid_size, np.mean(extraSpace), np.mean(nearestDist), np.mean(dist)))
         plt.hist(extraSpace, bins = 30)
         plt.savefig("{}-extraSpace_{}.png".format(prefix, ellipsoid_size))
         plt.close()
@@ -161,10 +161,10 @@ if do_latent_variances:
 
 cov_train_mean = np.cov(latent_train_mean.T)
 
-print "cov_train_mean[:10, :10] :"
-print cov_train_mean[:10, :10]
+print("cov_train_mean[:10, :10] :")
+print(cov_train_mean[:10, :10])
 
-print "===="
+print("====")
 
 
 projector = np.random.normal(size=(args.latent_dim,))
@@ -212,14 +212,14 @@ if False: #do_latent_variances:
                     
     
 
-print latent_train.shape
+print(latent_train.shape)
 origo = np.mean(latent_train, axis=0)
 origo_mean = np.mean(latent_train_mean, axis=0)
 mean_variances = np.var(latent_train_mean, axis=0)
 variances = np.var(latent_train, axis=0)
 working_mask = (mean_variances > 0.1)
-print "Variances: ", np.sum(working_mask), "/", working_mask.shape
-print np.histogram(mean_variances, 100)
+print("Variances: ", np.sum(working_mask), "/", working_mask.shape)
+print(np.histogram(mean_variances, 100))
 
 latent_dim = latent_train.shape[1]
 
@@ -238,8 +238,8 @@ if do_latent_variances:
     plt.scatter(mean_variances, variance_means)
     plt.savefig(prefix+"-mvvm.png")
     plt.close()
-    print "Mean variances"
-    print np.histogram(mean_variances)    
+    print("Mean variances")
+    print(np.histogram(mean_variances))    
 
 # histogram of the origo
 plt.hist(origo, bins = 30)
@@ -279,7 +279,7 @@ sumSquares = np.mean(np.square(latent_train_mean), axis=0)
 plt.hist(sumSquares, bins = 30)
 plt.savefig(prefix+"_size_contribution.png")
 plt.close()
-print np.sum(sumSquares)
+print(np.sum(sumSquares))
 x1 = np.argmax(sumSquares)
 x2 = np.argmin(sumSquares)
 plt.figure()
@@ -320,11 +320,11 @@ if do_latent_variances:
 
 
 eigVals, eigVects = np.linalg.eigh(cov_train_mean)
-print "cov_train_mean eigvals (latent means) = ", list(reversed(eigVals))
+print("cov_train_mean eigvals (latent means) = ", list(reversed(eigVals)))
 
 cov_train = np.cov(latent_train.T)
 eigVals, eigVects = np.linalg.eigh(cov_train)
-print "cov_train eigvals (latent sampleds) = ", list(reversed(eigVals))
+print("cov_train eigvals (latent sampleds) = ", list(reversed(eigVals)))
 
 
 # the below loop illustrates that taking small subsamples will not alter the eigenvalue structure of the covariance matrix 
@@ -335,15 +335,15 @@ print "cov_train eigvals (latent sampleds) = ", list(reversed(eigVals))
 #     print "cov eigvals using first {} samples:\n".format(cnt), sorted(eigvals_sample, reverse=True)
 
 
-print "CS", cov_train.shape
+print("CS", cov_train.shape)
 std_train = np.std(latent_train_mean)
-print "MS", origo_mean.shape
+print("MS", origo_mean.shape)
 cho = np.linalg.cholesky(cov_train)
-print "CHOS", cho.shape
+print("CHOS", cho.shape)
 N = 100000
 z = np.random.normal(0.0, 1.0, (N, latent_dim))
 sample = cho.dot(z.T).T + origo
-print sample.shape
+print(sample.shape)
 
 def oval_sampler(batch_size, latent_dim):
     z = np.random.normal(size=(batch_size, latent_dim))
@@ -398,7 +398,7 @@ eigpairs = latent_dim - 1 - np.array(eigpairs)
     
 if latent_dim == 200:
     for eigIndex1, eigIndex2 in eigpairs:
-        print "eigenplane grid", eigIndex1, eigIndex2
+        print("eigenplane grid", eigIndex1, eigIndex2)
         plane = eigval2d_grid(grid_size, latent_dim, eigVects[:, eigIndex1], eigVals[eigIndex1], eigVects[:, eigIndex2], eigVals[eigIndex2], radius=4.0, elliptic=True)
         vis.displayPlane(x_train=x_train, latent_dim=latent_dim, plane=plane,
                          generator=generator, name=prefix + "_eigs%d-%d" % (eigIndex1, eigIndex2), batch_size=batch_size)

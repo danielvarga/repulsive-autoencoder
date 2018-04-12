@@ -41,7 +41,7 @@ class SaveGeneratedCallback(Callback):
         latent_sample = self.sampler(self.sample_size, self.latent_dim)
         generated = self.generator.predict(latent_sample, batch_size = self.batch_size)
         file = "{}_generated_{}.npy".format(self.prefix, iteration)
-        print "Saving generated samples to {}".format(file)
+        print("Saving generated samples to {}".format(file))
         np.save(file, generated)
         if self.save_histogram and self.dataset is not None:
             vis.print_nearest_histograms(self.dataset, file)
@@ -183,7 +183,7 @@ class WeightSchedulerCallback(Callback):
             relative_phase = (phase - self.start) / (self.stop - self.start)
 
         K.set_value(self.weight, (1-relative_phase) * self.startValue + relative_phase * self.stopValue)
-        print "\nPhase {}, {} weight: {}".format(phase, self.name, K.eval(self.weight))
+        print("\nPhase {}, {} weight: {}".format(phase, self.name, K.eval(self.weight)))
 
 class SaveModelsCallback(Callback):
     def __init__(self, ae, encoder, encoder_var, generator, prefix, frequency, **kwargs):
@@ -251,7 +251,7 @@ class CollectActivationCallback(Callback):
         for i in range(len(self.layerIndices)):
             outDict["train-{}".format(self.layerIndices[i])] = self.savedTrain[i]
             outDict["test-{}".format(self.layerIndices[i])] = self.savedTest[i]
-        print "Saving activation history to file {}".format(fileName)
+        print("Saving activation history to file {}".format(fileName))
         np.savez(fileName, **outDict)
 
 class ClipperCallback(Callback):

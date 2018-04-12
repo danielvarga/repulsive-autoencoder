@@ -24,7 +24,7 @@ print(args)
 
 # limit memory usage
 import keras
-print "Keras version: ", keras.__version__
+print("Keras version: ", keras.__version__)
 if keras.backend._BACKEND == "tensorflow":
     import tensorflow as tf
     from keras.backend.tensorflow_backend import set_session
@@ -66,7 +66,7 @@ if args.monitor_frequency > 0:
 if not args.use_nat:
     if args.augmentation_ratio > 0:
         x_train_flow = data_object.get_train_flow(args.batch_size, args.augmentation_ratio)
-        d = x_train_flow.next()
+        d = next(x_train_flow)
         ae.fit_generator(x_train_flow,
                          verbose=args.verbose,
                          steps_per_epoch=len(x_train) / args.batch_size,
@@ -91,7 +91,7 @@ else:
     ae_with_nat = modelDict.ae_with_nat
 
     for epoch in range(args.nb_epoch):
-        print "Epoch {}".format(epoch)
+        print("Epoch {}".format(epoch))
         if epoch % args.matching_frequency == 0:
             if args.distance_space == "latent":
                 true_latent = encoder.predict(x_train, batch_size=args.batch_size)
@@ -99,7 +99,7 @@ else:
                     vis.display_pair_distance_histogram(true_latent, latent[masterPermutation], args.prefix + "-pairdistance.png")
                     vis.display_pair_distance_histogram(true_latent, latent[masterPermutation], args.prefix + "-pairdistance-{}.png".format(epoch))
                 true_latent_variances = np.var(true_latent, axis=0)
-                print np.histogram(true_latent_variances)
+                print(np.histogram(true_latent_variances))
                 newPermutation = kohonen.batchPairing(latent, true_latent, masterPermutation, args.min_items_in_matching, args.greedy_matching)
             elif args.distance_space == "pixel":
                 target_reconstruction = generator.predict(latent, batch_size=args.batch_size)
@@ -108,7 +108,7 @@ else:
                 assert False, "Unknown distance_space {}".format(args.distance_space)
             fixedPointRatio = float(np.sum(newPermutation  == masterPermutation)) / len(masterPermutation)
             masterPermutation = newPermutation
-            print "FixedPointRatio: {}".format(fixedPointRatio)
+            print("FixedPointRatio: {}".format(fixedPointRatio))
 
         ae_with_nat.fit([x_train,latent[masterPermutation]], x_train,
                         verbose=args.verbose,

@@ -33,7 +33,7 @@ def main():
             convergedRatio = 0
         else:
             convergedRatio = float(np.sum(masterPermutation[secretPermutation] == np.arange(N))) / N
-        print epoch_index, "totalMeanDistance", totalMeanDistance, "convergedRatio", convergedRatio,
+        print(epoch_index, "totalMeanDistance", totalMeanDistance, "convergedRatio", convergedRatio, end=' ')
         epochDistances = []
         fixedPointRatios = []
         allIndices = np.random.permutation(N)
@@ -50,6 +50,6 @@ def main():
 
         epochInterimMean = np.mean(np.array(epochDistances))
         epochFixedPointRatio = np.mean(np.array(fixedPointRatios))
-        print "epochInterimMean", epochInterimMean, "epochFixedPointRatio", epochFixedPointRatio
+        print("epochInterimMean", epochInterimMean, "epochFixedPointRatio", epochFixedPointRatio)
 
 main()

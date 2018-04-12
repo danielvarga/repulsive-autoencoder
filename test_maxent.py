@@ -77,10 +77,10 @@ def test_moment_signature_tf_2():
 
     signia_vars = moment_signature_of_weighted_cloud_tf_2(data_var, weights_var)
     signia_fn = K.function(inputs=[data_var, weights_var], outputs=signia_vars)
-    print "numpy-calculated signature:"
-    print moment_signature_of_weighted_cloud(data, weights, 2)
-    print "GPU calculated signature:"
-    print signia_fn([data, weights])
+    print("numpy-calculated signature:")
+    print(moment_signature_of_weighted_cloud(data, weights, 2))
+    print("GPU calculated signature:")
+    print(signia_fn([data, weights]))
 
 
 def moment_signature_of_weighted_cloud(data, weights, k):
@@ -117,8 +117,8 @@ def test_signature():
     k = 3
     signia = moment_signature_of_weighted_cloud(data, weights, k)
     for momenta in signia:
-        print momenta
-        print
+        print(momenta)
+        print()
 
 
 def test_signature_of_grid():
@@ -131,8 +131,8 @@ def test_signature_of_grid():
     k = 3
     signia = moment_signature_of_weighted_cloud(g, weights, k)
     for momenta in signia:
-        print momenta
-        print
+        print(momenta)
+        print()
 
 
 def optimize_grid():
@@ -142,7 +142,7 @@ def optimize_grid():
     target_data -= 2./3
     target_data /= 10
     target_data += 2./3
-    print "target_data", target_data
+    print("target_data", target_data)
 
     target_n = target_data.shape[0]
     target_weights = np.ones((target_n, )) / target_n
@@ -174,7 +174,7 @@ def optimize_grid():
     with tf.Session() as sess:
         init = tf.initialize_all_variables()
         sess.run(init)
-        for step in xrange(epochs):
+        for step in range(epochs):
             sess.run(train_step)
             if step % 1 == 0:
                 weights_val = weights_var.eval(session=sess)
@@ -185,15 +185,15 @@ def optimize_grid():
                 weights_val /= weights_val.sum()
                 weights_var.load(weights_val, sess)
             if step % 1000 == 0:
-                print step, signia_loss.eval(session=sess), entropy_loss.eval(session=sess), weights_val.sum()
-                print target_signia
-                print moment_signature_of_weighted_cloud(data, weights_val, 2)
+                print(step, signia_loss.eval(session=sess), entropy_loss.eval(session=sess), weights_val.sum())
+                print(target_signia)
+                print(moment_signature_of_weighted_cloud(data, weights_val, 2))
         vis = weights_val.reshape((m, m))
         import matplotlib.pyplot as plt
         plt.imshow(vis)
         plt.show()
         plt.savefig("vis.png")
-        print vis[::m/10, ::m/10]
+        print(vis[::m/10, ::m/10])
 
 
 def main():

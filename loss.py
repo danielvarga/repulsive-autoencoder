@@ -229,6 +229,20 @@ def loss_factory(model, encoder, loss_features, args):
         squared_distances = K.sum(K.square(z - nat), axis=1)
         std_distances = K.std(squared_distances)
         return std_distances
+    def quasi_randomness(x, x_decoded):
+        A = loss_features.z_mean # pre sampling!
+
+        # zero mean and unit variance for the whole matrix
+        mean, variance = tf.nn.moments(A, axes=[0,1])
+        A = (A-mean) / tf.sqrt(variance + 1e-16)
+
+        k, n = K.int_shape(A)
+        if k is None:
+            k = args.batch_size
+        AAT = tf.matmul(A, tf.transpose(A))
+        qr = ((k*n) ** 2) * tf.reduce_sum(tf.square(AAT)) - (tf.reduce_sum(A) ** 4)
+        return qr / ((k*n) ** 4)
+
 
     metrics = []
     for metric in args.metrics:

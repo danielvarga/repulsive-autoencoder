@@ -110,18 +110,27 @@ def loss_factory(model, encoder, loss_features, args):
 #        z = loss_features.z_sampled
         z_centered = z - K.mean(z, axis=0)
         cov = K.dot(K.transpose(z_centered), z_centered) / args.batch_size
+
         # The (args.batch_size ** 2) is there to keep it in sync
         # with previous version, will get rid of it TODO:
 
-        SCALE_HACK = 1.53
-        print("Hey hey hey, hacked scaling of covariance loss!")
-        loss = K.mean(K.square(K.eye(K.int_shape(z_centered)[1])*SCALE_HACK - cov)) * (args.batch_size ** 2)
+        # SCALE_HACK = 1.53
+        # print("Hey hey hey, hacked scaling of covariance loss!")
+        # loss = K.mean(K.square(K.eye(K.int_shape(z_centered)[1])*SCALE_HACK - cov)) * (args.batch_size ** 2)
+        loss = K.mean(K.square(K.eye(K.int_shape(z_centered)[1]) - cov))
         use_diag_loss = False
         if use_diag_loss:
             print("Adding extra diagonal penalty term to covariance_loss")
             diag = K.maximum(tf.diag_part(cov), 0.01)
             extra_diag_loss = K.mean(diag - K.log(diag) - 1)
             loss += extra_diag_loss
+        return loss
+
+    def covariance_loss2(x, x_decoded): # give infinitely large loss for zero eigenvalues (taken from ladder networks)
+        z = loss_features.z_mean
+        z_centered = z - K.mean(z, axis=0)
+        cov = K.dot(K.transpose(z_centered), z_centered) / args.batch_size
+        loss = tf.trace(cov - tf.linalg.logm(cov) - K.eye(K.int_shape(z_centered)[1]))
         return loss
 
     def mean_monitor(x, x_decoded):
@@ -242,6 +251,11 @@ def loss_factory(model, encoder, loss_features, args):
         AAT = tf.matmul(A, tf.transpose(A))
         qr = ((k*n) ** 2) * tf.reduce_sum(tf.square(AAT)) - (tf.reduce_sum(A) ** 4)
         return qr / ((k*n) ** 4)
+
+    def var_maximizer_loss(x, x_decoded): # pushing the variance of the means up.
+        weight = - 0.5 * args.batch_size #  Weighting ensures that this loss cancels size_loss
+        loss = weight * K.var(loss_features.z_mean, axis=0)
+        return K.sum(loss)
 
 
     metrics = []

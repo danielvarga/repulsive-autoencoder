@@ -23,20 +23,16 @@ def randomClockHandCoords(randomAngle):
 
 
 def clock(params):
-    antialiasFactor = 4
-    img = Image.new("L", (sizeOfImage, sizeOfImage), 0)
+    assert len(params) <= 3, 'RGB image can hold up to 3 hands only.'
+
+    img = Image.new("RGB", (sizeOfImage, sizeOfImage), 0)
     draw = ImageDraw.Draw(img)
 
-    # draw bounding circle of clock
-    # ellipseBoundingBox = [(0, 0), (sizeOfImage - 1, sizeOfImage - 1)]
-    # draw.ellipse(ellipseBoundingBox, None, clockBorderColor)
-
     for indx, handAngle in enumerate(params):
-        if indx==0:
-            clockHandColor = 255
-        else :
-            clockHandColor = 255
-        draw.line(randomClockHandCoords(handAngle), clockHandColor, handWidth)
+        color = [0, 0, 0]
+        color[indx] = clockHandColor
+        color = tuple(color)
+        draw.line(randomClockHandCoords(handAngle), color, handWidth)
 
     img = img.resize((targetSizeOfImage, targetSizeOfImage), Image.ANTIALIAS)
 

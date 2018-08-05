@@ -292,9 +292,9 @@ class Dataset_bedroom(Dataset_real):
         return (self.x_train, self.x_test)
 
 class Dataset_synthetic(Dataset):
-    def __init__(self, name, shape, finite):
+    def __init__(self, name, shape, color, finite):
         assert shape is not None, "Synthetic datasets must have a valid shape argument"
-        super(Dataset_synthetic, self).__init__(name, shape=shape, color=False, finite=finite, synthetic=True)
+        super(Dataset_synthetic, self).__init__(name, shape=shape, color=color, finite=finite, synthetic=True)
     def generate_samples_from_params(self, params):
         size = len(params)
         data = np.zeros((size, self.shape[0], self.shape[1]))
@@ -324,11 +324,11 @@ class Dataset_synthetic(Dataset):
         assert False, "NYI"
 
 class Dataset_syn_finite(Dataset_synthetic):
-    def __init__(self, name, shape):
-        super(Dataset_syn_finite, self).__init__(name, shape=shape, finite=True)
+    def __init__(self, name, shape, color):
+        super(Dataset_syn_finite, self).__init__(name, shape=shape, color=color, finite=True)
         self.generate_finite_set()
     def get_data(self, trainSize, testSize):
-        assert trainSize > 0 and testSize > 0, "trainSize and testSize must be positive"            
+        assert trainSize > 0 and testSize > 0, "trainSize and testSize must be positive"
         train_indices = np.random.choice(len(self.finite_set), trainSize)
         test_indices = np.random.choice(len(self.finite_set), testSize)
         self.x_train = self.finite_set[train_indices]
@@ -351,7 +351,7 @@ class Dataset_syn_finite(Dataset_synthetic):
     def get_nearest_samples(self, generated_samples):
         x_true = self.finite_set(self.finite_set.shape[0], -1)
         x_generated = generated_samples.reshape(generated_samples.shape[0], -1)
-        
+
         f = x_true.shape[1]
         t = annoy.AnnoyIndex(f, metric="euclidean")
         for i, v in enumerate(x_true):
@@ -371,7 +371,7 @@ class Dataset_syn_finite(Dataset_synthetic):
 
 class Dataset_circles_centered(Dataset_syn_finite):
     def __init__(self, shape):
-        super(Dataset_circles_centered, self).__init__("syn-circles", shape=shape)
+        super(Dataset_circles_centered, self).__init__("syn-circles", shape=shape, color=False)
     def generate_one_sample(self, data, radius):
         center = min(data.shape) // 2
         for y in range(data.shape[0]):
@@ -390,7 +390,7 @@ class Dataset_circles_centered(Dataset_syn_finite):
 
 class Dataset_moving_circles(Dataset_syn_finite):
     def __init__(self, shape):
-        super(Dataset_moving_circles, self).__init__("syn-moving-circles", shape=shape)
+        super(Dataset_moving_circles, self).__init__("syn-moving-circles", shape=shape, color=False)
     def generate_one_sample(self, data, xxx_todo_changeme):
         (center_x, center_y) = xxx_todo_changeme
         radius = min(data.shape) // 8
@@ -414,8 +414,8 @@ class Dataset_moving_circles(Dataset_syn_finite):
         self.finite_set = data
 
 class Dataset_syn_infinite(Dataset_synthetic):
-    def __init__(self, name, shape):
-        super(Dataset_syn_infinite, self).__init__(name, shape=shape, finite=False)
+    def __init__(self, name, shape, color):
+        super(Dataset_syn_infinite, self).__init__(name, shape=shape, color=color, finite=False)
     def get_data(self, trainSize, testSize):
         x_train = self.generate_samples(trainSize)
         x_test = self.generate_samples(testSize)
@@ -436,13 +436,18 @@ class Dataset_syn_infinite(Dataset_synthetic):
         for i, sample in enumerate(samples):
             self.generate_one_sample(data[i], sample)
         data = np.expand_dims(data, feature_axis)
-        return data        
+        return data
     def generate_samples(self, size):
-        data = np.zeros((size, self.shape[0], self.shape[1]))
+        assert feature_axis==3, "Theano not supported :'("
+        batch_shape = [size, self.shape[0], self.shape[1]]
+        if self.color:
+            batch_shape += [3]
+        data = np.zeros(tuple(batch_shape))
         params = self.sampler(size)
         for i in range(len(data)):
             self.generate_one_sample(data[i], params[i])
-        data = np.expand_dims(data, feature_axis)
+        if not self.color:
+            data = np.expand_dims(data, feature_axis)
         return data
     def sampler(self, size):
         assert False, "NYI"
@@ -451,7 +456,7 @@ class Dataset_syn_infinite(Dataset_synthetic):
 
 class Dataset_syn_rectangles(Dataset_syn_infinite):
     def __init__(self, shape):
-        super(Dataset_syn_rectangles, self).__init__("syn-rectangles", shape=shape)
+        super(Dataset_syn_rectangles, self).__init__("syn-rectangles", shape=shape, color=False)
     def generate_one_sample(self, data, coordinates):
         assert len(coordinates) == 4
         h, w = data.shape
@@ -476,7 +481,7 @@ class Dataset_syn_rectangles(Dataset_syn_infinite):
 
 class Dataset_syn_gradient(Dataset_syn_infinite):
     def __init__(self, shape):
-        super(Dataset_syn_gradient, self).__init__("syn-gradient", shape=shape)
+        super(Dataset_syn_gradient, self).__init__("syn-gradient", shape=shape, color=False)
     def generate_one_sample(self, data, direction):
         h, w = data.shape
         assert h==w
@@ -495,7 +500,7 @@ class Dataset_syn_gradient(Dataset_syn_infinite):
 
 class Dataset_syn_constant_uniform(Dataset_syn_infinite):
     def __init__(self, shape):
-        super(Dataset_syn_constant_uniform, self).__init__("syn-constant-uniform", shape=shape)
+        super(Dataset_syn_constant_uniform, self).__init__("syn-constant-uniform", shape=shape, color=False)
     def generate_one_sample(self, data, level):
         data[:, :] = level
     def sampler(self, size):
@@ -514,7 +519,7 @@ class Dataset_syn_constant_uniform(Dataset_syn_infinite):
 
 class Dataset_syn_constant_normal(Dataset_syn_infinite):
     def __init__(self, shape):
-        super(Dataset_syn_constant_normal, self).__init__("syn-constant-normal", shape=shape)
+        super(Dataset_syn_constant_normal, self).__init__("syn-constant-normal", shape=shape, color=False)
     def generate_one_sample(self, data, level):
         data[:, :] = level
     def sampler(self, size):
@@ -535,12 +540,12 @@ class Dataset_syn_constant_normal(Dataset_syn_infinite):
 class Dataset_clocks2(Dataset_syn_infinite):
     def __init__(self, shape, number_of_hands=1):
         assert shape == (28, 28)
-        super(Dataset_clocks2, self).__init__("syn-clocks2", shape=shape)
+        super(Dataset_clocks2, self).__init__("syn-clocks2", shape=shape, color=True)
         self.number_of_hands = number_of_hands
     def sampler(self, size):
         return np.random.uniform(0, 2*np.pi, size=(size, self.number_of_hands))
     def generate_one_sample(self, data, params):
-        data[:, :] = clocks.clock(params).astype(np.float32) / 255
+        data[:, :, :] = clocks.clock(params).astype(np.float32) / 255
     def generate_finite_set(self):
         assert False, "NYI"
 

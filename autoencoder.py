@@ -7,6 +7,7 @@ in the following ways:
   corresponds to a pairwise repulsive force between the encoded
   elements of the minibatch.
 '''
+from __future__ import print_function
 import numpy as np
 np.random.seed(10)
 
@@ -52,7 +53,10 @@ encoder = modelDict.encoder
 encoder_var = modelDict.encoder_var
 generator = modelDict.generator
 ae.summary()
-plot_model(ae, to_file=args.prefix + "-model.png", show_shapes=True)
+try:
+    plot_model(ae, to_file=args.prefix + "-model.png", show_shapes=True)
+except ImportError:
+    print("Network topology visualization skipped, missing visualization modules.")
 
 # Schedule hyperparameters
 import callbacks

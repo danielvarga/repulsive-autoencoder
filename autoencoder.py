@@ -14,6 +14,7 @@ import tensorflow as tf
 tf.set_random_seed(10)
 
 from keras.callbacks import LearningRateScheduler
+from keras.utils import plot_model
 import keras.backend as K
 import params
 import vis
@@ -32,14 +33,18 @@ if keras.backend._BACKEND == "tensorflow":
     config.gpu_options.per_process_gpu_memory_fraction = args.memory_share
     set_session(tf.Session(config=config))
 
+
+# Generating data
 import data
 data_object = data.load(args.dataset, shape=args.shape, color=args.color)
 (x_train, x_test) = data_object.get_data(args.trainSize, args.testSize)
 args.original_shape = x_train.shape[1:]
 
+# Preparing distribution sampler
 import samplers
 sampler = samplers.sampler_factory(args, x_train)
 
+# Building up the neural network
 import model
 modelDict = model.build_model(args)
 ae = modelDict.ae
@@ -47,21 +52,22 @@ encoder = modelDict.encoder
 encoder_var = modelDict.encoder_var
 generator = modelDict.generator
 ae.summary()
+plot_model(ae, to_file=args.prefix + "-model.png", show_shapes=True)
 
-
+# Schedule hyperparameters
 import callbacks
 cbs = [callbacks.FlushCallback()]
 get_lr = callbacks.get_lr_scheduler(args.nb_epoch, args.lr, args.lr_decay_schedule)
 cbs.append(LearningRateScheduler(get_lr))
-#cbs.append(callbacks.SaveGeneratedCallback(generator, sampler, args.prefix, args.batch_size, args.frequency, args.latent_dim, args.dataset, save_histogram=args.save_histogram))
 cbs.append(callbacks.ImageDisplayCallback(x_train, x_test, args, modelDict, sampler, data_object.anchor_indices))
-# cbs.append(callbacks.SaveModelsCallback(ae, encoder, encoder_var, generator, args.prefix, args.frequency))
 for schedule in args.weight_schedules:
     if schedule[1] != schedule[2]:
         cbs.append(callbacks.WeightSchedulerCallback(args.nb_epoch, schedule[0], schedule[1], schedule[2], schedule[3], schedule[4], schedule[5]))
 if args.monitor_frequency > 0:
     batch_per_epoch = x_train.shape[0] // args.batch_size
     cbs.append(callbacks.CollectActivationCallback(args.nb_epoch, args.monitor_frequency, args.batch_size, batch_per_epoch, ae, x_train[:5000], x_test[:5000], args.layers_to_monitor, "{}_activation_history".format(args.prefix)))
+
+
 
 if not args.use_nat:
     if args.augmentation_ratio > 0:

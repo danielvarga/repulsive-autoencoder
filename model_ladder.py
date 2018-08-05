@@ -1,5 +1,5 @@
 import numpy as np
-from keras.layers import Dense, Flatten, Activation, Reshape, Input, BatchNormalization, Merge, Lambda
+from keras.layers import Dense, Flatten, Activation, Reshape, Input, BatchNormalization, Lambda
 from keras.regularizers import l2
 from keras import backend as K
 

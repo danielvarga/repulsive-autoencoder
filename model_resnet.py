@@ -1,6 +1,6 @@
 import numpy as np
 
-from keras.layers import Input, Dense, Lambda, Convolution2D, Deconvolution2D, Reshape, Flatten, ZeroPadding2D, merge, Activation, Layer, AveragePooling2D, Merge
+from keras.layers import Input, Dense, Lambda, Convolution2D, Deconvolution2D, Reshape, Flatten, ZeroPadding2D, merge, Activation, Layer, AveragePooling2D
 from keras.layers.normalization import BatchNormalization
 from keras.models import Model
 from keras import backend as K

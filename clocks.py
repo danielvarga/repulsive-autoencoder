@@ -6,14 +6,14 @@ antialiasFactor = 4
 targetSizeOfImage = 28
 sizeOfImage = targetSizeOfImage * antialiasFactor
 numberOfHands = 2
-handWidth = 10 * antialiasFactor
+handWidth = 5 * antialiasFactor
 
 clockHandColor = 255
 clockBorderColor = 128
 
 
 def randomClockHandCoords(randomAngle):
-    randomAngle = random.random() * 2 * math.pi
+    #randomAngle = random.random() * 2 * math.pi
     handBegginingXCoord = (sizeOfImage / 2) if (sizeOfImage % 2 == 0) else ((sizeOfImage + 1) / 2)
     handBegginingYCoord = (sizeOfImage / 2) if (sizeOfImage % 2 == 0) else ((sizeOfImage + 1) / 2)
     handEndXCoord = math.cos(randomAngle) * (sizeOfImage * 0.5) + handBegginingXCoord
@@ -35,7 +35,7 @@ def clock(params):
         if indx==0:
             clockHandColor = 255
         else :
-            clockHandColor = 127
+            clockHandColor = 255
         draw.line(randomClockHandCoords(handAngle), clockHandColor, handWidth)
 
     img = img.resize((targetSizeOfImage, targetSizeOfImage), Image.ANTIALIAS)

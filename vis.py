@@ -22,7 +22,7 @@ def latentScatter(encoder, x_test, batch_size, name):
     points[:, 0] += 2.2 * (points[:, 2]>=0) # TODO This badly fails for normal latent vars.
     plt.scatter(points[:, 0], points[:, 1])
     fileName = name + ".png"
-    print("Creating file " + fileName)
+    #print("Creating file " + fileName)
     plt.savefig(fileName)
     plt.close()
 
@@ -48,7 +48,7 @@ def plotImages(data, n_x, n_y, name):
         image_data[height_inc*y:height_inc*y+height, width_inc*x:width_inc*x+width] = 255*sample.clip(0, 0.99999)
     img = Image.fromarray(image_data,mode=mode)
     fileName = name + ".png"
-    print("Creating file " + fileName)
+    #print("Creating file " + fileName)
     img.save(fileName)
 
 # display a 2D manifold of the images
@@ -270,8 +270,8 @@ def displayInterp(x_train, x_test, batch_size, dim,
     anchor3 = test_latent[anchor_indices[2]]
     anchor4 = anchor3 + anchor2 - anchor1
     anchors = np.array([anchor1, anchor2, anchor3, anchor4])
-    if toroidal:
-        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! TOROIDAL INTERPOLATION! anchor4 calculation is affine, not toroidal.")
+    #if toroidal:
+        #print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! TOROIDAL INTERPOLATION! anchor4 calculation is affine, not toroidal.")
     # TODO different interpolations for different autoencoders!!!
     interpGrid = grid_layout.create_mine_grid(gridSize, gridSize, dim, gridSize-1, anchors, False, False, toroidal=toroidal)
     n = interpGrid.shape[0]
@@ -324,7 +324,7 @@ def plotMVVM(x_train, encoder, encoder_var, batch_size, name):
     plt.scatter(mean_variances, variance_means)
     plt.xlim(xlim[0], xlim[1])
     plt.ylim(ylim[0], ylim[1])
-    print("Creating file " + name)
+    #print("Creating file " + name)
     plt.savefig(name)
     plt.close()
 
@@ -343,7 +343,7 @@ def plotMVhist(x_train, encoder, batch_size, names):
     if type(names) == str:
         names = [names]
     for name in names:
-        print("Creating file " + name)
+        #print("Creating file " + name)
         plt.savefig(name)
     plt.close()
 
@@ -357,7 +357,7 @@ def plot2Dprojections(dataset, indices, name):
             plt.xlim(4, 4)
             plt.ylim(4, 4)
         print(i)
-    print("Creating file " + name)
+    #print("Creating file " + name)
     plt.savefig(name)
     plt.close()
 
@@ -455,6 +455,6 @@ def display_pair_distance_histogram(latent, target, name):
     distance_to_origo = np.sqrt(np.sum(np.square(target), axis=1))
     plt.figure(figsize=(6,6))
     plt.scatter(distance_to_origo, distance_to_pair)
-    print("Creating file " + name)
+    #print("Creating file " + name)
     plt.savefig(name)
     plt.close()

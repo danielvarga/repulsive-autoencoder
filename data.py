@@ -62,7 +62,7 @@ def load(dataset, shape=None, color=True):
     elif dataset == "syn-constant-normal":
         return Dataset_syn_constant_normal(shape)
     elif dataset.startswith("syn-clocks-hand"):
-        assert shape == (28, 28) and not color
+        #assert shape == (28, 28) and not color
         suffix = dataset.split("-", 2)[2]
         assert suffix.startswith("hand")
         number_of_hands = int(suffix[4:])

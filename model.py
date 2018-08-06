@@ -202,12 +202,11 @@ def add_sampling(hidden, sampling, sampling_std, batch_size, latent_dim, wd):
 
         def sampling(inputs):
             z_mean, z_log_var = inputs
-
-
             epsilon = K.random_normal(shape=(batch_size, latent_dim), mean=0.)
             return z_mean + K.exp(z_log_var / 2) * epsilon
 
         z = Lambda(sampling, output_shape=(latent_dim,))([z_mean, z_log_var])
+        z = Lambda(norm)(z)
 
         return z, z_mean, z_log_var
 

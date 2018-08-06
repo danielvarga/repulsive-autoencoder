@@ -80,6 +80,8 @@ class ImageDisplayCallback(Callback):
         if (epoch+1) % self.frequency != 0:
             return
 
+        print(self.encoder.predict(self.x_train, batch_size = 10))
+
         randomImages = self.generator.predict(self.randomPoints, batch_size=self.batch_size)
         vis.plotImages(randomImages, 10, self.batch_size // 10, "{}-random-{}".format(self.name, epoch+1))
         vis.plotImages(randomImages, 10, self.batch_size // 10, "{}-random".format(self.name))

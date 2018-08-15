@@ -46,6 +46,22 @@ def plotMVVM(mean, var, name):
     plt.close()
 plotMVVM(mean, var, prefix + "/mvvm.png")
 
+def plotMVhist(mean, name):
+    mean_variances = np.var(mean, axis=0)
+    histogram = np.histogram(mean_variances, 30)
+    mean_variances = histogram[1]
+    variance_means = [0] + list(histogram[0])
+    xlim = (0,np.max(mean_variances))
+    ylim = (0,np.max(variance_means))
+    plt.figure(figsize=(12,6))
+    plt.scatter(mean_variances, variance_means)
+    plt.xlim(xlim[0], xlim[1])
+    plt.ylim(ylim[0], ylim[1])
+    print("Creating file " + name)
+    plt.savefig(name)
+    plt.close()
+plotMVhist(mean, prefix + "/mvhist.png")
+    
 # visualize the latent mean
 def show_latent_cloud(z, name):
     if z.ndim == 1:

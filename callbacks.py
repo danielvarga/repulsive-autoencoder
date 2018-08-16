@@ -103,6 +103,16 @@ class ImageDisplayCallback(Callback):
         vis.displayGaussianDots(self.args, self.modelDict, self.x_train, "{}-singledots-{}".format(self.name, epoch+1), 15, 20)
 
         latent_cloud = self.encoder.predict(self.x_test, batch_size=self.batch_size)
+
+        filename = "{}_latent_mean_{}.npy".format(self.name, epoch+1)
+        print("Saving latent pointcloud mean to {}".format(filename))
+        np.save(filename, latent_cloud)
+
+        latent_cloud_log_var = self.encoder_var.predict(self.x_test, batch_size=self.batch_size)
+        filename = "{}_latent_log_var_{}.npy".format(self.name, epoch+1)
+        print("Saving latent pointcloud log variance to {}".format(filename))
+        np.save(filename, latent_cloud_log_var)
+
         if self.latent_dim >= 2:
             z1, z2 = latent_cloud[:, 0], latent_cloud[:, 1]
             plt.clf()

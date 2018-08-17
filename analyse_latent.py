@@ -102,6 +102,22 @@ def check_best_normality(mean, prefix, step=10, count=10):
         show_latent_cloud(selected_mean, "{}_{}.png".format(prefix, i))
 check_best_normality(mean, prefix + "/normality_check", step=10, count=10)
 
+def best_coords_pca(mean, limit):
+    mean_variances = np.var(mean, axis=0)
+    order = np.argsort(mean_variances)[::-1]
+    selected_mean = mean[:, order[:limit]]
+
+    vars = mean_variances[order[:limit]]
+    print("Variance of means")
+    print(vars)
+    cov = np.cov(selected_mean.T)
+    w, v = np.linalg.eigh(cov)
+    print("Eigs of cov")
+    print(np.flip(w, 0))
+
+best_coords_pca(mean, 50)
+asdf
+
 
 ##############################################################
 ############# sampled ########################################

@@ -48,7 +48,10 @@ plotMVVM(mean, var, prefix + "/mvvm.png")
 
 def plotMVhist(mean, name):
     mean_variances = np.var(mean, axis=0)
-    histogram = np.histogram(mean_variances, 30)
+    # histogram = np.histogram(mean_variances, 30)
+    histogram = np.histogram(mean_variances, bins=(0, 0.01, 0.04, 0.09, 0.16, 0.25, 0.36, 0.49, 0.64, 0.81, 1.0)) #100, range=(0,3))
+    print "MVhist:"
+    print histogram
     mean_variances = histogram[1]
     variance_means = [0] + list(histogram[0])
     xlim = (0,np.max(mean_variances))

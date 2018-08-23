@@ -150,8 +150,8 @@ if do_latent_variances:
     sigma = sigma_all[:sample_size]
     nearestSigma = sigma_all[nearestIndex]
     for ellipsoid_size in ellipsoid_sizes:
-        ellipsoid_dist = 1 / np.sqrt(np.sum(np.square(nearestDirection / (ellipsoid_size * sigma)), axis=1))
-        nearest_ellipsoid_dist = 1 / np.sqrt(np.sum(np.square(nearestDirection / (ellipsoid_size * nearestSigma)), axis=1))
+        ellipsoid_dist = 1 / (1.e-16 + np.sqrt(np.sum(np.square(nearestDirection / (ellipsoid_size * sigma)), axis=1)))
+        nearest_ellipsoid_dist = 1 / (1.e-16 + np.sqrt(np.sum(np.square(nearestDirection / (ellipsoid_size * nearestSigma)), axis=1)))
         extraSpace = nearestDist - (ellipsoid_dist + nearest_ellipsoid_dist)
         print("Sigma {}, Extra avg space {}, avg nearest {}, avg distance {}".format(ellipsoid_size, np.mean(extraSpace), np.mean(nearestDist), np.mean(dist)))
         plt.hist(extraSpace, bins = 30)
@@ -174,6 +174,9 @@ projected_z = projected_z.flatten()
 vis.cumulative_view(projected_z, "CDF of randomly projected latent cloud", prefix + "_cdf.png")
 vis.cumulative_view(latent_train[:,0], "CDF of 1st coordinate of latent cloud", prefix + "_cdf1.png")
 vis.cumulative_view(latent_train[:,1], "CDF of 2nd coordinate of latent cloud", prefix + "_cdf2.png")
+for i in range(2, args.latent_dim):
+    vis.cumulative_view(latent_train[:,i], "CDF of {0}th coordinate of latent cloud".format(i+1), prefix + "_cdf{0}.png".format(i+1))
+
 
 # how normal is the input and the output?
 flat_input = x_train.reshape(x_train.shape[0], -1)
@@ -300,8 +303,11 @@ plt.close()
 
 def masked_sampler(batch_size, latent_dim):
     z = np.random.normal(size=(batch_size, latent_dim))
-    return z * working_mask
+    return z * working_mask + ((1-working_mask)*latent_train_mean)
 
+def masked_corrected_mean_sampler(batch_size, latent_dim):
+    z = np.random.normal(size=(batch_size, latent_dim))
+    return z * working_mask + ((1-working_mask)*latent_train_mean)
 
 
 

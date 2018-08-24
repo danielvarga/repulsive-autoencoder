@@ -150,8 +150,8 @@ if do_latent_variances:
     sigma = sigma_all[:sample_size]
     nearestSigma = sigma_all[nearestIndex]
     for ellipsoid_size in ellipsoid_sizes:
-        ellipsoid_dist = 1 / np.sqrt(np.sum(np.square(nearestDirection / (ellipsoid_size * sigma)), axis=1))
-        nearest_ellipsoid_dist = 1 / np.sqrt(np.sum(np.square(nearestDirection / (ellipsoid_size * nearestSigma)), axis=1))
+        ellipsoid_dist = 1 / (1.e-16 + np.sqrt(np.sum(np.square(nearestDirection / (ellipsoid_size * sigma)), axis=1)))
+        nearest_ellipsoid_dist = 1 / (1.e-16 + np.sqrt(np.sum(np.square(nearestDirection / (ellipsoid_size * nearestSigma)), axis=1)))
         extraSpace = nearestDist - (ellipsoid_dist + nearest_ellipsoid_dist)
         print("Sigma {}, Extra avg space {}, avg nearest {}, avg distance {}".format(ellipsoid_size, np.mean(extraSpace), np.mean(nearestDist), np.mean(dist)))
         plt.hist(extraSpace, bins = 30)
@@ -174,6 +174,9 @@ projected_z = projected_z.flatten()
 vis.cumulative_view(projected_z, "CDF of randomly projected latent cloud", prefix + "_cdf.png")
 vis.cumulative_view(latent_train[:,0], "CDF of 1st coordinate of latent cloud", prefix + "_cdf1.png")
 vis.cumulative_view(latent_train[:,1], "CDF of 2nd coordinate of latent cloud", prefix + "_cdf2.png")
+for i in range(2, args.latent_dim):
+    vis.cumulative_view(latent_train[:,i], "CDF of {0}th coordinate of latent cloud".format(i+1), prefix + "_cdf{0}.png".format(i+1))
+
 
 # how normal is the input and the output?
 flat_input = x_train.reshape(x_train.shape[0], -1)
@@ -218,6 +221,8 @@ origo_mean = np.mean(latent_train_mean, axis=0)
 mean_variances = np.var(latent_train_mean, axis=0)
 variances = np.var(latent_train, axis=0)
 working_mask = (mean_variances > 0.1)
+variance_means = np.mean(np.exp(latent_train_logvar), axis=0)
+good_mask = (variance_means > 0.9)
 print("Variances: ", np.sum(working_mask), "/", working_mask.shape)
 print(np.histogram(mean_variances, 100))
 
@@ -302,8 +307,25 @@ def masked_sampler(batch_size, latent_dim):
     z = np.random.normal(size=(batch_size, latent_dim))
     return z * working_mask
 
+vis.displayRandom(n=20, x_train=x_train, latent_dim=latent_dim, sampler=masked_sampler,
+                              generator=generator, name=prefix + "_masked_sampler", batch_size=batch_size)
 
 
+
+z_fixed = np.random.normal(size=(batch_size, latent_dim))
+
+def incremental_masked_sampler_with_limit(limit):
+    def incremental_masked_sampler(batch_size, latent_dim):
+        order = np.argsort(variance_means)[::-1]
+        z = np.array(z_fixed)
+        z[:, order[:limit]] = 0.0
+        print(z)
+        return z
+    return incremental_masked_sampler
+
+for i in range(latent_dim):
+    vis.displayRandom(n=10, x_train=x_train, latent_dim=latent_dim, sampler=incremental_masked_sampler_with_limit(i),
+                              generator=generator, name=prefix + "_incremental_masked_sampler{0}".format(i), batch_size=batch_size)
 
 if do_latent_variances:
     for focus_index in range(5): # Index of a specific sample
@@ -314,7 +336,7 @@ if do_latent_variances:
             shape = [batch_size] + list(focus_latent_mean.shape)
             return np.random.normal(size=shape) * np.exp(focus_latent_logvar/2) + focus_latent_mean
 
-            vis.displayRandom(n=10, x_train=x_train, latent_dim=latent_dim, sampler=single_gaussian_sampler,
+        vis.displayRandom(n=10, x_train=x_train, latent_dim=latent_dim, sampler=single_gaussian_sampler,
                               generator=generator, name=prefix + "_singlesample%d" % focus_index, batch_size=batch_size)
 
 

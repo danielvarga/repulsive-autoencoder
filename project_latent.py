@@ -221,6 +221,8 @@ origo_mean = np.mean(latent_train_mean, axis=0)
 mean_variances = np.var(latent_train_mean, axis=0)
 variances = np.var(latent_train, axis=0)
 working_mask = (mean_variances > 0.1)
+variance_means = np.mean(np.exp(latent_train_logvar), axis=0)
+good_mask = (variance_means > 0.9)
 print("Variances: ", np.sum(working_mask), "/", working_mask.shape)
 print(np.histogram(mean_variances, 100))
 
@@ -303,13 +305,27 @@ plt.close()
 
 def masked_sampler(batch_size, latent_dim):
     z = np.random.normal(size=(batch_size, latent_dim))
-    return z * working_mask + ((1-working_mask)*latent_train_mean)
+    return z * working_mask
 
-def masked_corrected_mean_sampler(batch_size, latent_dim):
-    z = np.random.normal(size=(batch_size, latent_dim))
-    return z * working_mask + ((1-working_mask)*latent_train_mean)
+vis.displayRandom(n=20, x_train=x_train, latent_dim=latent_dim, sampler=masked_sampler,
+                              generator=generator, name=prefix + "_masked_sampler", batch_size=batch_size)
 
 
+
+z_fixed = np.random.normal(size=(batch_size, latent_dim))
+
+def incremental_masked_sampler_with_limit(limit):
+    def incremental_masked_sampler(batch_size, latent_dim):
+        order = np.argsort(variance_means)[::-1]
+        z = np.array(z_fixed)
+        z[:, order[:limit]] = 0.0
+        print(z)
+        return z
+    return incremental_masked_sampler
+
+for i in range(latent_dim):
+    vis.displayRandom(n=10, x_train=x_train, latent_dim=latent_dim, sampler=incremental_masked_sampler_with_limit(i),
+                              generator=generator, name=prefix + "_incremental_masked_sampler{0}".format(i), batch_size=batch_size)
 
 if do_latent_variances:
     for focus_index in range(5): # Index of a specific sample
@@ -320,7 +336,7 @@ if do_latent_variances:
             shape = [batch_size] + list(focus_latent_mean.shape)
             return np.random.normal(size=shape) * np.exp(focus_latent_logvar/2) + focus_latent_mean
 
-            vis.displayRandom(n=10, x_train=x_train, latent_dim=latent_dim, sampler=single_gaussian_sampler,
+        vis.displayRandom(n=10, x_train=x_train, latent_dim=latent_dim, sampler=single_gaussian_sampler,
                               generator=generator, name=prefix + "_singlesample%d" % focus_index, batch_size=batch_size)
 
 

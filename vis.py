@@ -27,7 +27,7 @@ def latentScatter(encoder, x_test, batch_size, name):
     plt.close()
 
 
-def plotImages(data, n_x, n_y, name):
+def plotImages(data, n_x, n_y, name, text=None):
     (height, width, channel) = data.shape[1:]
     height_inc = height + 1
     width_inc = width + 1
@@ -49,6 +49,8 @@ def plotImages(data, n_x, n_y, name):
     img = Image.fromarray(image_data,mode=mode)
     fileName = name + ".png"
     print("Creating file " + fileName)
+    if text is not None:
+        img.text(10, 10, text)
     img.save(fileName)
 
 # display a 2D manifold of the images

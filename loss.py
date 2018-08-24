@@ -44,6 +44,31 @@ def loss_factory(model, encoder, loss_features, args):
         loss = 0.5 * K.sum(-1 - loss_features.z_log_var + K.exp(loss_features.z_log_var), axis=-1)
         return K.mean(loss)
 
+    # augmented variance loss:
+    # pushing z_sampled variance towards 1, when x ~ X and z_mean and z_var are calculated by the encoder.
+    # We work with the theoretically hard-to-justify, but true-in-practice
+    # assumption that z_mean and z_var are independent random variables when x ~ X,
+    # and z_mean is normally distributed.
+    # This means that z_sampled is normally distributed, and its variance
+    # is the sum of var(z_mean) and z_var.
+    # This assumption leads to the modified form of the variance_loss,
+    # where we add the minibatch-estimated variance of z_mean to z_var.
+    #
+    # The idea is that this does not punish small z_vars when var(z_mean) is already big.
+    # Unfortunately the flipside is that it does not punish large z_vars when var(z_mean) is already small.
+    #
+    # Surprisingly, on dcgan_vae_lsun_newkl.iniit quickly converged to
+    # an mvvm diagram that has 135 0-mv-1-vm coords and 65 1/2-mv-0-vm coords.
+    # (mv means the mean's variance, the 1/2 is the surprise here,
+    # it's supposed to be 1, might be an implementation bug.)
+    def augmented_variance_loss(x, x_decoded):
+        variance = K.exp(loss_features.z_log_var)
+        # TODO Are you really-really sure it's not axis=1?
+        mean_variance = K.var(loss_features.z_mean, axis=0, keepdims=True)
+        total_variance = variance + mean_variance
+        loss = 0.5 * K.sum(-1 - K.log(total_variance) + total_variance, axis=-1)
+        return K.mean(loss)
+
     # energy distance from the standard normal distribution.
     def energy_distance_loss(x, x_decoded):
         z = loss_features.z_mean

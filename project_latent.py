@@ -314,18 +314,31 @@ vis.displayRandom(n=20, x_train=x_train, latent_dim=latent_dim, sampler=masked_s
 
 z_fixed = np.random.normal(size=(batch_size, latent_dim))
 
-def incremental_masked_sampler_with_limit(limit):
+def incremental_masked_sampler_with_limit(limit, latent_z, value=0.0):
     def incremental_masked_sampler(batch_size, latent_dim):
         order = np.argsort(variance_means)[::-1]
-        z = np.array(z_fixed)
-        z[:, order[:limit]] = 0.0
-        print(z)
+        z = np.array(latent_z)
+        z[:, order[:limit]] = value
         return z
     return incremental_masked_sampler
 
 for i in range(latent_dim):
-    vis.displayRandom(n=10, x_train=x_train, latent_dim=latent_dim, sampler=incremental_masked_sampler_with_limit(i),
-                              generator=generator, name=prefix + "_incremental_masked_sampler{0}".format(i), batch_size=batch_size)
+    vis.displayRandom(n=10, x_train=x_train, latent_dim=latent_dim, sampler=incremental_masked_sampler_with_limit(i, z_fixed),
+                      generator=generator, name=prefix + "_incremental_masked_sampler{0}".format(i), batch_size=batch_size)
+
+
+# same as above but applied to a real image embedding mean
+latent_train_mean_batch = latent_train_mean[:batch_size]
+for i in range(latent_dim):
+    vis.displayRandom(n=10, x_train=x_train, latent_dim=latent_dim, sampler=incremental_masked_sampler_with_limit(i, latent_train_mean_batch),
+                      generator=generator, name=prefix + "_incremental_masked_fromreal{0}".format(i), batch_size=batch_size)
+
+# what if z_fixed coordinates are replaced with something other than zero?
+for i in range(latent_dim):
+    vis.displayRandom(n=10, x_train=x_train, latent_dim=latent_dim, sampler=incremental_masked_sampler_with_limit(i, z_fixed, 0.5),
+                      generator=generator, name=prefix + "_incremental_masked_sampler_v100_{0}".format(i), batch_size=batch_size)
+
+xxx
 
 if do_latent_variances:
     for focus_index in range(5): # Index of a specific sample

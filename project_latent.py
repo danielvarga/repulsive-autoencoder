@@ -329,14 +329,36 @@ for i in range(latent_dim):
 
 # same as above but applied to a real image embedding mean
 latent_train_mean_batch = latent_train_mean[:batch_size]
+vis.plotImages(x_train[:batch_size], 10, batch_size // 10, prefix+"_real")
+
 for i in range(latent_dim):
     vis.displayRandom(n=10, x_train=x_train, latent_dim=latent_dim, sampler=incremental_masked_sampler_with_limit(i, latent_train_mean_batch),
                       generator=generator, name=prefix + "_incremental_masked_fromreal{0}".format(i), batch_size=batch_size)
 
 # what if z_fixed coordinates are replaced with something other than zero?
+# if value is small, nothing changes
 for i in range(latent_dim):
     vis.displayRandom(n=10, x_train=x_train, latent_dim=latent_dim, sampler=incremental_masked_sampler_with_limit(i, z_fixed, 0.5),
                       generator=generator, name=prefix + "_incremental_masked_sampler_v100_{0}".format(i), batch_size=batch_size)
+
+
+# add sampling to the bad coordinates
+latent_train_logvar_batch = latent_train_logvar[:batch_size]
+def incremental_varmasked_sampler_with_limit(limit):
+    def incremental_masked_sampler(batch_size, latent_dim):
+        order = np.argsort(variance_means)[::-1]
+        mask = np.zeros((latent_dim,))
+        mask[order[:limit]] = 1
+        
+        std = np.exp(latent_train_logvar_batch) ** 0.5
+        z = mask * std * np.random.normal(size=std.shape) + latent_train_mean_batch
+        return z
+    return incremental_masked_sampler
+for i in range(latent_dim):
+    vis.displayRandom(n=10, x_train=x_train, latent_dim=latent_dim, sampler=incremental_varmasked_sampler_with_limit(i),
+                      generator=generator, name=prefix + "_incremental_varmasked_sampler{0}".format(i), batch_size=batch_size)
+
+
 
 xxx
 

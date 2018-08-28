@@ -4,11 +4,16 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.mlab as mlab
 from scipy.stats import norm
+import sklearn.decomposition
 
 import numpy as np
 import os
 
-prefix = "/home/daniel/experiments/repulsive-autoencoder/pictures/dcgan_vae_lsun/dcgan_vae_lsun_latent"
+
+
+# prefix = "/home/daniel/experiments/repulsive-autoencoder/pictures/dcgan_vae_lsun/dcgan_vae_lsun_latent"
+prefix = "/mnt/g2home/daniel/experiments/repulsive-autoencoder/pictures/dcgan_vae_lsun/dcgan_vae_lsun_latent"
+# prefix = "/home/zombori/experiments/repulsive-autoencoder/pictures/dcgan_vae_largelatent/dcgan_vae_largelatent_latent"
 
 meanFile = prefix + "_mean_200.npy"
 logvarFile = prefix + "_log_var_200.npy"
@@ -21,6 +26,8 @@ std = np.exp(logvar/2)
 print "Mean shape: ", mean.shape
 print "Var shape: ", var.shape
 
+latent_dim = mean.shape[1]
+
 # save images into directory ./latent
 prefix = "latent"
 if not os.path.exists(prefix):
@@ -29,6 +36,32 @@ if not os.path.exists(prefix):
 ##############################################################
 ############# mean ###########################################
 ##############################################################
+
+# show cumulative explained variance
+def variance_explained(mean, name):
+    pca = sklearn.decomposition.PCA()
+    pca.fit_transform(mean)
+    plt.plot(pca.explained_variance_ratio_.cumsum())
+    print("Creating file " + name)
+    plt.savefig(name)
+    plt.close()
+variance_explained(mean, prefix + "/variance_explained_largelatent.png")
+
+# show mean vs variance scatter plot
+def plotMV(mean, var, dim, name):
+    xlim = (-6, 6)
+    ylim = (-1, 2)
+    plt.figure(figsize=(12,6))
+    plt.scatter(mean[:,dim], var[:,dim])
+    plt.xlim(xlim[0], xlim[1])
+    plt.ylim(ylim[0], ylim[1])
+    print("Creating file " + name)
+    plt.savefig(name)
+    plt.close()
+variance_means = np.mean(var, axis=0)
+order = np.argsort(variance_means)
+for i in range(0, latent_dim):
+    plotMV(mean, var, order[i], prefix + "/mv_{}.png".format(i))
 
 
 # plot the mean of variances (x axis) by the variance of mean (y axis)

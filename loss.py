@@ -36,6 +36,14 @@ def loss_factory(model, encoder, loss_features, args):
         loss = 0.5 * K.sum(K.square(loss_features.z_mean), axis=-1)
         return K.mean(loss)
 
+    def center_loss(x, x_decoded): # pushing the means towards the origo
+        loss = 0.5 * K.square(K.sum(loss_features.z_mean, axis=-1))
+        return K.mean(loss)
+
+    def size_loss_l1(x, x_decoded): # pushing the means towards the origo
+        loss = 0.5 * K.sum(K.abs(loss_features.z_mean), axis=-1)
+        return K.mean(loss)
+
     def sampled_size_loss(x, x_decoded): # pushing the sampleds towards the origo
         loss = 0.5 * K.sum(K.square(loss_features.z_sampled), axis=-1)
         return K.mean(loss)

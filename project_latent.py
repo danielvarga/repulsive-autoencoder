@@ -360,7 +360,6 @@ for i in range(latent_dim):
 
 
 
-xxx
 
 if do_latent_variances:
     for focus_index in range(5): # Index of a specific sample

@@ -1,6 +1,7 @@
 import numpy as np
 
-from keras.layers import Input, Dense, Lambda, Convolution2D, Deconvolution2D, Reshape, Flatten, ZeroPadding2D, merge, Activation, Layer, AveragePooling2D, Merge
+from keras.layers import Input, Dense, Lambda, Convolution2D, Deconvolution2D, Reshape, Flatten, ZeroPadding2D, merge, Activation, Layer, AveragePooling2D
+from keras.layers.merge import Add
 from keras.layers.normalization import BatchNormalization
 from keras.models import Model
 from keras import backend as K
@@ -46,6 +47,14 @@ class ResnetDecoder(Decoder):
         return generator_latent, recons_output, generator_output, intermediary_outputs
 
 
+class IntroVaeResnetDecoder(Decoder):
+
+    def __init__(self, args):
+        self.args = args
+
+    def __call__(self, recons_latent):
+        pass
+
 def resnet_block(input1, input2, latent1, latent2, args):
     input_shape = K.int_shape(input1)[1:]
     input2_shape = K.int_shape(input2)[1:]
@@ -58,11 +67,11 @@ def resnet_block(input1, input2, latent1, latent2, args):
         input = K.repeat_elements(input, input_shape[0], axis=1)
         input = K.repeat_elements(input, input_shape[1], axis=2)
         return input
-    
+
     # apply random projection on the latent code into block_params values and create block_params layers out of them
     block_params = 5
     layers = []
-    layers.append(Dense(block_params, trainable=False))            
+    layers.append(Dense(block_params, trainable=False))
     layers.append(Lambda(dense2Conv))
     for layer in layers:
         latent1 = layer(latent1)

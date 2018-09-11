@@ -1,12 +1,16 @@
 import keras.backend as K
 from keras.layers import Conv2D, BatchNormalization, Activation, Add, \
-    AveragePooling2D, Dense, Flatten, UpSampling2D, Layer, Reshape, Concatenate
+    AveragePooling2D, Input, Dense, Flatten, UpSampling2D, Layer, Reshape, Concatenate, Lambda
 
 
 def default_channels(model_type, input_shape):
-    if input_shape == (64, 64):
+    if input_shape == (1024, 1024):
         encoder_channels = [16, 32, 64, 128, 256, 512, 512, 512, 512]
-        decoder_channels = list(reversed(encoder_channels))
+        decoder_channels = [512, 512, 512, 512, 256, 128, 64, 32, 16, 16]
+    elif input_shape == (64, 64):
+        wideness = 1
+        encoder_channels = [c*wideness for c in [16, 32, 64, 128, 256]]
+        decoder_channels = [c*wideness for c in [256, 256, 128, 64, 32, 16, 16]]
     else:
         assert False, 'unknown input size ' + input_size
 
@@ -32,171 +36,181 @@ class IntrovaeEncoder(Encoder):
         self.shape = args.shape
         self.latent_dim = args.latent_dim
         self.bn_allowed = args.encoder_use_bn
-        self.channels = default_channels('encoder',
-                                         self.shape,
-                                         self.latent_dim)
+        self.channels = default_channels('encoder', self.shape)
 
     def __call__(self, x):
-        pass
+        if self.args.shape == (64, 64):
+            layers = encoder_layers_introvae_64(self.channels, self.bn_allowed)
+        elif self.args.shape == (1024, 1024):
+            layers = encoder_layers_introvae_1024(self.channels, self.bn_allowed)
+        h = x
+        for layer in layers:
+            h = layer(h)
+        return h
 
 
 class IntrovaeDecoder(Decoder):
     def __init__(self, args):
         self.args = args
-        self.channels = default_channels('decoder',
-                                         self.input_shape,
-                                         self.latent_dim)
+        self.shape = args.shape
+        self.batch_size = args.batch_size
+        self.latent_dim = args.latent_dim
+        self.bn_allowed = args.decoder_use_bn
+        self.channels = default_channels('decoder', self.shape)
 
     def __call__(self, recons_input):
-        pass
+        if self.args.shape == (64, 64):
+            layers = decoder_layers_introvae_64(self.channels, self.bn_allowed)
+        elif self.args.shape == (1024, 1024):
+            layers = decoder_layers_introvae_1024(self.channels, self.bn_allowed)
+
+        generator_input = Input(batch_shape=(self.batch_size, self.latent_dim))
+        generator_output = generator_input
+        recons_output = recons_input
+        for layer in layers:
+            generator_output = layer(generator_output)
+            recons_output = layer(recons_output)
+
+        return generator_input, recons_output, generator_output
 
 
-def resblock_and_avgpool_layers(input_tensor, kernels, num_filters, block, bn_allowed):
-    x = input_tensor
-    x = residual_block(x,
-                       'encoder',
-                       kernels=kernels,
-                       filters=[num_filters] * len(kernels),
-                       block=str(block),
-                       bn_allowed=bn_allowed)
-#    x = AveragePooling2D(pool_size=(2, 2),
-#                         strides=None,
-#                         padding='valid',
-#                         name='avgpool'+ str(block))(x)
-    return x
+def resblock_and_avgpool_layers(kernels, filters, block, bn_allowed):
+    layers = []
+    layers.append(residual_block('encoder',
+                                 kernels=kernels,
+                                 filters=filters,
+                                 block=block,
+                                 bn_allowed=bn_allowed))
+    layers.append(AveragePooling2D(pool_size=(2, 2),
+                                   strides=None,
+                                   padding='valid',
+                                   name='avgpool'+ str(block)))
+    return layers
 
 
-def encoder_layers_introvae(input_tensor, channels, bn_allowed):
-    x = input_tensor
-    for idx, channel in enumerate(channels):
-        if idx == 0:
-            x = Conv2D(channel,
-                       (5, 5),
-                       strides=(1, 1),
+def encoder_layers_introvae_1024(channels, bn_allowed):
+    layers = []
+    layers.append(Conv2D(channels[0], (5, 5), strides=(1, 1), padding='same', kernel_initializer='he_normal', name='conv' + str(0)))
+    if bn_allowed:
+        layers.append(BatchNormalization(axis=-1))
+    layers.append(Activation('relu'))
+    layers.append(AveragePooling2D(pool_size=(2, 2), strides=None, padding='valid', name='avgpool' + str(1)))
+    layers.extend(resblock_and_avgpool_layers([(1, 1), (3, 3), (3, 3)], channels[1], block=1, bn_allowed=bn_allowed))
+    layers.extend(resblock_and_avgpool_layers([(1, 1), (3, 3), (3, 3)], channels[2], block=2, bn_allowed=bn_allowed))
+    layers.extend(resblock_and_avgpool_layers([(1, 1), (3, 3), (3, 3)], channels[3], block=3, bn_allowed=bn_allowed))
+    layers.extend(resblock_and_avgpool_layers([(1, 1), (3, 3), (3, 3)], channels[4], block=4, bn_allowed=bn_allowed))
+    layers.extend(resblock_and_avgpool_layers([(1, 1), (3, 3), (3, 3)], channels[5], block=5, bn_allowed=bn_allowed))
+    layers.extend(resblock_and_avgpool_layers([(1, 1), (3, 3), (3, 3)], channels[6], block=6, bn_allowed=bn_allowed))
+    layers.extend(resblock_and_avgpool_layers([(3, 3), (3, 3)], channels[7], block=7, bn_allowed=bn_allowed))
+    layers.append(residual_block('encoder', kernels=[(3, 3), (3, 3)], filters=channels[8], block=8, bn_allowed=bn_allowed))
+    layers.append(Flatten())
+    return layers
+
+def encoder_layers_introvae_64(channels, bn_allowed):
+    layers = []
+    layers.append(Conv2D(channels[0], (5, 5), strides=(1, 1), padding='same', kernel_initializer='he_normal', name='conv' + str(0)))
+    if bn_allowed:
+        layers.append(BatchNormalization(axis=-1))
+    layers.append(Activation('relu'))
+    layers.append(AveragePooling2D(pool_size=(2, 2), strides=None, padding='valid', name='avgpool' + str(0)))
+    layers.extend(resblock_and_avgpool_layers([(1, 1), (3, 3), (3, 3)], channels[1], block=1, bn_allowed=bn_allowed))
+    layers.extend(resblock_and_avgpool_layers([(1, 1), (3, 3), (3, 3)], channels[2], block=2, bn_allowed=bn_allowed))
+    layers.extend(resblock_and_avgpool_layers([(1, 1), (3, 3), (3, 3)], channels[3], block=3, bn_allowed=bn_allowed))
+
+    #layers.extend(resblock_and_avgpool_layers([(1, 1), (3, 3), (3, 3)], channels[4], block=4, bn_allowed=bn_allowed))
+    #layers.extend(resblock_and_avgpool_layers([(1, 1), (3, 3), (3, 3)], channels[5], block=5, bn_allowed=bn_allowed))
+    #layers.extend(resblock_and_avgpool_layers([(1, 1), (3, 3), (3, 3)], channels[6], block=6, bn_allowed=bn_allowed))
+    #layers.extend(resblock_and_avgpool_layers([(3, 3), (3, 3)], channels[7], block=7, bn_allowed=bn_allowed))
+    #layers.extend(residual_block('encoder', kernels=[(3, 3), (3, 3)], filters=channels[8], block=8, bn_allowed=bn_allowed))
+    layers.append(Flatten())
+    return layers
+
+
+def upsample_and_resblock_layers(kernels, filters, block, bn_allowed):
+    layers = []
+    layers.append(UpSampling2D(size=(2, 2)))
+    layers.append(residual_block('decoder', kernels=kernels, filters=filters, block=block, bn_allowed=bn_allowed))
+    return layers
+
+
+def decoder_layers_introvae_1024(channels, bn_allowed):
+    layers = []
+    layers.append(Dense(channels[0] * 4 * 4))
+    layers.append(Activation('relu'))
+    layers.append(Reshape((4, 4, channels[1])))
+    layers.extend(residual_block('decoder', kernels=[(3, 3), (3, 3)], filters=channels[2], block=2, bn_allowed=bn_allowed))
+    layers.extend(upsample_and_resblock_layers([(3, 3), (3, 3)], channels[3], block=3, bn_allowed=bn_allowed))
+    layers.extend(upsample_and_resblock_layers([(3, 3), (3, 3)], channels[4], block=4, bn_allowed=bn_allowed))
+    layers.extend(upsample_and_resblock_layers([(1, 1), (3, 3), (3, 3)], channels[5], block=5, bn_allowed=bn_allowed))
+    layers.extend(upsample_and_resblock_layers([(1, 1), (3, 3), (3, 3)], channels[6], block=6, bn_allowed=bn_allowed))
+    layers.extend(upsample_and_resblock_layers([(1, 1), (3, 3), (3, 3)], channels[7], block=7, bn_allowed=bn_allowed))
+    layers.extend(upsample_and_resblock_layers([(1, 1), (3, 3), (3, 3)], channels[8], block=8, bn_allowed=bn_allowed))
+    layers.extend(upsample_and_resblock_layers([(1, 1), (3, 3), (3, 3)], channels[9], block=9, bn_allowed=bn_allowed))
+    layers.extend(upsample_and_resblock_layers([(3, 3), (3, 3)], channels[10], block=10, bn_allowed=bn_allowed))
+    layers.extend(upsample_and_resblock_layers([(3, 3), (3, 3)], channels[11], block=11, bn_allowed=bn_allowed))
+    layers.append(Conv2D(3, (5, 5), strides=(1, 1), padding='same', kernel_initializer='he_normal', name='conv' + str(len(channels) + 1)))
+    return layers
+
+def decoder_layers_introvae_64(channels, bn_allowed):
+    layers = []
+    layers.append(Dense(channels[0] * 4 * 4))
+    layers.append(Activation('relu'))
+    layers.append(Reshape((4, 4, channels[1])))
+    layers.append(residual_block('decoder', kernels=[(3, 3), (3, 3)], filters=channels[2], block=2, bn_allowed=bn_allowed))
+    layers.extend(upsample_and_resblock_layers([(3, 3), (3, 3)], channels[3], block=3, bn_allowed=bn_allowed))
+    layers.extend(upsample_and_resblock_layers([(3, 3), (3, 3)], channels[4], block=4, bn_allowed=bn_allowed))
+    layers.extend(upsample_and_resblock_layers([(1, 1), (3, 3), (3, 3)], channels[5], block=5, bn_allowed=bn_allowed))
+    layers.extend(upsample_and_resblock_layers([(1, 1), (3, 3), (3, 3)], channels[6], block=6, bn_allowed=bn_allowed))
+    #layers.extend(upsample_and_resblock_layers([(1, 1), (3, 3), (3, 3)], channels[7], block=7, bn_allowed=bn_allowed))
+    #layers.extend(upsample_and_resblock_layers([(1, 1), (3, 3), (3, 3)], channels[8], block=8, bn_allowed=bn_allowed))
+    #layers.extend(upsample_and_resblock_layers([(1, 1), (3, 3), (3, 3)], channels[9], block=9, bn_allowed=bn_allowed))
+    #layers.extend(upsample_and_resblock_layers([(3, 3), (3, 3)], channels[10], block=10, bn_allowed=bn_allowed))
+    #layers.extend(upsample_and_resblock_layers([(3, 3), (3, 3)], channels[11], block=11, bn_allowed=bn_allowed))
+    layers.append(Conv2D(3, (5, 5), strides=(1, 1), padding='same', kernel_initializer='he_normal', name='conv' + str(len(channels) + 1)))
+    return layers
+
+
+def residual_block(model_type, kernels, filters, block, bn_allowed, stage='a'):
+
+    def identity_block(input_tensor, filters=filters):
+        if isinstance(filters, int):
+            filters = [filters] * len(kernels)
+        assert len(filters) == len(kernels), 'Number of filters and number of kernels differs.'
+        if K.image_data_format() == 'channels_last':
+            bn_axis = 3
+        else:
+            bn_axis = 1
+        bn_name_base = 'bn_' + stage + str(block) + '_branch_'
+        conv_name_base = 'conv_' + stage + str(block) + '_branch_'
+
+        x = input_tensor
+
+        for idx in range(len(filters)):
+            x = Conv2D(filters[idx],
+                       kernels[idx],
                        padding='same',
                        kernel_initializer='he_normal',
-                       name='conv' + str(idx))(x)
+                       name=conv_name_base + str(idx))(x)
             if bn_allowed:
-                x = BatchNormalization(axis=-1)(x)
-            x = Activation('relu')(x)
-            x = AveragePooling2D(pool_size=(2, 2),
-                                 strides=None,
-                                 padding='valid',
-                                 name='avgpool' + str(idx))(x)
-        elif idx <= len(channels) - 3:
-            x = resblock_and_avgpool_layers(x,
-                                            [(1, 1), (3, 3), (3, 3)],
-                                            channel,
-                                            idx,
-                                            bn_allowed)
-        elif  idx == len(channels) - 2:
-            x = resblock_and_avgpool_layers(x,
-                                            [(3, 3), (3, 3)],
-                                            channel,
-                                            idx,
-                                            bn_allowed)
-        elif idx == len(channels) - 1:
-            x = residual_block(x,
-                               'encoder',
-                               kernels=[(3, 3), (3, 3)],
-                               filters=[channel] * 2,
-                               block=str(idx),
-                               bn_allowed=bn_allowed)
-    x = Flatten()(x)
-    return x
+                x = BatchNormalization(axis=bn_axis,
+                                       name=bn_name_base + str(idx))(x)
+            if idx <= len(filters) - 1:
+                x = Activation('relu')(x)
 
+        if K.int_shape(input_tensor[-1]) != K.int_shape(x[-1]):
+            if model_type == 'encoder':
+                # print('resblock input tensor int_shape: ', K.int_shape(input_tensor))
+                # print('resblock input tensor shape: ', K.shape(input_tensor))
+                # print('input_shape: ', input_tensor.shape)
+                padding = K.zeros(K.int_shape(input_tensor), name='padding')
+                #print(padding._keras_history)
+                #input_tensor = Concatenate()([input_tensor, padding])
+                input_tensor = Lambda(lambda y: K.concatenate([y, padding]))(input_tensor)
+            if model_type == 'decoder':
+                input_tensor = Conv2D(K.int_shape(x)[-1], 1)(input_tensor)
 
-def upsample_and_resblock_layers(input_tensor, kernels, num_filters, block, bn_allowed):
-    x = input_tensor
-    x = UpSampling2D(size=(2, 2))(x)
-    x = residual_block(x,
-                       'decoder',
-                       kernels=kernels,
-                       filters=[num_filters] * len(kernels),
-                       block=str(block),
-                       bn_allowed=bn_allowed)
-    return x
-
-
-def decoder_layers_introvae(input_tensor, channels, bn_allowed):
-    # print('type of channels: ', type(channels), ', channels: ', channels)
-    x = input_tensor
-    for idx, channel in enumerate(channels):
-        # print('idx: {}, channel: {}'.format(idx, channel))
-        if idx == 0:
-            x = Dense(channel * 4 * 4)(x)
-            x = Activation('relu')(x)
-        elif idx == 1:
-            x = Reshape((4, 4, channel))(x)
-            x = residual_block(x, 
-                               'decoder',
-                                kernels=[(3, 3), (3, 3)],
-                                filters=[channel] * 2,
-                                block=str(idx),
-                                bn_allowed=bn_allowed)
-        elif idx < 4:
-            x = upsample_and_resblock_layers(x,
-                                             [(3, 3), (3, 3)],
-                                             channel,
-                                             idx,
-                                             bn_allowed)
-        else:
-            x = upsample_and_resblock_layers(x,
-                                             [(1, 1), (3, 3), (3, 3)],
-                                             channel,
-                                             idx,
-                                             bn_allowed)
-    x = upsample_and_resblock_layers(x,
-                                     [(3, 3), (3, 3)],
-                                     16,
-                                     len(channels),
-                                     bn_allowed)
-    x = Conv2D(3,
-               (5, 5),
-               strides=(1, 1),
-               padding='same',
-               kernel_initializer='he_normal',
-               name='conv' + str(len(channels) + 1))(x)
-    return x
-
-
-def residual_block(input_tensor, model_type, kernels, filters, block, bn_allowed, stage='a'): 
-    # print('Residual block input shape: {}, kernels: {}, filters: {}'.format(K.int_shape(input_tensor),
-    #                                                                         kernels,
-    #                                                                         filters))
-    assert len(filters) == len(kernels), 'Number of filters and number of kernels differs.'
-    if K.image_data_format() == 'channels_last':
-        bn_axis = 3
-    else:
-        bn_axis = 1
-    bn_name_base = 'bn_' + stage + block + '_branch_'
-    conv_name_base = 'conv_' + stage + block + '_branch_'
-
-    x = input_tensor
-    for idx in range(len(filters)):
-        x = Conv2D(filters[idx],
-                   kernels[idx],
-                   padding='same',
-                   kernel_initializer='he_normal',
-                   name=conv_name_base + str(idx))(x)
-        if bn_allowed:
-            x = BatchNormalization(axis=bn_axis,
-                                   name=bn_name_base + str(idx))(x)
-        if idx <= len(filters) - 1:
-            x = Activation('relu')(x)
-
-    if K.int_shape(input_tensor[-1]) != K.int_shape(x[-1]):
-        if model_type == 'encoder':
-            print('resblock input tensor int_shape: ', K.int_shape(input_tensor))
-            print('resblock input tensor shape: ', K.shape(input_tensor))
-            print('input_shape: ', input_tensor.shape)
-            padding = K.zeros(K.int_shape(input_tensor), name='padding')
-            #print(padding._keras_history)
-            input_tensor = Concatenate()([input_tensor, padding])
-        if model_type == 'decoder':
-            input_tensor = Conv2D(K.int_shape(x)[-1], 1)(input_tensor)
-
-    x = Add()([x, input_tensor])
-    x = Activation('relu')(x)
-    # print('Residual block output shape: ', K.int_shape(x))
-    return x
+        x = Add()([x, input_tensor])
+        x = Activation('relu')(x)
+        # print('Residual block output shape: ', K.int_shape(x))
+        return x
+    return identity_block

@@ -77,6 +77,7 @@ encoder_channels = model_introvae.default_channels('encoder', args.shape)
 decoder_channels = model_introvae.default_channels('decoder', args.shape)
 
 
+
 print('decoder channels: ', decoder_channels)
 
 encoder_input = Input(batch_shape=[args.batch_size] + list(args.original_shape), name='encoder_input')
@@ -115,6 +116,8 @@ def build_networks(encoder_input, decoder_input):
     return (encoder, decoder)
 
 (encoder, decoder) = build_networks(encoder_input, decoder_input)
+
+
 
 print('Encoder')
 encoder.summary()

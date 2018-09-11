@@ -180,8 +180,8 @@ def residual_block(model_type, kernels, filters, block, bn_allowed, stage='a'):
             bn_axis = 3
         else:
             bn_axis = 1
-        bn_name_base = 'bn_' + stage + str(block) + '_branch_'
-        conv_name_base = 'conv_' + stage + str(block) + '_branch_'
+        bn_name_base = model_type + '_bn_' + stage + str(block) + '_branch_'
+        conv_name_base = model_type + 'conv_' + stage + str(block) + '_branch_'
 
         x = input_tensor
 

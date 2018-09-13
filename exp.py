@@ -12,7 +12,7 @@ def dumpParams(params, ini_file):
         os.makedirs(os.path.dirname(ini_file))
     f = open(ini_file, "w+")
     for k in sorted(params.keys()):
-        print >>f, k+"\t"+str(params[k])
+        print(k+"\t"+str(params[k]), file=f)
         # print(k+"\t"+str(params[k]), file=f)
 
 def heuristicCast(s):

@@ -10,6 +10,7 @@ import model_strictly_gaussian
 import model_resnet
 import model_dcgan
 import model_ladder
+import model_introvae
 import samplers
 
 from keras.layers import Input, Dense, Lambda, Reshape, Flatten, Activation
@@ -41,6 +42,9 @@ def build_model(args):
         encoder = model_dcgan.DcganEncoder(args)
     elif args.encoder == "ladderDense":
         encoder = model_ladder.LadderDenseEncoder(args)
+    elif args.encoder == "introvae":
+        encoder = model_introvae.IntrovaeEncoder(args)
+
     hidden = encoder(x)
 
     if args.encoder == "ladderDense":
@@ -75,6 +79,9 @@ def build_model(args):
         decoder = model_dcgan.DcganDecoder(args)
     elif args.decoder == "ladderDense":
         decoder = model_ladder.LadderDenseDecoder(args)
+    elif args.decoder == "introvae":
+        decoder = model_introvae.IntrovaeDecoder(args)
+
     decoder_fun_output = decoder(z)
     generator_input, recons_output, generator_output = decoder_fun_output[:3]
 

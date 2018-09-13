@@ -10,10 +10,10 @@ import numpy as np
 import os
 
 
-
 # prefix = "/home/daniel/experiments/repulsive-autoencoder/pictures/dcgan_vae_lsun/dcgan_vae_lsun_latent"
-prefix = "/mnt/g2home/daniel/experiments/repulsive-autoencoder/pictures/dcgan_vae_lsun/dcgan_vae_lsun_latent"
+# prefix = "/mnt/g2home/daniel/experiments/repulsive-autoencoder/pictures/dcgan_vae_lsun/dcgan_vae_lsun_latent"
 # prefix = "/home/zombori/experiments/repulsive-autoencoder/pictures/dcgan_vae_largelatent/dcgan_vae_largelatent_latent"
+prefix = "/home/csadrian/ra-new/repulsive-autoencoder/pictures/dcgan_vae_lsun_newkl_grad_from_zero/dcgan_vae_lsun_newkl_grad_from_zero_latent"
 
 meanFile = prefix + "_mean_200.npy"
 logvarFile = prefix + "_log_var_200.npy"
@@ -148,8 +148,7 @@ def best_coords_pca(mean, limit):
     print("Eigs of cov")
     print(np.flip(w, 0))
 
-best_coords_pca(mean, 50)
-asdf
+best_coords_pca(mean, 200)
 
 
 ##############################################################

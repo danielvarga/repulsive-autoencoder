@@ -106,7 +106,7 @@ DCGAN_G (
 def generator_layers_wgan(channels, latent_dim, wd, bn_allowed, batch_size, firstX=1, firstY=1):
     layers = []
     assert latent_dim % (firstX * firstY) == 0
-    layers.append(Reshape((firstX,firstY,latent_dim/firstX/firstY)))
+    layers.append(Reshape((firstX,firstY,int(latent_dim/firstX/firstY))))
     sizeX = firstX
     sizeY = firstY
     stride=2

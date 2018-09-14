@@ -10,7 +10,6 @@ import model_strictly_gaussian
 import model_resnet
 import model_dcgan
 import model_ladder
-import model_introvae
 import samplers
 
 from keras.layers import Input, Dense, Lambda, Reshape, Flatten, Activation

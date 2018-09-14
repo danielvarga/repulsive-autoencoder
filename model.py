@@ -42,8 +42,8 @@ def build_model(args):
         encoder = model_dcgan.DcganEncoder(args)
     elif args.encoder == "ladderDense":
         encoder = model_ladder.LadderDenseEncoder(args)
-    elif args.encoder == "introvae":
-        encoder = model_introvae.IntrovaeEncoder(args)
+    elif args.encoder == "resnet":
+        encoder = model_resnet.ResnetEncoder(args)
 
     hidden = encoder(x)
 
@@ -79,8 +79,8 @@ def build_model(args):
         decoder = model_dcgan.DcganDecoder(args)
     elif args.decoder == "ladderDense":
         decoder = model_ladder.LadderDenseDecoder(args)
-    elif args.decoder == "introvae":
-        decoder = model_introvae.IntrovaeDecoder(args)
+    elif args.decoder == "resnet":
+        decoder = model_resnet.ResnetDecoder(args)
 
     decoder_fun_output = decoder(z)
     generator_input, recons_output, generator_output = decoder_fun_output[:3]

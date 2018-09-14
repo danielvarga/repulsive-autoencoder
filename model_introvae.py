@@ -2,6 +2,7 @@ import keras.backend as K
 from keras.layers import Conv2D, BatchNormalization, Activation, Add, \
     AveragePooling2D, Input, Dense, Flatten, UpSampling2D, Layer, Reshape, Concatenate, Lambda
 
+from keras.models import Model
 
 def default_channels(model_type, input_shape):
     if input_shape == (1024, 1024):
@@ -66,10 +67,11 @@ class IntrovaeDecoder(Decoder):
 
         generator_input = Input(batch_shape=(self.batch_size, self.latent_dim))
         generator_output = generator_input
-        recons_output = recons_input
         for layer in layers:
             generator_output = layer(generator_output)
-            recons_output = layer(recons_output)
+
+        generator_model = Model(generator_input, generator_output)
+        recons_output = generator_model(recons_input)
 
         return generator_input, recons_output, generator_output
 

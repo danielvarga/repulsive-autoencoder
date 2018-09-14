@@ -74,13 +74,13 @@ class IntrovaeDecoder(Decoder):
         return generator_input, recons_output, generator_output
 
 
-def resblock_and_avgpool_layers(kernels, filters, block, bn_allowed):
+def resblock_and_avgpool_layers(kernels, filters, block, bn_allowed, last_activation="relu"):
     layers = []
     layers.append(residual_block('encoder',
                                  kernels=kernels,
                                  filters=filters,
                                  block=block,
-                                 bn_allowed=bn_allowed))
+                                 bn_allowed=bn_allowed, last_activation=last_activation))
     layers.append(AveragePooling2D(pool_size=(2, 2),
                                    strides=None,
                                    padding='valid',
@@ -102,7 +102,7 @@ def encoder_layers_introvae_1024(channels, bn_allowed):
     layers.extend(resblock_and_avgpool_layers([(1, 1), (3, 3), (3, 3)], channels[5], block=5, bn_allowed=bn_allowed))
     layers.extend(resblock_and_avgpool_layers([(1, 1), (3, 3), (3, 3)], channels[6], block=6, bn_allowed=bn_allowed))
     layers.extend(resblock_and_avgpool_layers([(3, 3), (3, 3)], channels[7], block=7, bn_allowed=bn_allowed))
-    layers.append(residual_block('encoder', kernels=[(3, 3), (3, 3)], filters=channels[8], block=8, bn_allowed=bn_allowed))
+    layers.append(residual_block('encoder', kernels=[(3, 3), (3, 3)], filters=channels[8], block=8, bn_allowed=bn_allowed, last_activation="linear"))
     layers.append(Flatten())
     return layers
 
@@ -115,7 +115,7 @@ def encoder_layers_introvae_64(channels, bn_allowed):
     layers.append(AveragePooling2D(pool_size=(2, 2), strides=None, padding='valid', name='avgpool' + str(0)))
     layers.extend(resblock_and_avgpool_layers([(1, 1), (3, 3), (3, 3)], channels[1], block=1, bn_allowed=bn_allowed))
     layers.extend(resblock_and_avgpool_layers([(1, 1), (3, 3), (3, 3)], channels[2], block=2, bn_allowed=bn_allowed))
-    layers.extend(resblock_and_avgpool_layers([(1, 1), (3, 3), (3, 3)], channels[3], block=3, bn_allowed=bn_allowed))
+    layers.extend(resblock_and_avgpool_layers([(1, 1), (3, 3), (3, 3)], channels[3], block=3, bn_allowed=bn_allowed, last_activation="linear"))
 
     #layers.extend(resblock_and_avgpool_layers([(1, 1), (3, 3), (3, 3)], channels[4], block=4, bn_allowed=bn_allowed))
     #layers.extend(resblock_and_avgpool_layers([(1, 1), (3, 3), (3, 3)], channels[5], block=5, bn_allowed=bn_allowed))
@@ -170,9 +170,10 @@ def decoder_layers_introvae_64(channels, bn_allowed):
     return layers
 
 
-def residual_block(model_type, kernels, filters, block, bn_allowed, stage='a'):
+def residual_block(model_type, kernels, filters, block, bn_allowed, stage='a', last_activation="relu"):
 
     def identity_block(input_tensor, filters=filters):
+        print(last_activation)
         if isinstance(filters, int):
             filters = [filters] * len(kernels)
         assert len(filters) == len(kernels), 'Number of filters and number of kernels differs.'
@@ -210,7 +211,8 @@ def residual_block(model_type, kernels, filters, block, bn_allowed, stage='a'):
                 input_tensor = Conv2D(K.int_shape(x)[-1], 1)(input_tensor)
 
         x = Add()([x, input_tensor])
-        x = Activation('relu')(x)
+        x = Activation(last_activation)(x)
         # print('Residual block output shape: ', K.int_shape(x))
         return x
+    # return Lambda(lambda x: identity_block(x))
     return identity_block

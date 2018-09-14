@@ -206,7 +206,6 @@ def add_sampling(hidden, sampling, sampling_std, batch_size, latent_dim, wd):
             return z_mean + K.exp(z_log_var / 2) * epsilon
 
         z = Lambda(sampling, output_shape=(latent_dim,))([z_mean, z_log_var])
-        z = Lambda(norm)(z)
 
         return z, z_mean, z_log_var
 

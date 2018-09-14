@@ -106,12 +106,20 @@ class ImageDisplayCallback(Callback):
 
         latent_cloud = self.encoder.predict(self.x_test, batch_size=self.batch_size)
         if self.latent_dim >= 2:
-            z1, z2 = latent_cloud[:, 0], latent_cloud[:, 1]
-            plt.clf()
-            plt.scatter(z1, z2)
-            plt.savefig("{}-latent-{}.png".format(self.name, epoch+1))
             if self.args.toroidal:
-                rot = np.arctan2(z1, z2)
+                assert self.latent_dim == 4
+                latent_space_type = "2d_torus_projected"
+            elif self.args.spherical:
+                if self.latent_dim == 3:
+                    latent_space_type = "3d_sphere"
+                else:
+                    print("visualizing the first two dimensions of a spherical latent space")
+                    latent_space_type = "normal"
+            else:
+                latent_space_type = "normal"
+            vis.latentScatter(latent_cloud, "{}-latent-{}".format(self.name, epoch+1), latent_space_type=latent_space_type)
+            if self.args.toroidal:
+                rot = np.arctan2(latent_cloud[:, 0], latent_cloud[:, 1])
                 plt.clf()
                 n, bins, patches = plt.hist(rot, 50, normed=1)
                 plt.savefig("{}-latenthist-{}.png".format(self.name, epoch+1))

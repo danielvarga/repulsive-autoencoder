@@ -8,7 +8,7 @@
 
 # Install python 3.
 # Install pip
-pip install virtualenv
+pip3 install virtualenv
 
 # Create local virtualenv:
 virtualenv venv
@@ -18,9 +18,9 @@ virtualenv venv
 
 # Install modules:
 # Must have modules:
-pip install tensorflow keras scikit-learn h5py matplotlib pillow annoy emd
+pip install tensorflow keras scikit-learn h5py matplotlib pillow annoy pyemd
 # Nice to have modules:
-pip install skimage pandas seaborn networkx torch jupyterlab
+pip install scikit-image pandas seaborn networkx torch jupyterlab
 
 # Install git command line
 
@@ -51,13 +51,16 @@ renyi> mkdir -p www/tmp # -> this is where we'll check our charts.
 renyi> ssh geforce  # aka 10.0.4.222 on the VPN
 renyi> ssh geforce2 # aka 10.0.4.223 on the VPN
 
+# TODO Request VPN access for users. Document VPN tunneling.
+# TODO Having VPN access ready, set up and document X-based direct video access.
+
 # Set up passwordless ssh access in all 2x3 directions:
-renyi> ssh-keygen
+renyi> ssh-keygen # ...then press enter three times.
 renyi> ssh-copy-id geforce
 renyi> ssh-copy-id geforce2
-geforce*> ssh-keygen
+geforce*> ssh-keygen # ...then press enter three times.
 geforce*> ssh-copy-id -p 2820 renyi.hu
-geforce*> ssh-copy-id other_geforce
+geforce*> ssh-copy-id other_geforce # Here other_geforce means either geforce or geforce2
 
 ############
 # Setting up bash environment
@@ -84,7 +87,6 @@ open https://github.com/settings/keys
 # on geforce:
 mkdir experiments
 git clone git@github.com:danielvarga/repulsive-autoencoder.git
-mkdir repulsive-autoencoder
 cd repulsive-autoencoder
 mkdir pictures
 
@@ -112,3 +114,6 @@ CUDA_VISIBLE_DEVICE=0 nohup python project_latent.py ini/dcgan_vae.ini
 # -> Output shows that lots of charts and images are created. Let's check them.
 
 # TODO Tensorboard
+
+# TODO Figure out how to share exps without giving 777 write access for everything.
+# (The issue is that project_latent.py writes to the directory where it takes the networks from.)

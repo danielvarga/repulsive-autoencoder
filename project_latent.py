@@ -278,7 +278,7 @@ if False:
 plt.legend()
 plt.savefig(prefix+"_variance_hist.png")
 plt.close()
-
+"""
 # histogram of distances from the origo and from zero
 sumSquares = np.mean(np.square(latent_train_mean), axis=0)
 plt.hist(sumSquares, bins = 30)
@@ -301,7 +301,7 @@ for i in range(4):
     axarr[x, y].locator_params(nbins=5, axis='x')
 plt.savefig(prefix + "_square_contribution.png")
 plt.close()
-
+"""
 
 def masked_sampler(batch_size, latent_dim):
     z = np.random.normal(size=(batch_size, latent_dim))

@@ -71,6 +71,8 @@ parser.add_argument('--use_bn_disc', dest="use_bn_disc", type=str2bool, default=
 parser.add_argument('--disc_size', dest="disc_size", default="large", help="tiny/small/large")
 parser.add_argument('--gradient_penalty', dest="gradient_penalty", default="no", help="no/grad/grad_orig")
 
+# model hyperparameters
+parser.add_argument('--resnet_wideness', dest='resnet_wideness', default=1, help='Wideness of resnet model (1-wide first block has 16 filters).')
 
 # NAT
 parser.add_argument('--ornstein', dest="ornstein", default="1.0", type=float, help="Ornstein process coefficient (1 means no movement")

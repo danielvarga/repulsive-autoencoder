@@ -103,8 +103,6 @@ def build_model(args):
 #        "sparse_output": sparse_output,
         "z_projected": z_projected
     })
-    if args.decoder == "resnet":
-        loss_features.intermediary_outputs = decoder_fun_output[3]
     if args.use_nat:
         nat_input = Input(batch_shape=(args.batch_size, args.latent_dim), name="nat_input")
         ae_with_nat = Model([x, nat_input], recons_output)

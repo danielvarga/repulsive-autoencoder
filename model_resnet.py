@@ -4,12 +4,11 @@ from keras.layers import Conv2D, BatchNormalization, Activation, Add, \
 
 from keras.models import Model
 
-def default_channels(model_type, input_shape):
+def default_channels(model_type, input_shape, wideness=1):
     if input_shape == (1024, 1024):
-        encoder_channels = [16, 32, 64, 128, 256, 512, 512, 512, 512]
-        decoder_channels = [512, 512, 512, 512, 256, 128, 64, 32, 16, 16]
+        encoder_channels = [c*wideness for c in [16, 32, 64, 128, 256, 512, 512, 512, 512]]
+        decoder_channels = [c*wideness for c in [512, 512, 512, 512, 256, 128, 64, 32, 16, 16]]
     elif input_shape == (64, 64):
-        wideness = 1
         encoder_channels = [c*wideness for c in [16, 32, 64, 128, 256]]
         decoder_channels = [c*wideness for c in [256, 256, 128, 64, 32, 16, 16]]
     else:
@@ -37,7 +36,8 @@ class ResnetEncoder(Encoder):
         self.shape = args.shape
         self.latent_dim = args.latent_dim
         self.bn_allowed = args.encoder_use_bn
-        self.channels = default_channels('encoder', self.shape)
+        self.resnet_wideness = args.resnet_wideness
+        self.channels = default_channels('encoder', self.shape, self.resnet_wideness)
 
     def __call__(self, x):
         if self.args.shape == (64, 64):
@@ -57,7 +57,8 @@ class ResnetDecoder(Decoder):
         self.batch_size = args.batch_size
         self.latent_dim = args.latent_dim
         self.bn_allowed = args.decoder_use_bn
-        self.channels = default_channels('decoder', self.shape)
+        self.resnet_wideness = args.resnet_wideness
+        self.channels = default_channels('decoder', self.shape, self.resnet_wideness)
 
     def __call__(self, recons_input):
         if self.args.shape == (64, 64):

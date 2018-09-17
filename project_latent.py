@@ -313,6 +313,7 @@ vis.displayRandom(n=20, x_train=x_train, latent_dim=latent_dim, sampler=masked_s
 
 
 z_fixed = np.random.normal(size=(batch_size, latent_dim))
+random_order = np.random.permutation(latent_dim)
 
 def incremental_masked_sampler_with_limit(limit, latent_z, value=0.0):
     def incremental_masked_sampler(batch_size, latent_dim):
@@ -321,6 +322,14 @@ def incremental_masked_sampler_with_limit(limit, latent_z, value=0.0):
         z[:, order[:limit]] = value
         return z
     return incremental_masked_sampler
+
+def random_order_masked_sampler_with_limit(limit, latent_z, value=0.0):
+    def incremental_masked_sampler(batch_size, latent_dim):
+        z = np.array(latent_z)
+        z[:, random_order[:limit]] = value
+        return z
+    return incremental_masked_sampler
+
 
 for i in range(latent_dim):
     vis.displayRandom(n=10, x_train=x_train, latent_dim=latent_dim, sampler=incremental_masked_sampler_with_limit(i, z_fixed),
@@ -334,6 +343,11 @@ vis.plotImages(x_train[:batch_size], 10, batch_size // 10, prefix+"_real")
 for i in range(latent_dim):
     vis.displayRandom(n=10, x_train=x_train, latent_dim=latent_dim, sampler=incremental_masked_sampler_with_limit(i, latent_train_mean_batch),
                       generator=generator, name=prefix + "_incremental_masked_fromreal{0}".format(i), batch_size=batch_size)
+
+for i in range(latent_dim):
+    vis.displayRandom(n=10, x_train=x_train, latent_dim=latent_dim, sampler=random_order_masked_sampler_with_limit(i, latent_train_mean_batch),
+                      generator=generator, name=prefix + "_random_order_masked_fromreal{0}".format(i), batch_size=batch_size)
+
 
 # what if z_fixed coordinates are replaced with something other than zero?
 # if value is small, nothing changes
@@ -488,8 +502,6 @@ vis.displayRandom(n=20, x_train=x_train, latent_dim=latent_dim, sampler=diagonal
 np.random.seed(10)
 vis.displayRandom(n=20, x_train=x_train, latent_dim=latent_dim, sampler=diagonal_oval_sampler_nomean,
         generator=generator, name=prefix + "_diagonal_oval_nomean", batch_size=batch_size)
-
-
 
 
 do_tsne = False

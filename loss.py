@@ -77,6 +77,13 @@ def loss_factory(model, encoder, loss_features, args):
         loss = 0.5 * K.sum(-1 - K.log(total_variance) + total_variance, axis=-1)
         return K.mean(loss)
 
+    def spectreg_loss(x, x_decoded):
+        gradients = K.gradients(x_decoded, loss_features.z_sampled)[0]
+        print(gradients.shape)
+        slopes_squared = K.sum(K.square(gradients), axis=1)
+        print(slopes_squared.shape)
+        return K.mean(slopes_squared)
+
     # energy distance from the standard normal distribution.
     def energy_distance_loss(x, x_decoded):
         z = loss_features.z_mean

@@ -47,7 +47,7 @@ plt.hist(noise, label='noise', alpha=0.5, bins=100)
 plt.hist(generated, label='generated', alpha=0.5, bins=100)
 plt.legend()
 fileName = prefix + "_posneg.png"
-#print("Creating file: " + fileName)
+print("Creating file: " + fileName)
 plt.savefig(fileName)
 plt.close()
 
@@ -67,7 +67,7 @@ plt.hist(upside_down, label='upside_down', alpha=0.5, bins=100)
 plt.hist(inverted, label='inverted', alpha=0.5, bins=100)
 plt.legend()
 fileName = prefix + "_transformed.png"
-#print("Creating file: " + fileName)
+print("Creating file: " + fileName)
 plt.savefig(fileName)
 plt.close()
 
@@ -81,7 +81,7 @@ for i in conv_layers:
     plt.hist(w, label = "conv_layer_{}".format(i), alpha=0.5, bins=100)
 plt.legend()
 fileName = prefix + "_conv_weight_hist.png"
-#print("Creating file: " + fileName)
+print("Creating file: " + fileName)
 plt.savefig(fileName)    
 plt.close()
 
@@ -104,7 +104,7 @@ for i, l in enumerate(bn_layers):
 #    w = w.reshape((np.prod(w.shape),))
 # plt.legend()
 fileName = prefix + "_bn_weight_hist.png"
-#print("Creating file: " + fileName)
+print("Creating file: " + fileName)
 plt.savefig(fileName)    
 plt.close()
 
@@ -129,7 +129,7 @@ for layer in discriminator.layers[1:]:
     plt.hist(acts_np, label = "layer_{}_{}_gen".format(ltype,i), alpha=0.5, bins=100)
     plt.legend()
     fileName = prefix + "_act_hist_layer_{}_{}.png".format(ltype,i)
-    #print("Creating file: " + fileName)
+    print("Creating file: " + fileName)
     plt.savefig(fileName)
     plt.close()
 
@@ -153,6 +153,6 @@ if gendisc:
 
         plt.legend()
         fileName = prefix + "_grad_hist_layer_{}_{}.png".format(ltype,i)
-        #print("Creating file: " + fileName)
+        print("Creating file: " + fileName)
         plt.savefig(fileName)
         plt.close()

@@ -161,7 +161,7 @@ class ImageDisplayCallback(Callback):
                          generator=self.generator, name="{}-flattorus-{}".format(self.name, epoch+1),
                          batch_size=self.batch_size)
 
-#        vis.displayGaussian(self.args, self.ae, self.x_train, "%s-dots-%i" % (self.name, epoch+1))
+        # vis.displayGaussian(self.args, self.ae, self.x_train, "%s-dots-%i" % (self.name, epoch+1))
         # vis.displayRandom(10, self.x_train, self.latent_dim, self.sampler, self.generator, "%s-random-%i" % (self.name, epoch+1), batch_size=self.batch_size)
         # vis.displayRandom(10, self.x_train, self.latent_dim, self.sampler, self.generator, "%s-random" % (self.name), batch_size=self.batch_size)
         # vis.displaySet(self.x_test[:self.batch_size], self.batch_size, self.batch_size, self.model, "%s-test-%i" % (self.name,epoch+1))

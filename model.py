@@ -203,7 +203,8 @@ def add_sampling(hidden, sampling, sampling_std, batch_size, latent_dim, wd):
             
             return z / z_divider
 
-        z_mean = Lambda(norm)(z_mean)
+        # Uncomment if you want to place the mean on a toroid
+        # z_mean = Lambda(norm)(z_mean)
 
         def sampling(inputs):
             z_mean, z_log_var = inputs

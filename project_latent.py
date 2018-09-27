@@ -150,8 +150,8 @@ if do_latent_variances:
     sigma = sigma_all[:sample_size]
     nearestSigma = sigma_all[nearestIndex]
     for ellipsoid_size in ellipsoid_sizes:
-        ellipsoid_dist = 1 / np.sqrt(np.sum(np.square(nearestDirection / (ellipsoid_size * sigma)), axis=1))
-        nearest_ellipsoid_dist = 1 / np.sqrt(np.sum(np.square(nearestDirection / (ellipsoid_size * nearestSigma)), axis=1))
+        ellipsoid_dist = 1 / (1.e-16 + np.sqrt(np.sum(np.square(nearestDirection / (ellipsoid_size * sigma)), axis=1)))
+        nearest_ellipsoid_dist = 1 / (1.e-16 + np.sqrt(np.sum(np.square(nearestDirection / (ellipsoid_size * nearestSigma)), axis=1)))
         extraSpace = nearestDist - (ellipsoid_dist + nearest_ellipsoid_dist)
         print("Sigma {}, Extra avg space {}, avg nearest {}, avg distance {}".format(ellipsoid_size, np.mean(extraSpace), np.mean(nearestDist), np.mean(dist)))
         plt.hist(extraSpace, bins = 30)
@@ -174,6 +174,9 @@ projected_z = projected_z.flatten()
 vis.cumulative_view(projected_z, "CDF of randomly projected latent cloud", prefix + "_cdf.png")
 vis.cumulative_view(latent_train[:,0], "CDF of 1st coordinate of latent cloud", prefix + "_cdf1.png")
 vis.cumulative_view(latent_train[:,1], "CDF of 2nd coordinate of latent cloud", prefix + "_cdf2.png")
+for i in range(2, args.latent_dim):
+    vis.cumulative_view(latent_train[:,i], "CDF of {0}th coordinate of latent cloud".format(i+1), prefix + "_cdf{0}.png".format(i+1))
+
 
 # how normal is the input and the output?
 flat_input = x_train.reshape(x_train.shape[0], -1)
@@ -218,6 +221,8 @@ origo_mean = np.mean(latent_train_mean, axis=0)
 mean_variances = np.var(latent_train_mean, axis=0)
 variances = np.var(latent_train, axis=0)
 working_mask = (mean_variances > 0.1)
+variance_means = np.mean(np.exp(latent_train_logvar), axis=0)
+good_mask = (variance_means > 0.9)
 print("Variances: ", np.sum(working_mask), "/", working_mask.shape)
 print(np.histogram(mean_variances, 100))
 
@@ -273,7 +278,7 @@ if False:
 plt.legend()
 plt.savefig(prefix+"_variance_hist.png")
 plt.close()
-
+"""
 # histogram of distances from the origo and from zero
 sumSquares = np.mean(np.square(latent_train_mean), axis=0)
 plt.hist(sumSquares, bins = 30)
@@ -296,12 +301,76 @@ for i in range(4):
     axarr[x, y].locator_params(nbins=5, axis='x')
 plt.savefig(prefix + "_square_contribution.png")
 plt.close()
-
+"""
 
 def masked_sampler(batch_size, latent_dim):
     z = np.random.normal(size=(batch_size, latent_dim))
     return z * working_mask
 
+vis.displayRandom(n=20, x_train=x_train, latent_dim=latent_dim, sampler=masked_sampler,
+                              generator=generator, name=prefix + "_masked_sampler", batch_size=batch_size)
+
+
+
+z_fixed = np.random.normal(size=(batch_size, latent_dim))
+random_order = np.random.permutation(latent_dim)
+
+def incremental_masked_sampler_with_limit(limit, latent_z, value=0.0):
+    def incremental_masked_sampler(batch_size, latent_dim):
+        order = np.argsort(variance_means)[::-1]
+        z = np.array(latent_z)
+        z[:, order[:limit]] = value
+        return z
+    return incremental_masked_sampler
+
+def random_order_masked_sampler_with_limit(limit, latent_z, value=0.0):
+    def incremental_masked_sampler(batch_size, latent_dim):
+        z = np.array(latent_z)
+        z[:, random_order[:limit]] = value
+        return z
+    return incremental_masked_sampler
+
+
+for i in range(latent_dim):
+    vis.displayRandom(n=10, x_train=x_train, latent_dim=latent_dim, sampler=incremental_masked_sampler_with_limit(i, z_fixed),
+                      generator=generator, name=prefix + "_incremental_masked_sampler{0}".format(i), batch_size=batch_size)
+
+
+# same as above but applied to a real image embedding mean
+latent_train_mean_batch = latent_train_mean[:batch_size]
+vis.plotImages(x_train[:batch_size], 10, batch_size // 10, prefix+"_real")
+
+for i in range(latent_dim):
+    vis.displayRandom(n=10, x_train=x_train, latent_dim=latent_dim, sampler=incremental_masked_sampler_with_limit(i, latent_train_mean_batch),
+                      generator=generator, name=prefix + "_incremental_masked_fromreal{0}".format(i), batch_size=batch_size)
+
+for i in range(latent_dim):
+    vis.displayRandom(n=10, x_train=x_train, latent_dim=latent_dim, sampler=random_order_masked_sampler_with_limit(i, latent_train_mean_batch),
+                      generator=generator, name=prefix + "_random_order_masked_fromreal{0}".format(i), batch_size=batch_size)
+
+
+# what if z_fixed coordinates are replaced with something other than zero?
+# if value is small, nothing changes
+for i in range(latent_dim):
+    vis.displayRandom(n=10, x_train=x_train, latent_dim=latent_dim, sampler=incremental_masked_sampler_with_limit(i, z_fixed, 0.5),
+                      generator=generator, name=prefix + "_incremental_masked_sampler_v100_{0}".format(i), batch_size=batch_size)
+
+
+# add sampling to the bad coordinates
+latent_train_logvar_batch = latent_train_logvar[:batch_size]
+def incremental_varmasked_sampler_with_limit(limit):
+    def incremental_masked_sampler(batch_size, latent_dim):
+        order = np.argsort(variance_means)[::-1]
+        mask = np.zeros((latent_dim,))
+        mask[order[:limit]] = 1
+        
+        std = np.exp(latent_train_logvar_batch) ** 0.5
+        z = mask * std * np.random.normal(size=std.shape) + latent_train_mean_batch
+        return z
+    return incremental_masked_sampler
+for i in range(latent_dim):
+    vis.displayRandom(n=10, x_train=x_train, latent_dim=latent_dim, sampler=incremental_varmasked_sampler_with_limit(i),
+                      generator=generator, name=prefix + "_incremental_varmasked_sampler{0}".format(i), batch_size=batch_size)
 
 
 
@@ -314,7 +383,7 @@ if do_latent_variances:
             shape = [batch_size] + list(focus_latent_mean.shape)
             return np.random.normal(size=shape) * np.exp(focus_latent_logvar/2) + focus_latent_mean
 
-            vis.displayRandom(n=10, x_train=x_train, latent_dim=latent_dim, sampler=single_gaussian_sampler,
+        vis.displayRandom(n=10, x_train=x_train, latent_dim=latent_dim, sampler=single_gaussian_sampler,
                               generator=generator, name=prefix + "_singlesample%d" % focus_index, batch_size=batch_size)
 
 
@@ -433,8 +502,6 @@ vis.displayRandom(n=20, x_train=x_train, latent_dim=latent_dim, sampler=diagonal
 np.random.seed(10)
 vis.displayRandom(n=20, x_train=x_train, latent_dim=latent_dim, sampler=diagonal_oval_sampler_nomean,
         generator=generator, name=prefix + "_diagonal_oval_nomean", batch_size=batch_size)
-
-
 
 
 do_tsne = False

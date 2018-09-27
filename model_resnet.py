@@ -1,93 +1,221 @@
-import numpy as np
+import keras.backend as K
+from keras.layers import Conv2D, BatchNormalization, Activation, Add, \
+    AveragePooling2D, Input, Dense, Flatten, UpSampling2D, Layer, Reshape, Concatenate, Lambda
 
-from keras.layers import Input, Dense, Lambda, Convolution2D, Deconvolution2D, Reshape, Flatten, ZeroPadding2D, merge, Activation, Layer, AveragePooling2D
-from keras.layers.normalization import BatchNormalization
 from keras.models import Model
-from keras import backend as K
-from keras import objectives
-from keras.datasets import mnist
-from keras.optimizers import *
-from keras.regularizers import l1, l2
-import activations
+
+def default_channels(model_type, input_shape, wideness=1):
+    if input_shape == (1024, 1024):
+        encoder_channels = [c*wideness for c in [16, 32, 64, 128, 256, 512, 512, 512, 512]]
+        decoder_channels = [c*wideness for c in [512, 512, 512, 512, 256, 128, 64, 32, 16, 16]]
+    elif input_shape == (64, 64):
+        encoder_channels = [c*wideness for c in [16, 32, 64, 128, 256]]
+        decoder_channels = [c*wideness for c in [256, 256, 128, 64, 32, 16, 16]]
+    else:
+        assert False, 'unknown input size ' + input_size
+
+    if model_type == 'encoder':
+        return encoder_channels
+    elif model_type == 'decoder':
+        return decoder_channels
+    else:
+        assert False, 'unknown model type'
+
+
+class Encoder(object):
+    pass
+
 
 class Decoder(object):
-    pass # TODO interface
+    pass
 
-class ResnetDecoder(Decoder):
 
+class ResnetEncoder(Encoder):
     def __init__(self, args):
         self.args = args
+        self.shape = args.shape
+        self.latent_dim = args.latent_dim
+        self.bn_allowed = args.encoder_use_bn
+        self.resnet_wideness = args.resnet_wideness
+        self.channels = default_channels('encoder', self.shape, self.resnet_wideness)
 
-    def __call__(self, recons_latent):
-        generator_latent = Input(batch_shape=(self.args.batch_size, self.args.latent_dim), name="generator_latent")
-
-        # initial outputs
-        recons_output = recons_latent
-        generator_output = generator_latent
-        layers = []
-        layers.append(Dense(np.prod(self.args.original_shape), name="initial_output"))
-        layers.append(Activation(self.args.activation))
-        layers.append(Reshape(self.args.original_shape))
+    def __call__(self, x):
+        if self.args.shape == (64, 64):
+            layers = encoder_layers_introvae_64(self.channels, self.bn_allowed)
+        elif self.args.shape == (1024, 1024):
+            layers = encoder_layers_introvae_1024(self.channels, self.bn_allowed)
+        h = x
         for layer in layers:
-            recons_output = layer(recons_output)
+            h = layer(h)
+        return h
+
+
+class ResnetDecoder(Decoder):
+    def __init__(self, args):
+        self.args = args
+        self.shape = args.shape
+        self.batch_size = args.batch_size
+        self.latent_dim = args.latent_dim
+        self.bn_allowed = args.decoder_use_bn
+        self.resnet_wideness = args.resnet_wideness
+        self.channels = default_channels('decoder', self.shape, self.resnet_wideness)
+
+    def __call__(self, recons_input):
+        if self.args.shape == (64, 64):
+            layers = decoder_layers_introvae_64(self.channels, self.bn_allowed)
+        elif self.args.shape == (1024, 1024):
+            layers = decoder_layers_introvae_1024(self.channels, self.bn_allowed)
+
+        generator_input = Input(batch_shape=(self.batch_size, self.latent_dim))
+        generator_output = generator_input
+        for layer in layers:
             generator_output = layer(generator_output)
 
-        intermediary_outputs = []
-        for i in range(self.args.depth):
-            recons_output, generator_output = resnet_block(recons_output, generator_output, recons_latent, generator_latent, self.args)
-            intermediary_outputs.append(recons_output)
+        generator_model = Model(generator_input, generator_output)
+        recons_output = generator_model(recons_input)
 
-        layers = []
-        layers.append(Convolution2D(self.args.original_shape[2], 3, 3, activation="sigmoid", subsample=(1,1), border_mode="same"))
-        for layer in layers:
-            recons_output = layer(recons_output)
-            generator_output = layer(generator_output)
-
-        return generator_latent, recons_output, generator_output, intermediary_outputs
+        return generator_input, recons_output, generator_output
 
 
-def resnet_block(input1, input2, latent1, latent2, args):
-    input_shape = K.int_shape(input1)[1:]
-    input2_shape = K.int_shape(input2)[1:]
-    assert input_shape == input2_shape
-
-    # turn the input with shape (batch_size, params) into (batch_size, sizeX, sizeY, params), where each channel is constant
-    def dense2Conv(input):
-        input = K.expand_dims(input, dim=1)
-        input = K.expand_dims(input, dim=2)
-        input = K.repeat_elements(input, input_shape[0], axis=1)
-        input = K.repeat_elements(input, input_shape[1], axis=2)
-        return input
-    
-    # apply random projection on the latent code into block_params values and create block_params layers out of them
-    block_params = 5
+def resblock_and_avgpool_layers(kernels, filters, block, bn_allowed, last_activation="relu"):
     layers = []
-    layers.append(Dense(block_params, trainable=False))            
-    layers.append(Lambda(dense2Conv))
-    for layer in layers:
-        latent1 = layer(latent1)
-        latent2 = layer(latent2)
+    layers.append(residual_block('encoder',
+                                 kernels=kernels,
+                                 filters=filters,
+                                 block=block,
+                                 bn_allowed=bn_allowed, last_activation=last_activation))
+    layers.append(AveragePooling2D(pool_size=(2, 2),
+                                   strides=None,
+                                   padding='valid',
+                                   name='avgpool'+ str(block)))
+    return layers
 
-    # merge the latent channel into the output
-    output1 = merge([input1, latent1], mode="concat", concat_axis=3)
-    output2 = merge([input2, latent2], mode="concat", concat_axis=3)
 
+def encoder_layers_introvae_1024(channels, bn_allowed):
     layers = []
-    layers.append(Convolution2D(block_params + input_shape[2], 3, 3, subsample=(1,1), border_mode="same"))
-    layers.append(BatchNormalization())
-    layers.append(Activation(args.activation))
-    layers.append(Convolution2D(block_params + input_shape[2], 3, 3, subsample=(1,1), border_mode="same"))
-    layers.append(BatchNormalization())
-    layers.append(Activation(args.activation))
-    layers.append(Convolution2D(input_shape[2], 3, 3, subsample=(1,1), border_mode="same"))
-    layers.append(BatchNormalization())
-    for layer in layers:
-        output1 = layer(output1)
-        output2 = layer(output2)
+    layers.append(Conv2D(channels[0], (5, 5), strides=(1, 1), padding='same', kernel_initializer='he_normal', name='conv' + str(0)))
+    if bn_allowed:
+        layers.append(BatchNormalization(axis=-1))
+    layers.append(Activation('relu'))
+    layers.append(AveragePooling2D(pool_size=(2, 2), strides=None, padding='valid', name='avgpool' + str(1)))
+    layers.extend(resblock_and_avgpool_layers([(1, 1), (3, 3), (3, 3)], channels[1], block=1, bn_allowed=bn_allowed))
+    layers.extend(resblock_and_avgpool_layers([(1, 1), (3, 3), (3, 3)], channels[2], block=2, bn_allowed=bn_allowed))
+    layers.extend(resblock_and_avgpool_layers([(1, 1), (3, 3), (3, 3)], channels[3], block=3, bn_allowed=bn_allowed))
+    layers.extend(resblock_and_avgpool_layers([(1, 1), (3, 3), (3, 3)], channels[4], block=4, bn_allowed=bn_allowed))
+    layers.extend(resblock_and_avgpool_layers([(1, 1), (3, 3), (3, 3)], channels[5], block=5, bn_allowed=bn_allowed))
+    layers.extend(resblock_and_avgpool_layers([(1, 1), (3, 3), (3, 3)], channels[6], block=6, bn_allowed=bn_allowed))
+    layers.extend(resblock_and_avgpool_layers([(3, 3), (3, 3)], channels[7], block=7, bn_allowed=bn_allowed))
+    layers.append(residual_block('encoder', kernels=[(3, 3), (3, 3)], filters=channels[8], block=8, bn_allowed=bn_allowed, last_activation="linear"))
+    layers.append(Flatten())
+    return layers
 
-    result1 = merge([input1, output1], mode="sum")
-    result2 = merge([input2, output2], mode="sum")
-    result1 = Activation(args.activation)(result1)
-    result2 = Activation(args.activation)(result2)
+def encoder_layers_introvae_64(channels, bn_allowed):
+    layers = []
+    layers.append(Conv2D(channels[0], (5, 5), strides=(1, 1), padding='same', kernel_initializer='he_normal', name='conv' + str(0)))
+    if bn_allowed:
+        layers.append(BatchNormalization(axis=-1))
+    layers.append(Activation('relu'))
+    layers.append(AveragePooling2D(pool_size=(2, 2), strides=None, padding='valid', name='avgpool' + str(0)))
+    layers.extend(resblock_and_avgpool_layers([(1, 1), (3, 3), (3, 3)], channels[1], block=1, bn_allowed=bn_allowed))
+    layers.extend(resblock_and_avgpool_layers([(1, 1), (3, 3), (3, 3)], channels[2], block=2, bn_allowed=bn_allowed))
+    layers.extend(resblock_and_avgpool_layers([(1, 1), (3, 3), (3, 3)], channels[3], block=3, bn_allowed=bn_allowed, last_activation="linear"))
 
-    return result1, result2
+    #layers.extend(resblock_and_avgpool_layers([(1, 1), (3, 3), (3, 3)], channels[4], block=4, bn_allowed=bn_allowed))
+    #layers.extend(resblock_and_avgpool_layers([(1, 1), (3, 3), (3, 3)], channels[5], block=5, bn_allowed=bn_allowed))
+    #layers.extend(resblock_and_avgpool_layers([(1, 1), (3, 3), (3, 3)], channels[6], block=6, bn_allowed=bn_allowed))
+    #layers.extend(resblock_and_avgpool_layers([(3, 3), (3, 3)], channels[7], block=7, bn_allowed=bn_allowed))
+    #layers.extend(residual_block('encoder', kernels=[(3, 3), (3, 3)], filters=channels[8], block=8, bn_allowed=bn_allowed))
+    layers.append(Flatten())
+    return layers
+
+
+def upsample_and_resblock_layers(kernels, filters, block, bn_allowed):
+    layers = []
+    layers.append(UpSampling2D(size=(2, 2)))
+    layers.append(residual_block('decoder', kernels=kernels, filters=filters, block=block, bn_allowed=bn_allowed))
+    return layers
+
+
+def decoder_layers_introvae_1024(channels, bn_allowed):
+    layers = []
+    layers.append(Dense(channels[0] * 4 * 4))
+    layers.append(Activation('relu'))
+    layers.append(Reshape((4, 4, channels[1])))
+    layers.extend(residual_block('decoder', kernels=[(3, 3), (3, 3)], filters=channels[2], block=2, bn_allowed=bn_allowed))
+    layers.extend(upsample_and_resblock_layers([(3, 3), (3, 3)], channels[3], block=3, bn_allowed=bn_allowed))
+    layers.extend(upsample_and_resblock_layers([(3, 3), (3, 3)], channels[4], block=4, bn_allowed=bn_allowed))
+    layers.extend(upsample_and_resblock_layers([(1, 1), (3, 3), (3, 3)], channels[5], block=5, bn_allowed=bn_allowed))
+    layers.extend(upsample_and_resblock_layers([(1, 1), (3, 3), (3, 3)], channels[6], block=6, bn_allowed=bn_allowed))
+    layers.extend(upsample_and_resblock_layers([(1, 1), (3, 3), (3, 3)], channels[7], block=7, bn_allowed=bn_allowed))
+    layers.extend(upsample_and_resblock_layers([(1, 1), (3, 3), (3, 3)], channels[8], block=8, bn_allowed=bn_allowed))
+    layers.extend(upsample_and_resblock_layers([(1, 1), (3, 3), (3, 3)], channels[9], block=9, bn_allowed=bn_allowed))
+    layers.extend(upsample_and_resblock_layers([(3, 3), (3, 3)], channels[10], block=10, bn_allowed=bn_allowed))
+    layers.extend(upsample_and_resblock_layers([(3, 3), (3, 3)], channels[11], block=11, bn_allowed=bn_allowed))
+    layers.append(Conv2D(3, (5, 5), strides=(1, 1), padding='same', kernel_initializer='he_normal', name='conv' + str(len(channels) + 1)))
+    return layers
+
+def decoder_layers_introvae_64(channels, bn_allowed):
+    layers = []
+    layers.append(Dense(channels[0] * 4 * 4))
+    layers.append(Activation('relu'))
+    layers.append(Reshape((4, 4, channels[1])))
+    layers.append(residual_block('decoder', kernels=[(3, 3), (3, 3)], filters=channels[2], block=2, bn_allowed=bn_allowed))
+    layers.extend(upsample_and_resblock_layers([(3, 3), (3, 3)], channels[3], block=3, bn_allowed=bn_allowed))
+    layers.extend(upsample_and_resblock_layers([(3, 3), (3, 3)], channels[4], block=4, bn_allowed=bn_allowed))
+    layers.extend(upsample_and_resblock_layers([(1, 1), (3, 3), (3, 3)], channels[5], block=5, bn_allowed=bn_allowed))
+    layers.extend(upsample_and_resblock_layers([(1, 1), (3, 3), (3, 3)], channels[6], block=6, bn_allowed=bn_allowed))
+    #layers.extend(upsample_and_resblock_layers([(1, 1), (3, 3), (3, 3)], channels[7], block=7, bn_allowed=bn_allowed))
+    #layers.extend(upsample_and_resblock_layers([(1, 1), (3, 3), (3, 3)], channels[8], block=8, bn_allowed=bn_allowed))
+    #layers.extend(upsample_and_resblock_layers([(1, 1), (3, 3), (3, 3)], channels[9], block=9, bn_allowed=bn_allowed))
+    #layers.extend(upsample_and_resblock_layers([(3, 3), (3, 3)], channels[10], block=10, bn_allowed=bn_allowed))
+    #layers.extend(upsample_and_resblock_layers([(3, 3), (3, 3)], channels[11], block=11, bn_allowed=bn_allowed))
+    layers.append(Conv2D(3, (5, 5), strides=(1, 1), padding='same', kernel_initializer='he_normal', name='conv' + str(len(channels) + 1)))
+    return layers
+
+
+def residual_block(model_type, kernels, filters, block, bn_allowed, stage='a', last_activation="relu"):
+
+    def identity_block(input_tensor, filters=filters):
+        print(last_activation)
+        if isinstance(filters, int):
+            filters = [filters] * len(kernels)
+        assert len(filters) == len(kernels), 'Number of filters and number of kernels differs.'
+        if K.image_data_format() == 'channels_last':
+            bn_axis = 3
+        else:
+            bn_axis = 1
+        bn_name_base = model_type + '_bn_' + stage + str(block) + '_branch_'
+        conv_name_base = model_type + 'conv_' + stage + str(block) + '_branch_'
+
+        x = input_tensor
+
+        for idx in range(len(filters)):
+            x = Conv2D(filters[idx],
+                       kernels[idx],
+                       padding='same',
+                       kernel_initializer='he_normal',
+                       name=conv_name_base + str(idx))(x)
+            if bn_allowed:
+                x = BatchNormalization(axis=bn_axis,
+                                       name=bn_name_base + str(idx))(x)
+            if idx <= len(filters) - 1:
+                x = Activation('relu')(x)
+
+        if K.int_shape(input_tensor[-1]) != K.int_shape(x[-1]):
+            if model_type == 'encoder':
+                # print('resblock input tensor int_shape: ', K.int_shape(input_tensor))
+                # print('resblock input tensor shape: ', K.shape(input_tensor))
+                # print('input_shape: ', input_tensor.shape)
+                padding = K.zeros(K.int_shape(input_tensor), name='padding')
+                #print(padding._keras_history)
+                #input_tensor = Concatenate()([input_tensor, padding])
+                input_tensor = Lambda(lambda y: K.concatenate([y, padding]))(input_tensor)
+            if model_type == 'decoder':
+                input_tensor = Conv2D(K.int_shape(x)[-1], 1)(input_tensor)
+
+        x = Add()([x, input_tensor])
+        x = Activation(last_activation)(x)
+        # print('Residual block output shape: ', K.int_shape(x))
+        return x
+    # return Lambda(lambda x: identity_block(x))
+    return identity_block

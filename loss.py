@@ -36,12 +36,45 @@ def loss_factory(model, encoder, loss_features, args):
         loss = 0.5 * K.sum(K.square(loss_features.z_mean), axis=-1)
         return K.mean(loss)
 
+    def center_loss(x, x_decoded): # pushing the minibatch to be zero centered
+        loss = 0.5 * K.square(K.sum(loss_features.z_mean, axis=0))
+        return K.mean(loss)
+
+    def size_loss_l1(x, x_decoded): # pushing the means towards the origo
+        loss = 0.5 * K.sum(K.abs(loss_features.z_mean), axis=-1)
+        return K.mean(loss)
+
     def sampled_size_loss(x, x_decoded): # pushing the sampleds towards the origo
         loss = 0.5 * K.sum(K.square(loss_features.z_sampled), axis=-1)
         return K.mean(loss)
 
     def variance_loss(x, x_decoded): # pushing the variance towards 1
         loss = 0.5 * K.sum(-1 - loss_features.z_log_var + K.exp(loss_features.z_log_var), axis=-1)
+        return K.mean(loss)
+
+    # augmented variance loss:
+    # pushing z_sampled variance towards 1, when x ~ X and z_mean and z_var are calculated by the encoder.
+    # We work with the theoretically hard-to-justify, but true-in-practice
+    # assumption that z_mean and z_var are independent random variables when x ~ X,
+    # and z_mean is normally distributed.
+    # This means that z_sampled is normally distributed, and its variance
+    # is the sum of var(z_mean) and z_var.
+    # This assumption leads to the modified form of the variance_loss,
+    # where we add the minibatch-estimated variance of z_mean to z_var.
+    #
+    # The idea is that this does not punish small z_vars when var(z_mean) is already big.
+    # Unfortunately the flipside is that it does not punish large z_vars when var(z_mean) is already small.
+    #
+    # Surprisingly, on dcgan_vae_lsun_newkl.iniit quickly converged to
+    # an mvvm diagram that has 135 0-mv-1-vm coords and 65 1/2-mv-0-vm coords.
+    # (mv means the mean's variance, the 1/2 is the surprise here,
+    # it's supposed to be 1, might be an implementation bug.)
+    def augmented_variance_loss(x, x_decoded):
+        variance = K.exp(loss_features.z_log_var)
+        # TODO Are you really-really sure it's not axis=1?
+        mean_variance = K.var(loss_features.z_mean, axis=0, keepdims=True)
+        total_variance = variance + mean_variance
+        loss = 0.5 * K.sum(-1 - K.log(total_variance) + total_variance, axis=-1)
         return K.mean(loss)
 
     # energy distance from the standard normal distribution.
@@ -110,18 +143,27 @@ def loss_factory(model, encoder, loss_features, args):
 #        z = loss_features.z_sampled
         z_centered = z - K.mean(z, axis=0)
         cov = K.dot(K.transpose(z_centered), z_centered) / args.batch_size
+
         # The (args.batch_size ** 2) is there to keep it in sync
         # with previous version, will get rid of it TODO:
 
-        SCALE_HACK = 1.53
-        print("Hey hey hey, hacked scaling of covariance loss!")
-        loss = K.mean(K.square(K.eye(K.int_shape(z_centered)[1])*SCALE_HACK - cov)) * (args.batch_size ** 2)
+        # SCALE_HACK = 1.53
+        # print("Hey hey hey, hacked scaling of covariance loss!")
+        # loss = K.mean(K.square(K.eye(K.int_shape(z_centered)[1])*SCALE_HACK - cov)) * (args.batch_size ** 2)
+        loss = K.mean(K.square(K.eye(K.int_shape(z_centered)[1]) - cov))
         use_diag_loss = False
         if use_diag_loss:
             print("Adding extra diagonal penalty term to covariance_loss")
             diag = K.maximum(tf.diag_part(cov), 0.01)
             extra_diag_loss = K.mean(diag - K.log(diag) - 1)
             loss += extra_diag_loss
+        return loss
+
+    def covariance_loss2(x, x_decoded): # give infinitely large loss for zero eigenvalues (taken from ladder networks)
+        z = loss_features.z_mean
+        z_centered = z - K.mean(z, axis=0)
+        cov = K.dot(K.transpose(z_centered), z_centered) / args.batch_size
+        loss = tf.trace(cov - tf.linalg.logm(cov) - K.eye(K.int_shape(z_centered)[1]))
         return loss
 
     def mean_monitor(x, x_decoded):
@@ -242,6 +284,11 @@ def loss_factory(model, encoder, loss_features, args):
         AAT = tf.matmul(A, tf.transpose(A))
         qr = ((k*n) ** 2) * tf.reduce_sum(tf.square(AAT)) - (tf.reduce_sum(A) ** 4)
         return qr / ((k*n) ** 4)
+
+    def var_maximizer_loss(x, x_decoded): # pushing the variance of the means up.
+        weight = - 0.5 * args.batch_size #  Weighting ensures that this loss cancels size_loss
+        loss = weight * K.var(loss_features.z_mean, axis=0)
+        return K.sum(loss)
 
 
     metrics = []

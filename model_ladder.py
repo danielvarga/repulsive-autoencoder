@@ -1,5 +1,6 @@
 import numpy as np
 from keras.layers import Dense, Flatten, Activation, Reshape, Input, BatchNormalization, Lambda
+from keras.layers.merge import Concatenate
 from keras.regularizers import l2
 from keras import backend as K
 
@@ -30,9 +31,9 @@ class LadderDenseEncoder(Encoder):
             zs.append(z)
             z_means.append(z_mean)
             z_log_vars.append(z_log_var)
-        self.z = Merge(mode='concat')(zs)
-        self.z_mean = Merge(mode='concat')(z_means)
-        self.z_log_var = Merge(mode='concat')(z_log_vars)
+        self.z = Concatenate()(zs)
+        self.z_mean = Concatenate()(z_means)
+        self.z_log_var = Concatenate()(z_log_vars)
         return h
 
     def get_latent_code(self):
@@ -57,8 +58,8 @@ class LadderDenseDecoder(Decoder):
                 recons_output = recons_input_portion
                 generator_output = generator_input_portion
             else:
-                recons_output = Merge(mode='concat')([recons_output, recons_input_portion])
-                generator_output = Merge(mode='concat')([generator_output, generator_input_portion])
+                recons_output = Concatenate()([recons_output, recons_input_portion])
+                generator_output = Concatenate()([generator_output, generator_input_portion])
                 
             layer = Dense(intermediate_dim, kernel_regularizer=l2(args.decoder_wd))
             recons_output = layer(recons_output)

@@ -14,6 +14,7 @@ def dumpParams(params, ini_file):
     f = open(ini_file, "w+")
     for k in sorted(params.keys()):
         print(k+"\t"+str(params[k]), file=f)
+        # print(k+"\t"+str(params[k]), file=f)
 
 def heuristicCast(s):
     s = s.strip() # Don't let some stupid whitespace fool you.

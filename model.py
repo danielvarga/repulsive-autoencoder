@@ -60,6 +60,10 @@ def build_model(args):
 
         encoder = model_ladder.LadderDenseEncoder(args)
 
+    elif args.encoder == "resnet":
+        encoder = model_resnet.ResnetEncoder(args)
+
+
     hidden = encoder(x)
 
     # --------------------------------------------------------------------
@@ -122,6 +126,9 @@ def build_model(args):
         decoder = model_dcgan.DcganDecoder(args)
     elif args.decoder == "ladderDense":
         decoder = model_ladder.LadderDenseDecoder(args)
+    elif args.decoder == "resnet":
+        decoder = model_resnet.ResnetDecoder(args)
+
     decoder_fun_output = decoder(z)
     generator_input, recons_output, generator_output = decoder_fun_output[:3]
 
@@ -144,8 +151,6 @@ def build_model(args):
 #        "sparse_output": sparse_output,
         "z_projected": z_projected
     })
-    if args.decoder == "resnet":
-        loss_features.intermediary_outputs = decoder_fun_output[3]
     if args.use_nat:
         nat_input = Input(batch_shape=(args.batch_size, args.latent_dim), name="nat_input")
         ae_with_nat = Model([x, nat_input], recons_output)

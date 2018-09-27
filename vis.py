@@ -46,8 +46,7 @@ def latentScatter(points, name, latent_space_type="normal"):
     plt.close()
 
 
-
-def plotImages(data, n_x, n_y, name):
+def plotImages(data, n_x, n_y, name, text=None):
     (height, width, channel) = data.shape[1:]
     height_inc = height + 1
     width_inc = width + 1
@@ -68,7 +67,11 @@ def plotImages(data, n_x, n_y, name):
         image_data[height_inc*y:height_inc*y+height, width_inc*x:width_inc*x+width] = 255*sample.clip(0, 0.99999)
     img = Image.fromarray(image_data,mode=mode)
     fileName = name + ".png"
-    #print("Creating file " + fileName)
+
+    print("Creating file " + fileName)
+    if text is not None:
+        img.text(10, 10, text)
+
     img.save(fileName)
 
 # display a 2D manifold of the images
@@ -338,8 +341,8 @@ def plotMVVM(x_train, encoder, encoder_var, batch_size, name):
     mean_variances = np.var(latent_train_mean, axis=0)
     latent_train_logvar = encoder_var.predict(x_train, batch_size = batch_size)
     variance_means = np.mean(np.exp(latent_train_logvar), axis=0)
-    xlim = (-1, 12)
-    ylim = (-1, 3)
+    xlim = (-0.2, 2.0)
+    ylim = (-0.2, 1.2)
     plt.figure(figsize=(12,6))
     plt.scatter(mean_variances, variance_means)
     plt.xlim(xlim[0], xlim[1])
@@ -351,7 +354,9 @@ def plotMVVM(x_train, encoder, encoder_var, batch_size, name):
 def plotMVhist(x_train, encoder, batch_size, names):
     latent_train_mean = encoder.predict(x_train, batch_size = batch_size)
     mean_variances = np.var(latent_train_mean, axis=0)
-    histogram = np.histogram(mean_variances, 30)
+    histogram = np.histogram(mean_variances, bins=(0, 0.01, 0.04, 0.09, 0.16, 0.25, 0.36, 0.49, 0.64, 0.81, 1.0)) #100, range=(0,3))
+    print("MVhist:")
+    print(histogram)
     mean_variances = histogram[1]
     variance_means = [0] + list(histogram[0])
     xlim = (0,np.max(mean_variances))

@@ -1,0 +1,220 @@
+
+# ============================================================
+# 1
+
+activation  relu
+base_filter_num 128
+batch_size  200
+callback_prefix same
+color   1
+dataset syn-clocks-hand2
+decoder dense
+decoder_use_bn  0
+decoder_wd  0.01
+depth   2
+encoder dense
+encoder_wd  0.01
+frequency   1
+ini_file    []
+intermediate_dims  300,300,300
+optimizer   adam
+latent_dim  4
+losses  mse_loss
+lr  0.002
+memory_share    0.45
+nb_epoch    25
+lr_decay_schedule   0.5,0.8
+prefix  pictures/vae_syn-clocks-hand2-small
+sampling    1
+save_histogram  False
+shape   28,28
+spherical   0
+# toroidal is used for sampling and interpolation.
+# not to be confused with toroid_loss which pushes the latent points onto the torus.
+toroidal    1
+trainSize   30000
+testSize    2000
+# schedule feature not used: first two numbers are equal to loss weight
+# weight_schedules    repulsive_loss|1|1|0|1
+
+
+Ez volt az alapbeallitas, illetve a toruszsag a neuronhaloba volt epitve.
+Ekkor a loss konstans 182 korul mozgott, lejjebb nem ment.
+
+
+# ============================================================
+# 2
++ variance loss
+
+activation  relu
+base_filter_num 128
+batch_size  200
+callback_prefix same
+color   1
+dataset syn-clocks-hand2
+decoder dense
+decoder_use_bn  0
+decoder_wd  0.01
+depth   2
+encoder dense
+encoder_wd  0.01
+frequency   1
+ini_file    []
+intermediate_dims  300,300,300
+optimizer   adam
+latent_dim  4
+losses  mse_loss,variance_loss
+lr  0.002
+memory_share    0.45
+nb_epoch    25
+lr_decay_schedule   0.5,0.8
+prefix  pictures/vae_syn-clocks-hand2-small
+sampling    1
+save_histogram  False
+shape   28,28
+spherical   0
+# toroidal is used for sampling and interpolation.
+# not to be confused with toroid_loss which pushes the latent points onto the torus.
+toroidal    1
+trainSize   30000
+testSize    2000
+# schedule feature not used: first two numbers are equal to loss weight
+# weight_schedules    repulsive_loss|1|1|0|1
+
+
+
+A loss lejjebb ment, mint variance loss nelkul.
+
+Epoch 25/25
+ - 2s - loss: 33.4058 - mse_loss: 11.3947 - variance_loss: 10.1545 - val_loss: 33.2410 - val_mse_loss: 11.2282 - val_variance_loss: 10.1591
+
+ A train es a test egeszen szep. Az interpolationnel latszik, hogy a piros mutato nem tokeletesen illeszkedik a toruszra, vannak meglepo atfordulasok.
+
+
+# ============================================================
+# 3
+
+ Egyszuristett neuronhalo.
+
+ activation  relu
+base_filter_num 128
+batch_size  200
+callback_prefix same
+color   1
+dataset syn-clocks-hand2
+decoder dense
+decoder_use_bn  0
+decoder_wd  0.01
+depth   2
+encoder dense
+encoder_wd  0.01
+frequency   1
+ini_file    []
+intermediate_dims  100,50,25
+optimizer   adam
+latent_dim  4
+losses  mse_loss,variance_loss
+lr  0.002
+memory_share    0.45
+nb_epoch    25
+lr_decay_schedule   0.5,0.8
+prefix  pictures/vae_syn-clocks-hand2-small
+sampling    1
+save_histogram  False
+shape   28,28
+spherical   0
+# toroidal is used for sampling and interpolation.
+# not to be confused with toroid_loss which pushes the latent points onto the torus.
+toroidal    1
+trainSize   30000
+testSize    2000
+# schedule feature not used: first two numbers are equal to loss weight
+# weight_schedules    repulsive_loss|1|1|0|1
+
+Az interpolation soran a zold szin is eluszni latszott.
+
+
+# ============================================================
+# 4
+
+
+activation  relu
+base_filter_num 128
+batch_size  200
+callback_prefix same
+color   1
+dataset syn-clocks-hand2
+decoder dense
+decoder_use_bn  0
+decoder_wd  0.01
+depth   2
+encoder dense
+encoder_wd  0.01
+frequency   1
+ini_file    []
+intermediate_dims  200,200,200,200
+optimizer   adam
+latent_dim  4
+losses  mse_loss,variance_loss
+lr  0.001
+memory_share    0.45
+nb_epoch    25
+lr_decay_schedule   0.5,0.8
+prefix  pictures/vae_syn-clocks-hand2-small
+sampling    1
+save_histogram  False
+shape   28,28
+spherical   0
+# toroidal is used for sampling and interpolation.
+# not to be confused with toroid_loss which pushes the latent points onto the torus.
+toroidal    1
+trainSize   30000
+testSize    2000
+# schedule feature not used: first two numbers are equal to loss weight
+# weight_schedules    repulsive_loss|1|1|0|1
+
+Ez egy olyan beallitas ahol tisztan latszik, hogy a rendszer a zold mutatot egeszen jol megtanulja, mig a pirossal problemai vannak.
+
+
+# ============================================================
+# 5
+Egyszeru halo, hatalmas training set
+
+
+activation  relu
+base_filter_num 128
+batch_size  500
+callback_prefix same
+color   1
+dataset syn-clocks-hand2
+decoder dense
+decoder_use_bn  0
+decoder_wd  0.01
+depth   2
+encoder dense
+encoder_wd  0.01
+frequency   1
+ini_file    []
+intermediate_dims  100,100,100
+optimizer   adam
+latent_dim  4
+losses  mse_loss,variance_loss
+lr  0.001
+memory_share    0.45
+nb_epoch    25
+lr_decay_schedule   0.6
+prefix  pictures/vae_syn-clocks-hand2-small
+sampling    1
+save_histogram  False
+shape   28,28
+spherical   0
+# toroidal is used for sampling and interpolation.
+# not to be confused with toroid_loss which pushes the latent points onto the torus.
+toroidal    1
+trainSize   140000
+testSize    2000
+# schedule feature not used: first two numbers are equal to loss weight
+# weight_schedules    repulsive_loss|1|1|0|1
+
+
+Nagyon szepen kezd alakulni a flattorusz, a rekonstrukcio tokeletes, az interpolacioban nagyon, nagyon apro hiba.

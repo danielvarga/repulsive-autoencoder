@@ -1,5 +1,5 @@
+from __future__ import print_function
 import os
-
 
 # Causes memory leak below python 2.7.3
 class AttrDict(dict):
@@ -12,8 +12,9 @@ def dumpParams(params, ini_file):
         os.makedirs(os.path.dirname(ini_file))
     f = open(ini_file, "w+")
     for k in sorted(params.keys()):
-        print(k+"\t"+str(params[k]), file=f)
-        # print(k+"\t"+str(params[k]), file=f)
+        toPrint = k+"\t"+str(params[k])
+        # print >>f, toPrint
+        print(toPrint, file=f)
 
 def heuristicCast(s):
     s = s.strip() # Don't let some stupid whitespace fool you.

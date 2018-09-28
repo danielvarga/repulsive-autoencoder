@@ -13,7 +13,7 @@ clockBorderColor = 128
 
 
 def randomClockHandCoords(randomAngle):
-    randomAngle = random.random() * 2 * math.pi
+    #randomAngle = random.random() * 2 * math.pi
     handBegginingXCoord = (sizeOfImage / 2) if (sizeOfImage % 2 == 0) else ((sizeOfImage + 1) / 2)
     handBegginingYCoord = (sizeOfImage / 2) if (sizeOfImage % 2 == 0) else ((sizeOfImage + 1) / 2)
     handEndXCoord = math.cos(randomAngle) * (sizeOfImage * 0.5) + handBegginingXCoord
@@ -23,24 +23,35 @@ def randomClockHandCoords(randomAngle):
 
 
 def clock(params):
-    antialiasFactor = 4
-    img = Image.new("L", (sizeOfImage, sizeOfImage), 0)
-    draw = ImageDraw.Draw(img)
+    assert len(params) <= 3, 'RGB image can hold up to 3 hands only.'
 
-    # draw bounding circle of clock
-    # ellipseBoundingBox = [(0, 0), (sizeOfImage - 1, sizeOfImage - 1)]
-    # draw.ellipse(ellipseBoundingBox, None, clockBorderColor)
+    #img = Image.new("RGB", (sizeOfImage, sizeOfImage), 0)
+    #draw = ImageDraw.Draw(img)
 
-    for indx, handAngle in enumerate(params):
-        if indx==0:
-            clockHandColor = 255
-        else :
-            clockHandColor = 127
+    # for indx, handAngle in enumerate(params):
+    #     color = [0, 0, 0]
+    #     color[indx] = clockHandColor
+    #     color = tuple(color)
+    #     draw.line(randomClockHandCoords(handAngle), color, handWidth)
+
+    # img = img.resize((targetSizeOfImage, targetSizeOfImage), Image.ANTIALIAS)
+    # return np.array(img)
+
+    rgb_img = np.zeros((targetSizeOfImage, targetSizeOfImage, 3), 'uint8')
+
+    for i, handAngle in enumerate(params):
+        img = Image.new("L", (sizeOfImage, sizeOfImage), 0)
+        draw = ImageDraw.Draw(img)
         draw.line(randomClockHandCoords(handAngle), clockHandColor, handWidth)
+        img = img.resize((targetSizeOfImage, targetSizeOfImage), Image.ANTIALIAS)
+        rgb_img[:, :, i] = np.array(img)
 
-    img = img.resize((targetSizeOfImage, targetSizeOfImage), Image.ANTIALIAS)
+    return rgb_img
 
-    return np.array(img)
+
+    
+
+    
 
 def randomClock():
     return clock(np.random.uniform(0, 2*np.pi, size=(2, )))

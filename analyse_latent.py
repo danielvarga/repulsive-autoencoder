@@ -13,7 +13,8 @@ import os
 # prefix = "/home/daniel/experiments/repulsive-autoencoder/pictures/dcgan_vae_lsun/dcgan_vae_lsun_latent"
 # prefix = "/mnt/g2home/daniel/experiments/repulsive-autoencoder/pictures/dcgan_vae_lsun/dcgan_vae_lsun_latent"
 # prefix = "/home/zombori/experiments/repulsive-autoencoder/pictures/dcgan_vae_largelatent/dcgan_vae_largelatent_latent"
-prefix = "/home/csadrian/ra-new/repulsive-autoencoder/pictures/dcgan_vae_lsun_newkl_grad_from_zero/dcgan_vae_lsun_newkl_grad_from_zero_latent"
+# prefix = "/home/csadrian/ra-new/repulsive-autoencoder/pictures/dcgan_vae_lsun_newkl_grad_from_zero/dcgan_vae_lsun_newkl_grad_from_zero_latent"
+prefix = "/home/csadrian/ra-new/repulsive-autoencoder/pictures/vae_resnet_newkl_10_cov/vae_resnet_newkl_10_cov_latent"
 
 meanFile = prefix + "_mean_200.npy"
 logvarFile = prefix + "_log_var_200.npy"
@@ -23,8 +24,8 @@ logvar = np.load(logvarFile)
 var = np.exp(logvar)
 std = np.exp(logvar/2)
 
-print "Mean shape: ", mean.shape
-print "Var shape: ", var.shape
+print("Mean shape: ", mean.shape)
+print("Var shape: ", var.shape)
 
 latent_dim = mean.shape[1]
 
@@ -83,8 +84,8 @@ def plotMVhist(mean, name):
     mean_variances = np.var(mean, axis=0)
     # histogram = np.histogram(mean_variances, 30)
     histogram = np.histogram(mean_variances, bins=(0, 0.01, 0.04, 0.09, 0.16, 0.25, 0.36, 0.49, 0.64, 0.81, 1.0)) #100, range=(0,3))
-    print "MVhist:"
-    print histogram
+    print("MVhist:")
+    print(histogram)
     mean_variances = histogram[1]
     variance_means = [0] + list(histogram[0])
     xlim = (0,np.max(mean_variances))

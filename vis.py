@@ -14,13 +14,32 @@ from keras.models import model_from_json
 
 
 # TODO Add optional arg y_test for labeling.
-def latentScatter(encoder, x_test, batch_size, name):
-    # # display a 2D plot of the digit classes in the latent space
-    x_test_encoded = encoder.predict(x_test, batch_size=batch_size)
-    plt.figure(figsize=(6, 6))
-    points = x_test_encoded.copy()
-    points[:, 0] += 2.2 * (points[:, 2]>=0) # TODO This badly fails for normal latent vars.
-    plt.scatter(points[:, 0], points[:, 1])
+def latentScatter(points, name, latent_space_type="normal"):
+    fig, ax = plt.subplots(figsize=(10,10))
+    cmap = matplotlib.cm.get_cmap('viridis')
+    normalize = matplotlib.colors.Normalize(vmin=0, vmax=2)
+
+    colors = None
+    if latent_space_type == "normal":
+        pass
+    elif latent_space_type == "3d_sphere":
+        assert points.shape[1] == 3
+        points[:, 0] += 2.2 * (points[:, 2]>=0)
+    elif latent_space_type == "2d_torus_projected":
+        assert points.shape[1] == 4
+        angles = np.arctan2(points[:, (1, 3)], points[:, (0, 2)])
+        distances = np.linalg.norm(points[:, :4], axis=1)
+        colors = [cmap(normalize(distance)) for distance in distances]
+        points = angles
+    else:
+        assert False, "unknown latent_space_type " + latent_space_type
+
+    ax.scatter(points[:, 0], points[:, 1], color=colors)
+
+    if latent_space_type == "2d_torus_projected":
+        cax, _ = matplotlib.colorbar.make_axes(ax)
+        cbar = matplotlib.colorbar.ColorbarBase(cax, cmap=cmap, norm=normalize)
+
     fileName = name + ".png"
     print("Creating file " + fileName)
     plt.savefig(fileName)
@@ -48,9 +67,11 @@ def plotImages(data, n_x, n_y, name, text=None):
         image_data[height_inc*y:height_inc*y+height, width_inc*x:width_inc*x+width] = 255*sample.clip(0, 0.99999)
     img = Image.fromarray(image_data,mode=mode)
     fileName = name + ".png"
+
     print("Creating file " + fileName)
     if text is not None:
         img.text(10, 10, text)
+
     img.save(fileName)
 
 # display a 2D manifold of the images

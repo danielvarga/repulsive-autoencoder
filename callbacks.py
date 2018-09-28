@@ -80,6 +80,8 @@ class ImageDisplayCallback(Callback):
         if (epoch+1) % self.frequency != 0:
             return
 
+        #print(self.encoder_var.predict(self.x_train, batch_size = self.batch_size))
+
         randomImages = self.generator.predict(self.randomPoints, batch_size=self.batch_size)
         vis.plotImages(randomImages, 10, self.batch_size // 10, "{}-random-{}".format(self.name, epoch+1))
         vis.plotImages(randomImages, 10, self.batch_size // 10, "{}-random".format(self.name))
@@ -114,12 +116,20 @@ class ImageDisplayCallback(Callback):
         np.save(filename, latent_cloud_log_var)
 
         if self.latent_dim >= 2:
-            z1, z2 = latent_cloud[:, 0], latent_cloud[:, 1]
-            plt.clf()
-            plt.scatter(z1, z2)
-            plt.savefig("{}-latent-{}.png".format(self.name, epoch+1))
             if self.args.toroidal:
-                rot = np.arctan2(z1, z2)
+                assert self.latent_dim == 4
+                latent_space_type = "2d_torus_projected"
+            elif self.args.spherical:
+                if self.latent_dim == 3:
+                    latent_space_type = "3d_sphere"
+                else:
+                    print("visualizing the first two dimensions of a spherical latent space")
+                    latent_space_type = "normal"
+            else:
+                latent_space_type = "normal"
+            vis.latentScatter(latent_cloud, "{}-latent-{}".format(self.name, epoch+1), latent_space_type=latent_space_type)
+            if self.args.toroidal:
+                rot = np.arctan2(latent_cloud[:, 0], latent_cloud[:, 1])
                 plt.clf()
                 n, bins, patches = plt.hist(rot, 50, normed=1)
                 plt.savefig("{}-latenthist-{}.png".format(self.name, epoch+1))
@@ -151,7 +161,7 @@ class ImageDisplayCallback(Callback):
                          generator=self.generator, name="{}-flattorus-{}".format(self.name, epoch+1),
                          batch_size=self.batch_size)
 
-#        vis.displayGaussian(self.args, self.ae, self.x_train, "%s-dots-%i" % (self.name, epoch+1))
+        # vis.displayGaussian(self.args, self.ae, self.x_train, "%s-dots-%i" % (self.name, epoch+1))
         # vis.displayRandom(10, self.x_train, self.latent_dim, self.sampler, self.generator, "%s-random-%i" % (self.name, epoch+1), batch_size=self.batch_size)
         # vis.displayRandom(10, self.x_train, self.latent_dim, self.sampler, self.generator, "%s-random" % (self.name), batch_size=self.batch_size)
         # vis.displaySet(self.x_test[:self.batch_size], self.batch_size, self.batch_size, self.model, "%s-test-%i" % (self.name,epoch+1))

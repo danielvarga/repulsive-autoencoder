@@ -49,6 +49,17 @@ def clock(params):
     return rgb_img
 
 
+def clock_dummy(params):
+    assert len(params) <= 3, 'RGB image can hold up to 3 hands only.'
+    numberOfHands = len(params)
+    rgb_img = np.zeros((numberOfHands, 2), 'uint8')
+    for i, handAngle in enumerate(params):
+        rgb_img[i, 0] = math.cos(handAngle)
+        rgb_img[i, 1] = math.sin(handAngle)
+    return rgb_img
+
+
+
     
 
     

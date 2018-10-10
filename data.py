@@ -61,6 +61,11 @@ def load(dataset, shape=None, color=True):
         return Dataset_syn_constant_uniform(shape)
     elif dataset == "syn-constant-normal":
         return Dataset_syn_constant_normal(shape)
+    elif dataset.startswith("syn-clocks-dummy-hand"):
+        suffix = dataset.split("-")[3]
+        assert suffix.startswith("hand")
+        number_of_hands = int(suffix[4:])
+        return Dataset_clocks2_dummy(shape, number_of_hands=number_of_hands)
     elif dataset.startswith("syn-clocks-hand"):
         #assert shape == (28, 28) and not color
         suffix = dataset.split("-", 2)[2]
@@ -546,6 +551,18 @@ class Dataset_clocks2(Dataset_syn_infinite):
         return np.random.uniform(0, 2*np.pi, size=(size, self.number_of_hands))
     def generate_one_sample(self, data, params):
         data[:, :, :] = clocks.clock(params).astype(np.float32) / 255
+    def generate_finite_set(self):
+        assert False, "NYI"
+
+class Dataset_clocks2_dummy(Dataset_syn_infinite):
+    def __init__(self, shape, number_of_hands=1):
+        assert shape == (2, 2)
+        super(Dataset_clocks2_dummy, self).__init__("syn-clocks2-dummy", shape=shape, color=False)
+        self.number_of_hands = number_of_hands
+    def sampler(self, size):
+        return np.random.uniform(0, 2*np.pi, size=(size, self.number_of_hands))
+    def generate_one_sample(self, data, params):
+        data[:, :] = clocks.clock_dummy(params).astype(np.float32)
     def generate_finite_set(self):
         assert False, "NYI"
 

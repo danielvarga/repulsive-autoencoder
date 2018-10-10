@@ -1,0 +1,467 @@
+=====================================================
+0. Kick off
+
+Toroidal shape is built into the neural network.
+
+
+activation  relu
+base_filter_num 128
+batch_size  100
+callback_prefix same
+color   1
+dataset syn-clocks-hand2
+decoder dense
+decoder_use_bn  0
+decoder_wd  0.01
+depth   2
+encoder dense
+encoder_wd  0.01
+frequency   1
+ini_file    []
+intermediate_dims  128,64,32
+optimizer   adam
+latent_dim  4
+losses  mse_loss,variance_loss
+lr  0.0003
+memory_share    0.45
+nb_epoch    25
+lr_decay_schedule   0.6
+prefix  pictures/vae_syn-clocks-hand2-small-spectreg-start
+sampling    1
+save_histogram  False
+shape   28,28
+spherical   0
+# toroidal is used for sampling and interpolation.
+# not to be confused with toroid_loss which pushes the latent points onto the torus.
+toroidal    1
+trainSize   20000
+testSize    2000
+# schedule feature not used: first two numbers are equal to loss weight
+weight_schedules    variance_loss|2|2|0|1
+
+Loss went down to 88.
+Flattorus is quite vague and noisy.
+On the training pictures the green hand looks okay, but the red one is too blurry and 'unconfident'.
+
+=====================================================
+1. Introducing the spectreg loss
+
+
+activation  relu
+base_filter_num 128
+batch_size  100
+callback_prefix same
+color   1
+dataset syn-clocks-hand2
+decoder dense
+decoder_use_bn  0
+decoder_wd  0.01
+depth   2
+encoder dense
+encoder_wd  0.01
+frequency   1
+ini_file    []
+intermediate_dims  128,64,32
+optimizer   adam
+latent_dim  4
+losses  mse_loss,variance_loss,spectreg_loss
+lr  0.0003
+memory_share    0.45
+nb_epoch    25
+lr_decay_schedule   0.6
+prefix  pictures/vae_syn-clocks-hand2-small-spectreg
+sampling    1
+save_histogram  False
+shape   28,28
+spherical   0
+# toroidal is used for sampling and interpolation.
+# not to be confused with toroid_loss which pushes the latent points onto the torus.
+toroidal    1
+trainSize   20000
+testSize    2000
+# schedule feature not used: first two numbers are equal to loss weight
+weight_schedules    variance_loss|2|2|0|1,spectreg_loss|0.01|0.01|0|1
+
+Interestingly the spectreg loss flactuates, first decreases,
+then rises up to its double and then decreses again.
+The overall loss is 115.
+For the first 9-10 epochs the nn couldn't represent any of the hands, and then
+it started to have some concepts about the red one. It also shows up in the test set
+and in the flattorus, which are not perfect but the red hands can be seen nicely.
+
+=====================================================
+2. Increasing nn size
+
+
+activation  relu
+base_filter_num 128
+batch_size  100
+callback_prefix same
+color   1
+dataset syn-clocks-hand2
+decoder dense
+decoder_use_bn  0
+decoder_wd  0.01
+depth   2
+encoder dense
+encoder_wd  0.01
+frequency   1
+ini_file    []
+intermediate_dims  200,200,200
+optimizer   adam
+latent_dim  4
+losses  mse_loss,variance_loss,spectreg_loss
+lr  0.0003
+memory_share    0.45
+nb_epoch    25
+lr_decay_schedule   0.6
+prefix  pictures/vae_syn-clocks-hand2-small-spectreg
+sampling    1
+save_histogram  False
+shape   28,28
+spherical   0
+# toroidal is used for sampling and interpolation.
+# not to be confused with toroid_loss which pushes the latent points onto the torus.
+toroidal    1
+trainSize   20000
+testSize    2000
+# schedule feature not used: first two numbers are equal to loss weight
+weight_schedules    variance_loss|2|2|0|1,spectreg_loss|0.01|0.01|0|1
+
+The overall loss is 79.
+Spectreg loss still flactuated but with less amount of changes.
+Now the green hand is learnt in the early epochs and the nn tries to learn
+the red one secondly with less success.
+The flattorus is still very far from being acceptable.
+
+=====================================================
+2. Recall of sept20 best results + add spectreg loss
+
+activation  relu
+base_filter_num 128
+batch_size  500
+callback_prefix same
+color   1
+dataset syn-clocks-hand2
+decoder dense
+decoder_use_bn  0
+decoder_wd  0.01
+depth   2
+encoder dense
+encoder_wd  0.01
+frequency   1
+ini_file    []
+intermediate_dims  100,100,100
+optimizer   adam
+latent_dim  4
+losses  mse_loss,variance_loss,spectreg_loss
+lr  0.001
+memory_share    0.45
+nb_epoch    25
+lr_decay_schedule   0.6
+prefix  pictures/vae_syn-clocks-hand2-small-spectreg
+sampling    1
+save_histogram  False
+shape   28,28
+spherical   0
+# toroidal is used for sampling and interpolation.
+# not to be confused with toroid_loss which pushes the latent points onto the torus.
+toroidal    1
+trainSize   140000
+testSize    2000
+# schedule feature not used: first two numbers are equal to loss weight
+# weight_schedules    repulsive_loss|1|1|0|1
+
+
+The first thing that catches my eye that the spectreg loss is increadibly low
+compared to the previous runs. It starts off with ~2 loss! Note that it has the
+weight of 1 instead of 0.1. Compared to the run of sept20 it completily ignores
+to learn the red hand.
+
+=====================================================
+3. Recall of sept20 best results + add spectreg loss (2)
+
+activation  relu
+base_filter_num 128
+batch_size  200
+callback_prefix same
+color   1
+dataset syn-clocks-hand2
+decoder dense
+decoder_use_bn  0
+decoder_wd  0.01
+depth   2
+encoder dense
+encoder_wd  0.01
+frequency   1
+ini_file    []
+intermediate_dims  300,300,300
+optimizer   adam
+latent_dim  4
+losses  mse_loss,variance_loss,spectreg_loss
+lr  0.002
+memory_share    0.45
+nb_epoch    25
+lr_decay_schedule   0.5,0.8
+prefix  pictures/vae_syn-clocks-hand2-small-spectreg
+sampling    1
+save_histogram  False
+shape   28,28
+spherical   0
+# toroidal is used for sampling and interpolation.
+# not to be confused with toroid_loss which pushes the latent points onto the torus.
+toroidal    1
+trainSize   30000
+testSize    2000
+# schedule feature not used: first two numbers are equal to loss weight
+# weight_schedules    repulsive_loss|1|1|0|1
+
+Results are quite similar to try 1.
+
+
+=====================================================
+4. Lowering the weight of spectreg_loss
+
+activation  relu
+base_filter_num 128
+batch_size  200
+callback_prefix same
+color   1
+dataset syn-clocks-hand2
+decoder dense
+decoder_use_bn  0
+decoder_wd  0.01
+depth   2
+encoder dense
+encoder_wd  0.01
+frequency   1
+ini_file    []
+intermediate_dims  300,300,300
+optimizer   adam
+latent_dim  4
+losses  mse_loss,variance_loss,spectreg_loss
+lr  0.002
+memory_share    0.45
+nb_epoch    25
+lr_decay_schedule   0.5,0.8
+prefix  pictures/vae_syn-clocks-hand2-small-spectreg
+sampling    1
+save_histogram  False
+shape   28,28
+spherical   0
+# toroidal is used for sampling and interpolation.
+# not to be confused with toroid_loss which pushes the latent points onto the torus.
+toroidal    1
+trainSize   30000
+testSize    2000
+# schedule feature not used: first two numbers are equal to loss weight
+weight_schedules    spectreg_loss|0.01|0.01|0|1
+
+Nothing much changed compared to the run with no spectreg_loss.
+
+=====================================================
+5. New try: adding a new loss that helps making the hands' represantation
+independent in the latent space. 
+
+
+activation  relu
+base_filter_num 128
+batch_size  200
+callback_prefix same
+color   1
+dataset syn-clocks-hand2
+decoder dense
+decoder_use_bn  0
+decoder_wd  0.01
+depth   2
+encoder dense
+encoder_wd  0.01
+frequency   1
+ini_file    []
+intermediate_dims  300,300,300
+optimizer   adam
+latent_dim  4
+losses  mse_loss,variance_loss,covariance_loss
+lr  0.002
+memory_share    0.45
+nb_epoch    25
+lr_decay_schedule   0.5,0.8
+prefix  pictures/vae_syn-clocks-hand2-small-covariance
+sampling    1
+save_histogram  False
+shape   28,28
+spherical   0
+# toroidal is used for sampling and interpolation.
+# not to be confused with toroid_loss which pushes the latent points onto the torus.
+toroidal    1
+trainSize   30000
+testSize    2000
+# schedule feature not used: first two numbers are equal to loss weight
+weight_schedules    covariance_loss|100|10|0|1
+
+Nothing much changed. The loss went lower, but variance loss dominated
+
+
+=====================================================
+6. Lowering variance loss weight.
+
+
+
+activation  relu
+base_filter_num 128
+batch_size  200
+callback_prefix same
+color   1
+dataset syn-clocks-hand2
+decoder dense
+decoder_use_bn  0
+decoder_wd  0.01
+depth   2
+encoder dense
+encoder_wd  0.01
+frequency   1
+ini_file    []
+intermediate_dims  300,300,300
+optimizer   adam
+latent_dim  4
+losses  mse_loss,variance_loss,covariance_loss
+lr  0.002
+memory_share    0.45
+nb_epoch    25
+lr_decay_schedule   0.5,0.8
+prefix  pictures/vae_syn-clocks-hand2-small-covariance
+sampling    1
+save_histogram  False
+shape   28,28
+spherical   0
+# toroidal is used for sampling and interpolation.
+# not to be confused with toroid_loss which pushes the latent points onto the torus.
+toroidal    1
+trainSize   30000
+testSize    2000
+# schedule feature not used: first two numbers are equal to loss weight
+weight_schedules    covariance_loss|100|5|0|1,variance_loss|1|0.1|0|1
+
+
+Nothing much changed.
+
+
+=====================================================
+7. Increasing train size + nn size
+
+activation  relu
+base_filter_num 128
+batch_size  400
+callback_prefix same
+color   1
+dataset syn-clocks-hand2
+decoder dense
+decoder_use_bn  0
+decoder_wd  0.01
+depth   2
+encoder dense
+encoder_wd  0.01
+frequency   1
+ini_file    []
+intermediate_dims  500,400,300
+optimizer   adam
+latent_dim  4
+losses  mse_loss,variance_loss,covariance_loss
+lr  0.002
+memory_share    0.45
+nb_epoch    25
+lr_decay_schedule   0.5,0.8
+prefix  pictures/vae_syn-clocks-hand2-small-covariance
+sampling    1
+save_histogram  False
+shape   28,28
+spherical   0
+# toroidal is used for sampling and interpolation.
+# not to be confused with toroid_loss which pushes the latent points onto the torus.
+toroidal    1
+trainSize   80000
+testSize    2000
+# schedule feature not used: first two numbers are equal to loss weight
+weight_schedules    covariance_loss|100|5|0|1,variance_loss|1|0.1|0|1
+
+Interpolation: the red hand switched sides with 180 degrees. --> increasing variance loss
+
+=====================================================
+7. Increasing variance loss back
+
+activation  relu
+base_filter_num 128
+batch_size  400
+callback_prefix same
+color   1
+dataset syn-clocks-hand2
+decoder dense
+decoder_use_bn  0
+decoder_wd  0.01
+depth   2
+encoder dense
+encoder_wd  0.01
+frequency   1
+ini_file    []
+intermediate_dims  500,400,300
+optimizer   adam
+latent_dim  4
+losses  mse_loss,variance_loss,covariance_loss
+lr  0.002
+memory_share    0.45
+nb_epoch    25
+lr_decay_schedule   0.5,0.8
+prefix  pictures/vae_syn-clocks-hand2-small-covariance
+sampling    1
+save_histogram  False
+shape   28,28
+spherical   0
+# toroidal is used for sampling and interpolation.
+# not to be confused with toroid_loss which pushes the latent points onto the torus.
+toroidal    1
+trainSize   80000
+testSize    2000
+# schedule feature not used: first two numbers are equal to loss weight
+weight_schedules    covariance_loss|100|5|0|1,variance_loss|10|0.5|0|
+
+Did not help.
+
+
+=====================================================
+7. vanishing variance loss, +trainsize, -nn size
+
+activation  relu
+base_filter_num 128
+batch_size  400
+callback_prefix same
+color   1
+dataset syn-clocks-hand2
+decoder dense
+decoder_use_bn  0
+decoder_wd  0.01
+depth   2
+encoder dense
+encoder_wd  0.01
+frequency   1
+ini_file    []
+intermediate_dims  300,300,300
+optimizer   adam
+latent_dim  4
+losses  mse_loss,covariance_loss
+lr  0.002
+memory_share    0.45
+nb_epoch    25
+lr_decay_schedule   0.5,0.8
+prefix  pictures/vae_syn-clocks-hand2-small-covariance
+sampling    1
+save_histogram  False
+shape   28,28
+spherical   0
+# toroidal is used for sampling and interpolation.
+# not to be confused with toroid_loss which pushes the latent points onto the torus.
+toroidal    1
+trainSize   140000
+testSize    2000
+# schedule feature not used: first two numbers are equal to loss weight
+weight_schedules    covariance_loss|100|5|0|1
+

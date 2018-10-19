@@ -168,8 +168,8 @@ zr_mean_ng, zr_log_var_ng = encoder(tf.stop_gradient(xr))
 
 zp = K.random_normal(shape=(args.batch_size, args.latent_dim), mean=0., stddev=1.0)
 xp = decoder(zp)
-zp_mean, zp_log_var = encoder(xp)
-zp_mean_ng, zp_log_var_ng = encoder(tf.stop_gradient(xp))
+zpp_mean, zpp_log_var = encoder(xp)
+zpp_mean_ng, zpp_log_var_ng = encoder(tf.stop_gradient(xp))
 
 #sampled_input = Input(batch_shape=[args.batch_size] + list(args.original_shape), name='sampled_input')
 #zp_mean, zp_log_var = encoder(sampled_input)
@@ -189,90 +189,107 @@ elif args.optimizer == 'sgd':
 
 print('Define loss functions')
 
-def l_reg(mean, log_var):
+def reg_loss(mean, log_var):
     return  K.mean(- 0.5 * K.sum(1 + log_var - K.square(mean) - K.exp(log_var), axis=-1))
 
 #def l_reg(mean, log_var):
 #    return l_size(mean) + l_size(log_var)
 
-def l_size(mean):
+def size_loss(mean):
     return K.mean(0.5 * K.sum(K.abs(mean), axis=-1))
 
-def l_variance(log_var):
+def variance_loss(log_var):
     return K.mean(0.5 * K.sum(-1 - log_var + K.exp(log_var), axis=-1))
 
-l_size_z = l_size(z_mean)
-l_var_z = l_variance(z_log_var)
-
-def l_ae(x, x_decoded):
+def mse_loss(x, x_decoded):
     original_dim = np.float32(np.prod(args.original_shape))
-    return K.mean(original_dim * K.sum(mean_squared_error(x, x_decoded), axis=-1))
+    return K.mean(K.sum(mean_squared_error(x, x_decoded), axis=-1))
 
-l_reg_z = l_reg(z_mean, z_log_var)
-l_reg_zr_ng = l_reg(zr_mean_ng, zr_log_var_ng)
-l_reg_zp_ng = l_reg(zp_mean_ng, zp_log_var_ng)
-l_reconstruction = l_ae(encoder_input, xr)
-encoder_loss = l_reg_z + args.alpha * K.maximum(0., args.m - l_reg_zr_ng) + args.alpha * K.maximum(0., args.m - l_reg_zp_ng) + args.beta * l_reconstruction
+l_reg_z = reg_loss(z_mean, z_log_var)
+l_reg_zr_ng = reg_loss(zr_mean_ng, zr_log_var_ng)
+l_reg_zpp_ng = reg_loss(zpp_mean_ng, zpp_log_var_ng)
+l_ae = mse_loss(encoder_input, xr)
+#encoder_loss = l_reg_z + args.alpha * K.maximum(0., args.m - l_reg_zr_ng) + args.alpha * K.maximum(0., args.m - l_reg_zpp_ng) + args.beta * l_ae
+encoder_loss = l_ae
+encoder_loss += tf.add_n(encoder.losses)
 
-l_reg_zr = l_reg(zr_mean, zr_log_var)
-l_reg_zp = l_reg(zp_mean, zp_log_var)
-decoder_loss = args.alpha * l_reg_zr + args.alpha * l_reg_zp + args.beta * l_reconstruction
+
+l_reg_zr = reg_loss(zr_mean, zr_log_var)
+l_reg_zpp = reg_loss(zpp_mean, zpp_log_var)
+#decoder_loss = args.alpha * l_reg_zr + args.alpha * l_reg_zpp + args.beta * l_ae
+decoder_loss = l_ae
+#decoder_loss += tf.add_n(decoder.losses)
 
 print('Encoder')
 encoder.summary()
 print('Generator')
 decoder.summary()
-
 print('Start training')
 
 #iterations = x_train.shape[0] // args.batch_size
 iterations = x_generator.__len__()
 
+vae = Model(inputs=encoder_input, outputs=xr)
+
+
 encoder_params = encoder.trainable_weights
 decoder_params = decoder.trainable_weights
+all_params = vae.trainable_weights
+
+print("encoder", encoder_params)
+print("decoder", decoder_params)
 
 print('Define train step operations')
-encoder_train_op = encoder_optimizer.minimize(encoder_loss, var_list=encoder_params)
-decoder_train_op = decoder_optimizer.minimize(decoder_loss, var_list=decoder_params)
+encoder_train_op = encoder_optimizer.minimize(encoder_loss, var_list=all_params)
+decoder_train_op = decoder_optimizer.minimize(decoder_loss, var_list=all_params)
 
-vae = Model(inputs=encoder_input, outputs=xr)
-vae_optimizer = tf.train.AdamOptimizer(learning_rate=args.lr)
-vae_loss = l_reconstruction + l_reg_z
-vae_train_op = vae_optimizer.minimize(vae_loss, var_list=vae.trainable_weights)
+#vae_optimizer = tf.train.AdamOptimizer(learning_rate=args.lr)
+#vae_loss = l_reconstruction + l_reg_z
+#vae_train_op = vae_optimizer.minimize(vae_loss, var_list=vae.trainable_weights)
+#print('VAE')
+#vae.summary()
 
-print('VAE')
-vae.summary()
+for v in encoder_params:
+    tf.summary.histogram(v.name, v)
+for v in decoder_params:
+    tf.summary.histogram(v.name, v)
+
+summary_op = tf.summary.merge_all()
 
 print('Start session')
+global_iters = 0
 with tf.Session() as session:
     init = tf.global_variables_initializer()
     session.run(init)
-    # summary_writer = tf.summary.FileWriter("./tmp/tf_logdir/", graph=tf.get_default_graph())
+    summary_writer = tf.summary.FileWriter("./tflog/", graph=tf.get_default_graph())
     for epoch in range(args.nb_epoch):
         for iteration in range(iterations):
+            global_iters += 1
             print('Epoch: {}/{}, iteration: {}/{}'.format(epoch, args.nb_epoch, iteration, iterations))
 
             x_true = x_generator.__getitem__(iteration)
-            z_true = session.run(z, feed_dict={encoder_input: x_true})
+            #z_true = session.run(z, feed_dict={encoder_input: x_true})
             x_r = session.run(xr, feed_dict={encoder_input: x_true})
             #z_p = np.random.normal(loc=0.0, scale=1.0, size=(args.batch_size, args.latent_dim))
             #x_p = session.run(decoder_output, feed_dict={decoder_input: z_p})
             x_p = session.run(xp, feed_dict={encoder_input: x_true})
 
-            #_, enc_loss, ae_l, z_lreg, zr_ng_lreg, zp_ng_lreg = session.run([encoder_train_op, encoder_loss, l_reconstruction, l_reg_z, l_reg_zr_ng, l_reg_zp_ng],
+            _, enc_loss_np, l_ae_np, l_reg_np, l_reg_zr_ng_np, l_reg_zpp_ng_np = session.run([encoder_train_op, encoder_loss, l_ae, l_reg_z, l_reg_zr_ng, l_reg_zpp_ng],
                                                                             #feed_dict={encoder_input: x_true, reconst_input: x_r, sampled_input: x_p})
-            #                                                                feed_dict={encoder_input: x_true})
-            #print(' Enc_loss: {}, l_ae:{},  l_reg_z: {}, l_reg_zr_ng: {}, l_reg_zp_ng: {}'.format(enc_loss, ae_l, z_lreg, zr_ng_lreg, zp_ng_lreg))
+                                                                            feed_dict={encoder_input: x_true})
+            print(' Enc_loss: {}, l_ae:{},  l_reg_z: {}, l_reg_zr_ng: {}, l_reg_zpp_ng: {}'.format(enc_loss_np, l_ae_np, l_reg_np, l_reg_zr_ng_np, l_reg_zpp_ng_np))
 
-            #_, dec_loss, ae_l, zr_lreg, zp_lreg = session.run([decoder_train_op, decoder_loss, l_reconstruction, l_reg_zr, l_reg_zp],
+            _, decoder_loss_np, l_ae_np, l_reg_zr_np, l_reg_zpp_np = session.run([decoder_train_op, decoder_loss, l_ae, l_reg_zr, l_reg_zpp],
                                                               #feed_dict={encoder_input: x_true, reconst_input: x_r, sampled_input: x_p})
-            #                                                  feed_dict={encoder_input: x_true})
-            #print(' Dec_loss: {}, l_ae:{}, l_reg_zr: {}, l_reg_zp: {}'.format(dec_loss, ae_l, zr_lreg, zp_lreg))
+                                                              feed_dict={encoder_input: x_true})
+            print(' Dec_loss: {}, l_ae:{}, l_reg_zr: {}, l_reg_zpp: {}'.format(decoder_loss_np, l_ae_np, l_reg_zr_np, l_reg_zpp_np))
 
-            _, vae_loss_value, l_rec_value, l_reg_value, l_size, l_var = session.run([vae_train_op, vae_loss, l_reconstruction, l_reg_z, l_size_z, l_var_z],
-                                                                                     feed_dict={encoder_input: x_true})
-            print(' VAE_loss: {}, l_rec:{}, l_reg: {}, l_size: {}, l_var: {}'.format(vae_loss_value, l_rec_value, l_reg_value, l_size, l_var))
-
+            #_, vae_loss_value, l_rec_value, l_reg_value, l_size, l_var = session.run([vae_train_op, vae_loss, l_reconstruction, l_reg_z, l_size_z, l_var_z],
+            #                                                                         feed_dict={encoder_input: x_true})
+            #print(' VAE_loss: {}, l_rec:{}, l_reg: {}, l_size: {}, l_var: {}'.format(vae_loss_value, l_rec_value, l_reg_value, l_size, l_var))
+            if global_iters % 10 == 0:
+                summary, = session.run([summary_op], feed_dict={encoder_input: x_true})
+                summary_writer.add_summary(summary, global_iters)
         if (epoch + 1) % args.frequency == 0:
             n_x = 5
             n_y = args.batch_size // n_x

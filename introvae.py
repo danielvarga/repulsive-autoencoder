@@ -17,6 +17,7 @@ import model_resnet
 from model import add_sampling
 import tensorflow as tf
 import sys
+import os
 import vis
 
 args = params.getArgs()
@@ -48,17 +49,81 @@ print('Load data')
 # x_true_flow = data_object.get_train_flow(args.batch_size)
 # args.original_shape = x_train.shape[1:]
 
+class DataGenerator(keras.utils.Sequence):
+    'Generates data for Keras'
+    def __init__(self, data_path, id_list, batch_size=32, shape=(64, 64), n_channels=3, shuffle=True):
+        'Initialization'
+        self.data_path = data_path
+        self.shape = shape
+        self.batch_size = batch_size
+        self.id_list = id_list
+        self.n_channels = n_channels
+        self.shuffle = shuffle
+        self.on_epoch_end()
+
+    def __len__(self):
+        'Denotes the number of batches per epoch'
+        return int(np.floor(len(self.id_list) / self.batch_size))
+
+    def __getitem__(self, idx):
+        'Generate one batch of data'
+        # Generate indexes of the batch
+        indexes = self.indexes[idx * self.batch_size : (idx + 1) * self.batch_size]
+
+        # Find list of IDs
+        id_list_temp = [self.id_list[i] for i in indexes]
+
+        # Generate data
+        X = self.__data_generation(id_list_temp)
+
+        return X
+
+    def on_epoch_end(self):
+        'Updates indexes after each epoch'
+        self.indexes = np.arange(len(self.id_list))
+        if self.shuffle == True:
+            np.random.shuffle(self.indexes)
+
+    def __data_generation(self, id_list_temp):
+        'Generates data containing batch_size samples' # X : (n_samples, *shape, n_channels)
+        # Initialization
+        X = np.empty((self.batch_size, *self.shape, self.n_channels))
+
+        # Generate data
+        for i, id_item in enumerate(id_list_temp):
+            # Store sample
+            X[i,] = np.load(self.data_path + id_item)
+        X = X.astype('float32') / 255.
+        return X
+
+
+
 data_path = '/home/csadrian/download-celebA-HQ/256x256/'
-images = []
-for i in range(args.batch_size):
-    img = np.load(data_path + 'imgHQ' + str(i).zfill(5) + '.npy')
-    images.append(img)
-x_train_raw = np.concatenate(images, axis=0)
-args.original_shape = x_train_raw.shape[1:]
-x_train = x_train_raw.astype('float32') / 255.
-print(x_train.shape)
-assert not np.any(np.isnan(x_train)), 'Input does not contain any nan.'
-# sys.exit('Intentionally terminated')
+#images = []
+#for i in range(args.batch_size):
+#    img = np.load(data_path + 'imgHQ' + str(i).zfill(5) + '.npy')
+#    images.append(img)
+#x_train_raw = np.concatenate(images, axis=0)
+#args.original_shape = x_train_raw.shape[1:]
+#print(args.original_shape)
+#x_train = x_train_raw.astype('float32') / 255.
+#print(x_train.shape)
+#assert not np.any(np.isnan(x_train)), 'Input does not contain any nan.'
+if args.color:
+    args.n_channels = 3
+else:
+    args.n_channels = 1
+args.original_shape = args.shape + (args.n_channels, )
+print(args.original_shape)
+id_list = [item for item in os.listdir(data_path) if item.endswith(".npy")]
+if len(id_list) > args.trainSize:
+    id_list_train = id_list[:args.trainSize]
+else:
+    id_list_train = id_list
+print('Number of input images: ', len(id_list_train))
+x_generator = DataGenerator(data_path, id_list_train, batch_size=args.batch_size, shape=args.shape, n_channels=args.n_channels)
+#print('Dataset - iterations: ', x_generator.__len__())
+#sys.exit('Intentionally terminated')
 
 print('Build networks')
 
@@ -95,16 +160,20 @@ decoder = Model(inputs=decoder_input, outputs=decoder_output)
 
 xr = decoder(z)
 
-# zr_mean, zr_log_var = encoder(xr)
-reconst_input = Input(batch_shape=[args.batch_size] + list(args.original_shape), name='reconst_input')
-zr_mean, zr_log_var = encoder(reconst_input)
-zr_mean_ng, zr_log_var_ng = encoder(tf.stop_gradient(reconst_input))
+zr_mean, zr_log_var = encoder(xr)
+zr_mean_ng, zr_log_var_ng = encoder(tf.stop_gradient(xr))
+#reconst_input = Input(batch_shape=[args.batch_size] + list(args.original_shape), name='reconst_input')
+#zr_mean, zr_log_var = encoder(reconst_input)
+#zr_mean_ng, zr_log_var_ng = encoder(tf.stop_gradient(reconst_input))
 
-# zp = K.random_normal(shape=(args.batch_size, args.latent_dim), mean=0., std_dev=1.0)
-# xp = decoder(zp)
-sampled_input = Input(batch_shape=[args.batch_size] + list(args.original_shape), name='sampled_input')
-zp_mean, zp_log_var = encoder(sampled_input)
-zp_mean_ng, zp_log_var_ng = encoder(tf.stop_gradient(sampled_input))
+zp = K.random_normal(shape=(args.batch_size, args.latent_dim), mean=0., stddev=1.0)
+xp = decoder(zp)
+zp_mean, zp_log_var = encoder(xp)
+zp_mean_ng, zp_log_var_ng = encoder(tf.stop_gradient(xp))
+
+#sampled_input = Input(batch_shape=[args.batch_size] + list(args.original_shape), name='sampled_input')
+#zp_mean, zp_log_var = encoder(sampled_input)
+#zp_mean_ng, zp_log_var_ng = encoder(tf.stop_gradient(sampled_input))
 
 print('Define optimizer')
 
@@ -122,6 +191,18 @@ print('Define loss functions')
 
 def l_reg(mean, log_var):
     return  K.mean(- 0.5 * K.sum(1 + log_var - K.square(mean) - K.exp(log_var), axis=-1))
+
+#def l_reg(mean, log_var):
+#    return l_size(mean) + l_size(log_var)
+
+def l_size(mean):
+    return K.mean(0.5 * K.sum(K.abs(mean), axis=-1))
+
+def l_variance(log_var):
+    return K.mean(0.5 * K.sum(-1 - log_var + K.exp(log_var), axis=-1))
+
+l_size_z = l_size(z_mean)
+l_var_z = l_variance(z_log_var)
 
 def l_ae(x, x_decoded):
     original_dim = np.float32(np.prod(args.original_shape))
@@ -144,7 +225,8 @@ decoder.summary()
 
 print('Start training')
 
-iterations = x_train.shape[0] // args.batch_size
+#iterations = x_train.shape[0] // args.batch_size
+iterations = x_generator.__len__()
 
 encoder_params = encoder.trainable_weights
 decoder_params = decoder.trainable_weights
@@ -158,6 +240,9 @@ vae_optimizer = tf.train.AdamOptimizer(learning_rate=args.lr)
 vae_loss = l_reconstruction + l_reg_z
 vae_train_op = vae_optimizer.minimize(vae_loss, var_list=vae.trainable_weights)
 
+print('VAE')
+vae.summary()
+
 print('Start session')
 with tf.Session() as session:
     init = tf.global_variables_initializer()
@@ -167,22 +252,26 @@ with tf.Session() as session:
         for iteration in range(iterations):
             print('Epoch: {}/{}, iteration: {}/{}'.format(epoch, args.nb_epoch, iteration, iterations))
 
-            x_true = x_train
+            x_true = x_generator.__getitem__(iteration)
             z_true = session.run(z, feed_dict={encoder_input: x_true})
             x_r = session.run(xr, feed_dict={encoder_input: x_true})
-            z_p = np.random.normal(loc=0.0, scale=1.0, size=(args.batch_size, args.latent_dim))
-            x_p = session.run(decoder_output, feed_dict={decoder_input: z_p})
+            #z_p = np.random.normal(loc=0.0, scale=1.0, size=(args.batch_size, args.latent_dim))
+            #x_p = session.run(decoder_output, feed_dict={decoder_input: z_p})
+            x_p = session.run(xp, feed_dict={encoder_input: x_true})
 
-            # _, enc_loss, ae_l, z_lreg, zr_ng_lreg, zp_ng_lreg = session.run([encoder_train_op, encoder_loss, l_reconstruction, l_reg_z, l_reg_zr_ng, l_reg_zp_ng],
-            #                                                                 feed_dict={encoder_input: x_true, reconst_input: x_r, sampled_input: x_p})
-            # print(' Enc_loss: {}, l_ae:{},  l_reg_z: {}, l_reg_zr_ng: {}, l_reg_zp_ng: {}'.format(enc_loss, ae_l, z_lreg, zr_ng_lreg, zp_ng_lreg))
+            #_, enc_loss, ae_l, z_lreg, zr_ng_lreg, zp_ng_lreg = session.run([encoder_train_op, encoder_loss, l_reconstruction, l_reg_z, l_reg_zr_ng, l_reg_zp_ng],
+                                                                            #feed_dict={encoder_input: x_true, reconst_input: x_r, sampled_input: x_p})
+            #                                                                feed_dict={encoder_input: x_true})
+            #print(' Enc_loss: {}, l_ae:{},  l_reg_z: {}, l_reg_zr_ng: {}, l_reg_zp_ng: {}'.format(enc_loss, ae_l, z_lreg, zr_ng_lreg, zp_ng_lreg))
 
-            # _, dec_loss, ae_l, zr_lreg, zp_lreg = session.run([decoder_train_op, decoder_loss, l_reconstruction, l_reg_zr, l_reg_zp],
-            #                                                   feed_dict={encoder_input: x_true, reconst_input: x_r, sampled_input: x_p})
-            # print(' Dec_loss: {}, l_ae:{}, l_reg_zr: {}, l_reg_zp: {}'.format(dec_loss, ae_l, zr_lreg, zp_lreg))
+            #_, dec_loss, ae_l, zr_lreg, zp_lreg = session.run([decoder_train_op, decoder_loss, l_reconstruction, l_reg_zr, l_reg_zp],
+                                                              #feed_dict={encoder_input: x_true, reconst_input: x_r, sampled_input: x_p})
+            #                                                  feed_dict={encoder_input: x_true})
+            #print(' Dec_loss: {}, l_ae:{}, l_reg_zr: {}, l_reg_zp: {}'.format(dec_loss, ae_l, zr_lreg, zp_lreg))
 
-            _, vae_loss_value, l_rec_value, l_reg_value = session.run([vae_train_op, vae_loss, l_reconstruction, l_reg_z], feed_dict={encoder_input: x_true})
-            print(' VAE_loss: {}, l_rec:{}, l_reg: {}'.format(vae_loss_value, l_rec_value, l_reg_value))
+            _, vae_loss_value, l_rec_value, l_reg_value, l_size, l_var = session.run([vae_train_op, vae_loss, l_reconstruction, l_reg_z, l_size_z, l_var_z],
+                                                                                     feed_dict={encoder_input: x_true})
+            print(' VAE_loss: {}, l_rec:{}, l_reg: {}, l_size: {}, l_var: {}'.format(vae_loss_value, l_rec_value, l_reg_value, l_size, l_var))
 
         if (epoch + 1) % args.frequency == 0:
             n_x = 5
@@ -193,4 +282,5 @@ with tf.Session() as session:
             vis.plotImages(x_p, n_x, n_y, "{}_sampled_epoch{}".format(args.prefix, epoch + 1), text=None)
             print('Save reconstructed images.')
             vis.plotImages(x_r, n_x, n_y, "{}_reconstructed_epoch{}".format(args.prefix, epoch + 1), text=None)
+        x_generator.on_epoch_end()
 print('OK')

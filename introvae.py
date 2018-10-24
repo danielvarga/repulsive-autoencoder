@@ -189,35 +189,39 @@ elif args.optimizer == 'sgd':
 
 print('Define loss functions')
 
-def reg_loss(mean, log_var):
-    return  K.mean(- 0.5 * K.sum(1 + log_var - K.square(mean) - K.exp(log_var), axis=-1))
+#def reg_loss(mean, log_var):
+#    return  K.mean(- 0.5 * K.sum(1 + log_var - K.square(mean) - K.exp(log_var), axis=-1))
 
-#def l_reg(mean, log_var):
-#    return l_size(mean) + l_size(log_var)
+def reg_loss(mean, log_var):
+    return size_loss(mean) + variance_loss(log_var)
 
 def size_loss(mean):
-    return K.mean(0.5 * K.sum(K.abs(mean), axis=-1))
+    return K.mean(0.5 * K.sum(K.square(mean), axis=-1))
 
 def variance_loss(log_var):
     return K.mean(0.5 * K.sum(-1 - log_var + K.exp(log_var), axis=-1))
 
 def mse_loss(x, x_decoded):
     original_dim = np.float32(np.prod(args.original_shape))
-    return K.mean(K.sum(mean_squared_error(x, x_decoded), axis=-1))
+    return K.mean(0.5 * original_dim * mean_squared_error(x, x_decoded))
 
 l_reg_z = reg_loss(z_mean, z_log_var)
 l_reg_zr_ng = reg_loss(zr_mean_ng, zr_log_var_ng)
 l_reg_zpp_ng = reg_loss(zpp_mean_ng, zpp_log_var_ng)
 l_ae = mse_loss(encoder_input, xr)
+ae_loss = args.beta * l_ae
+encoder_l_adv = l_reg_z + args.alpha * K.maximum(0., args.m - l_reg_zr_ng) + args.alpha * K.maximum(0., args.m - l_reg_zpp_ng)
+encoder_loss = encoder_l_adv + args.beta * l_ae
 #encoder_loss = l_reg_z + args.alpha * K.maximum(0., args.m - l_reg_zr_ng) + args.alpha * K.maximum(0., args.m - l_reg_zpp_ng) + args.beta * l_ae
-encoder_loss = l_ae
-encoder_loss += tf.add_n(encoder.losses)
-
+#encoder_loss = l_ae
+#encoder_loss += tf.add_n(encoder.losses) 
 
 l_reg_zr = reg_loss(zr_mean, zr_log_var)
 l_reg_zpp = reg_loss(zpp_mean, zpp_log_var)
+decoder_l_adv = args.alpha * l_reg_zr + args.alpha * l_reg_zpp
+decoder_loss = decoder_l_adv + args.beta * l_ae
 #decoder_loss = args.alpha * l_reg_zr + args.alpha * l_reg_zpp + args.beta * l_ae
-decoder_loss = l_ae
+#decoder_loss = l_ae
 #decoder_loss += tf.add_n(decoder.losses)
 
 print('Encoder')
@@ -231,21 +235,53 @@ iterations = x_generator.__len__()
 
 vae = Model(inputs=encoder_input, outputs=xr)
 
-
 encoder_params = encoder.trainable_weights
 decoder_params = decoder.trainable_weights
-all_params = vae.trainable_weights
+#all_params = vae.trainable_weights
+#enc_dec_params = encoder_params + decoder_params
+#tf_trainable_vars = tf.trainable_variables()
 
-print("encoder", encoder_params)
-print("decoder", decoder_params)
+#print("encoder", encoder_params)
+#print("decoder", decoder_params)
+
+print('# encoder params: ', len(encoder_params))
+print('# decoder params: ', len(decoder_params))
+#print('# enc params + dec params: ', len(enc_dec_params))
+#print('# all params: ', len(all_params))
+#assert all_params == enc_dec_params, 'vae_params(==all_params) is not the same as encoder_params + decoder_params'
 
 print('Define train step operations')
-encoder_train_op = encoder_optimizer.minimize(encoder_loss, var_list=all_params)
-decoder_train_op = decoder_optimizer.minimize(decoder_loss, var_list=all_params)
+#encoder_train_op = encoder_optimizer.minimize(encoder_loss, var_list=encoder_params)
+#decoder_train_op = decoder_optimizer.minimize(decoder_loss, var_list=decoder_params)
+
+#encoder_grads = encoder_optimizer.compute_gradients(encoder_loss, var_list=encoder_params)
+#decoder_grads = decoder_optimizer.compute_gradients(decoder_loss, var_list=decoder_params)
+#encoder_apply_grads_op = encoder_optimizer.apply_gradients(encoder_grads)
+#decoder_apply_grads_op = decoder_optimizer.apply_gradients(decoder_grads)
+
+encoder_ae_grads = tf.gradients(ae_loss, encoder_params)
+decoder_ae_grads = tf.gradients(ae_loss, decoder_params)
+encoder_adv_grads = tf.gradients(encoder_l_adv, encoder_params)
+encoder_grads = [x + y for x, y in zip(encoder_ae_grads, encoder_adv_grads)]
+
+with tf.control_dependencies(decoder_ae_grads):
+    encoder_apply_grads_op = encoder_optimizer.apply_gradients(zip(encoder_grads, encoder_params))
+    with tf.control_dependencies([encoder_apply_grads_op]):
+        decoder_adv_grads = tf.gradients(decoder_l_adv, decoder_params)
+        decoder_grads = [x + y for x, y in zip(decoder_ae_grads, decoder_adv_grads)]
+        decoder_apply_grads_op = decoder_optimizer.apply_gradients(zip(decoder_grads, decoder_params))
 
 #vae_optimizer = tf.train.AdamOptimizer(learning_rate=args.lr)
-#vae_loss = l_reconstruction + l_reg_z
-#vae_train_op = vae_optimizer.minimize(vae_loss, var_list=vae.trainable_weights)
+#vae_loss = l_ae
+#vae_train_op = vae_optimizer.minimize(vae_loss, var_list=all_params)
+#vae_enc_train_op = vae_optimizer.minimize(vae_loss, var_list=encoder_params)
+#vae_dec_train_op = vae_optimizer.minimize(vae_loss, var_list=decoder_params)
+
+#vae_enc_compute_grads_op = vae_optimizer.compute_gradients(vae_loss, var_list=encoder_params)
+#vae_dec_compute_grads_op = vae_optimizer.compute_gradients(vae_loss, var_list=decoder_params)
+#vae_enc_apply_grads_op = vae_optimizer.apply_gradients(vae_enc_compute_grads_op)
+#vae_dec_apply_grads_op = vae_optimizer.apply_gradients(vae_dec_compute_grads_op)
+
 #print('VAE')
 #vae.summary()
 
@@ -274,19 +310,44 @@ with tf.Session() as session:
             #x_p = session.run(decoder_output, feed_dict={decoder_input: z_p})
             x_p = session.run(xp, feed_dict={encoder_input: x_true})
 
-            _, enc_loss_np, l_ae_np, l_reg_np, l_reg_zr_ng_np, l_reg_zpp_ng_np = session.run([encoder_train_op, encoder_loss, l_ae, l_reg_z, l_reg_zr_ng, l_reg_zpp_ng],
-                                                                            #feed_dict={encoder_input: x_true, reconst_input: x_r, sampled_input: x_p})
-                                                                            feed_dict={encoder_input: x_true})
+            _ = session.run([encoder_apply_grads_op, decoder_apply_grads_op], feed_dict={encoder_input: x_true})
+
+            enc_loss_np, l_ae_np, l_reg_np, l_reg_zr_ng_np, l_reg_zpp_ng_np = session.run([encoder_loss, l_ae, l_reg_z, l_reg_zr_ng, l_reg_zpp_ng], feed_dict={encoder_input: x_true})
             print(' Enc_loss: {}, l_ae:{},  l_reg_z: {}, l_reg_zr_ng: {}, l_reg_zpp_ng: {}'.format(enc_loss_np, l_ae_np, l_reg_np, l_reg_zr_ng_np, l_reg_zpp_ng_np))
 
-            _, decoder_loss_np, l_ae_np, l_reg_zr_np, l_reg_zpp_np = session.run([decoder_train_op, decoder_loss, l_ae, l_reg_zr, l_reg_zpp],
-                                                              #feed_dict={encoder_input: x_true, reconst_input: x_r, sampled_input: x_p})
-                                                              feed_dict={encoder_input: x_true})
+            decoder_loss_np, l_ae_np, l_reg_zr_np, l_reg_zpp_np = session.run([decoder_loss, l_ae, l_reg_zr, l_reg_zpp], feed_dict={encoder_input: x_true})
             print(' Dec_loss: {}, l_ae:{}, l_reg_zr: {}, l_reg_zpp: {}'.format(decoder_loss_np, l_ae_np, l_reg_zr_np, l_reg_zpp_np))
 
-            #_, vae_loss_value, l_rec_value, l_reg_value, l_size, l_var = session.run([vae_train_op, vae_loss, l_reconstruction, l_reg_z, l_size_z, l_var_z],
-            #                                                                         feed_dict={encoder_input: x_true})
-            #print(' VAE_loss: {}, l_rec:{}, l_reg: {}, l_size: {}, l_var: {}'.format(vae_loss_value, l_rec_value, l_reg_value, l_size, l_var))
+
+            #_, enc_loss_np, l_ae_np, l_reg_np, l_reg_zr_ng_np, l_reg_zpp_ng_np = session.run([encoder_train_op, encoder_loss, l_ae, l_reg_z, l_reg_zr_ng, l_reg_zpp_ng],
+                                                                            #feed_dict={encoder_input: x_true, reconst_input: x_r, sampled_input: x_p})
+            #                                                                feed_dict={encoder_input: x_true})
+            #print(' Enc_loss: {}, l_ae:{},  l_reg_z: {}, l_reg_zr_ng: {}, l_reg_zpp_ng: {}'.format(enc_loss_np, l_ae_np, l_reg_np, l_reg_zr_ng_np, l_reg_zpp_ng_np))
+
+            #_, decoder_loss_np, l_ae_np, l_reg_zr_np, l_reg_zpp_np = session.run([decoder_train_op, decoder_loss, l_ae, l_reg_zr, l_reg_zpp],
+                                                              #feed_dict={encoder_input: x_true, reconst_input: x_r, sampled_input: x_p})
+            #                                                  feed_dict={encoder_input: x_true})
+            #print(' Dec_loss: {}, l_ae:{}, l_reg_zr: {}, l_reg_zpp: {}'.format(decoder_loss_np, l_ae_np, l_reg_zr_np, l_reg_zpp_np))
+
+            #_, vae_loss_np, l_ae_np, l_reg_z_np = session.run([vae_train_op, vae_loss, l_ae, l_reg_z],
+            #                                                  feed_dict={encoder_input: x_true})
+            #print(' VAE_loss: {}, l_rec:{}, l_reg: {}'.format(vae_loss_np, l_ae_np, l_reg_z_np))
+
+            #_, vae_loss_np, l_ae_np, l_reg_z_np = session.run([vae_enc_train_op, vae_loss, l_ae, l_reg_z],
+            #                                                  feed_dict={encoder_input: x_true})
+            #print(' VAE_loss: {}, l_rec:{}, l_reg: {}'.format(vae_loss_np, l_ae_np, l_reg_z_np))
+
+            #_, vae_loss_np, l_ae_np, l_reg_z_np = session.run([vae_dec_train_op, vae_loss, l_ae, l_reg_z],
+            #                                                  feed_dict={encoder_input: x_true})
+            #print(' VAE_loss: {}, l_rec:{}, l_reg: {}'.format(vae_loss_np, l_ae_np, l_reg_z_np))
+
+            #vae_enc_params_grads_np, vae_dec_params_grads_np = session.run([vae_enc_compute_grads_op, vae_dec_compute_grads_op],
+            #                                                               feed_dict={encoder_input: x_true})
+            #_ = session.run([vae_enc_apply_grads_op, vae_dec_apply_grads_op], feed_dict={encoder_input: x_true})
+
+            #vae_loss_np, l_ae_np, l_reg_z_np = session.run([vae_loss, l_ae, l_reg_z], feed_dict={encoder_input: x_true})
+            #print(' VAE_loss: {}, l_rec:{}, l_reg: {}'.format(vae_loss_np, l_ae_np, l_reg_z_np))
+
             if global_iters % 10 == 0:
                 summary, = session.run([summary_op], feed_dict={encoder_input: x_true})
                 summary_writer.add_summary(summary, global_iters)

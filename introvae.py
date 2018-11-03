@@ -319,11 +319,11 @@ with tf.Session() as session:
         n_x = 5
         n_y = args.batch_size // n_x
         print('Save original images.')
-        vis.plotImages(x, n_x, n_y, "{}_original_epoch{}".format(args.prefix, epoch + 1), text=None)
+        vis.plotImages(x, n_x, n_y, "{}_original_epoch{}_iter{}".format(args.prefix, epoch + 1, global_iters), text=None)
         print('Save generated images.')
-        vis.plotImages(x_p, n_x, n_y, "{}_sampled_epoch{}".format(args.prefix, epoch + 1), text=None)
+        vis.plotImages(x_p, n_x, n_y, "{}_sampled_epoch{}_iter{}".format(args.prefix, epoch + 1, global_iters), text=None)
         print('Save reconstructed images.')
-        vis.plotImages(x_r, n_x, n_y, "{}_reconstructed_epoch{}".format(args.prefix, epoch + 1), text=None)
+        vis.plotImages(x_r, n_x, n_y, "{}_reconstructed_epoch{}_iter{}".format(args.prefix, epoch + 1, global_iters), text=None)
 
         x_generator.on_epoch_end()
 print('OK')

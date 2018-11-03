@@ -302,6 +302,12 @@ with tf.Session() as session:
             _ = session.run([encoder_apply_grads_op], feed_dict={encoder_input: x, reconst_latent_input: z_x, sampled_latent_input: z_p})
             _ = session.run([decoder_apply_grads_op], feed_dict={encoder_input: x, reconst_latent_input: z_x, sampled_latent_input: z_p})
 
+
+
+            if global_iters % 10 == 0:
+                summary, = session.run([summary_op], feed_dict={encoder_input: x})
+                summary_writer.add_summary(summary, global_iters)
+        if (epoch + 1) % args.frequency == 0:
             enc_loss_np, enc_l_ae_np, l_reg_z_np, l_reg_zr_ng_np, l_reg_zpp_ng_np, decoder_loss_np, dec_l_ae_np, l_reg_zr_np, l_reg_zpp_np = \
              session.run([encoder_loss, l_ae, l_reg_z, l_reg_zr_ng, l_reg_zpp_ng, decoder_loss, l_ae, l_reg_zr, l_reg_zpp],
                          feed_dict={encoder_input: x, reconst_latent_input: z_x, sampled_latent_input: z_p})
@@ -309,11 +315,6 @@ with tf.Session() as session:
             print(' Enc_loss: {}, l_ae:{},  l_reg_z: {}, l_reg_zr_ng: {}, l_reg_zpp_ng: {}'.format(enc_loss_np, enc_l_ae_np, l_reg_z_np, l_reg_zr_ng_np, l_reg_zpp_ng_np))
             print(' Dec_loss: {}, l_ae:{}, l_reg_zr: {}, l_reg_zpp: {}'.format(decoder_loss_np, dec_l_ae_np, l_reg_zr_np, l_reg_zpp_np))
 
-
-            if global_iters % 10 == 0:
-                summary, = session.run([summary_op], feed_dict={encoder_input: x})
-                summary_writer.add_summary(summary, global_iters)
-        if (epoch + 1) % args.frequency == 0:
             n_x = 5
             n_y = args.batch_size // n_x
             print('Save original images.')

@@ -200,23 +200,30 @@ print('Define loss functions')
 #def reg_loss(mean, log_var):
 #    return  K.mean(- 0.5 * K.sum(1 + log_var - K.square(mean) - K.exp(log_var), axis=-1))
 
-def reg_loss(mean, log_var):
-    return size_loss(mean) + variance_loss(log_var)
+#def reg_loss(mean, log_var):
+#    return size_loss(mean) + variance_loss(log_var)
 
-def size_loss(mean):
-    return K.mean(0.5 * K.sum(K.square(mean), axis=-1))
+#def size_loss(mean):
+#    return K.mean(0.5 * K.sum(K.square(mean), axis=-1))
 
-def variance_loss(log_var):
-    return K.mean(0.5 * K.sum(-1 - log_var + K.exp(log_var), axis=-1))
+#def variance_loss(log_var):
+#    return K.mean(0.5 * K.sum(-1 - log_var + K.exp(log_var), axis=-1))
 
 def mse_loss(x, x_decoded):
     original_dim = np.float32(np.prod(args.original_shape))
     return K.mean(original_dim * mean_squared_error(x, x_decoded))
 
+def sse_loss(x, x_decoded):
+    return 0.5 * K.sum(K.square(x_decoded - x))
+
+def reg_loss(mean, log_var):
+    return 0.5 * K.sum(- 1 - log_var + K.square(mean) + K.exp(log_var))
+
 l_reg_z = reg_loss(z_mean, z_log_var)
 l_reg_zr_ng = reg_loss(zr_mean_ng, zr_log_var_ng)
 l_reg_zpp_ng = reg_loss(zpp_mean_ng, zpp_log_var_ng)
-l_ae = mse_loss(encoder_input, xr)
+#l_ae = mse_loss(encoder_input, xr)
+l_ae = sse_loss(encoder_input, xr)
 ae_loss = args.beta * l_ae
 encoder_l_adv = l_reg_z + args.alpha * K.maximum(0., args.m - l_reg_zr_ng) + args.alpha * K.maximum(0., args.m - l_reg_zpp_ng)
 encoder_loss = encoder_l_adv + args.beta * l_ae

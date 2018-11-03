@@ -99,6 +99,7 @@ class DataGenerator(keras.utils.Sequence):
 
 
 data_path = '/home/csadrian/download-celebA-HQ/256x256/'
+#data_path = '/home/ubuntu/celebA-HQ-256x256/'
 #images = []
 #for i in range(args.batch_size):
 #    img = np.load(data_path + 'imgHQ' + str(i).zfill(5) + '.npy')
@@ -291,7 +292,6 @@ with tf.Session() as session:
     for epoch in range(args.nb_epoch):
         for iteration in range(iterations):
             global_iters += 1
-            print('Epoch: {}/{}, iteration: {}/{}'.format(epoch, args.nb_epoch, iteration, iterations))
 
             x = x_generator.__getitem__(iteration)
             z_x = session.run(z, feed_dict={encoder_input: x})
@@ -307,21 +307,23 @@ with tf.Session() as session:
             if global_iters % 10 == 0:
                 summary, = session.run([summary_op], feed_dict={encoder_input: x})
                 summary_writer.add_summary(summary, global_iters)
-        if (epoch + 1) % args.frequency == 0:
-            enc_loss_np, enc_l_ae_np, l_reg_z_np, l_reg_zr_ng_np, l_reg_zpp_ng_np, decoder_loss_np, dec_l_ae_np, l_reg_zr_np, l_reg_zpp_np = \
-             session.run([encoder_loss, l_ae, l_reg_z, l_reg_zr_ng, l_reg_zpp_ng, decoder_loss, l_ae, l_reg_zr, l_reg_zpp],
-                         feed_dict={encoder_input: x, reconst_latent_input: z_x, sampled_latent_input: z_p})
 
-            print(' Enc_loss: {}, l_ae:{},  l_reg_z: {}, l_reg_zr_ng: {}, l_reg_zpp_ng: {}'.format(enc_loss_np, enc_l_ae_np, l_reg_z_np, l_reg_zr_ng_np, l_reg_zpp_ng_np))
-            print(' Dec_loss: {}, l_ae:{}, l_reg_zr: {}, l_reg_zpp: {}'.format(decoder_loss_np, dec_l_ae_np, l_reg_zr_np, l_reg_zpp_np))
+            if (global_iters + 1) % args.frequency == 0:
+                enc_loss_np, enc_l_ae_np, l_reg_z_np, l_reg_zr_ng_np, l_reg_zpp_ng_np, decoder_loss_np, dec_l_ae_np, l_reg_zr_np, l_reg_zpp_np = \
+                 session.run([encoder_loss, l_ae, l_reg_z, l_reg_zr_ng, l_reg_zpp_ng, decoder_loss, l_ae, l_reg_zr, l_reg_zpp],
+                             feed_dict={encoder_input: x, reconst_latent_input: z_x, sampled_latent_input: z_p})
+                print('Epoch: {}/{}, iteration: {}/{}'.format(epoch, args.nb_epoch, iteration, iterations))
+                print(' Enc_loss: {}, l_ae:{},  l_reg_z: {}, l_reg_zr_ng: {}, l_reg_zpp_ng: {}'.format(enc_loss_np, enc_l_ae_np, l_reg_z_np, l_reg_zr_ng_np, l_reg_zpp_ng_np))
+                print(' Dec_loss: {}, l_ae:{}, l_reg_zr: {}, l_reg_zpp: {}'.format(decoder_loss_np, dec_l_ae_np, l_reg_zr_np, l_reg_zpp_np))
 
-            n_x = 5
-            n_y = args.batch_size // n_x
-            print('Save original images.')
-            vis.plotImages(x, n_x, n_y, "{}_original_epoch{}".format(args.prefix, epoch + 1), text=None)
-            print('Save generated images.')
-            vis.plotImages(x_p, n_x, n_y, "{}_sampled_epoch{}".format(args.prefix, epoch + 1), text=None)
-            print('Save reconstructed images.')
-            vis.plotImages(x_r, n_x, n_y, "{}_reconstructed_epoch{}".format(args.prefix, epoch + 1), text=None)
+        n_x = 5
+        n_y = args.batch_size // n_x
+        print('Save original images.')
+        vis.plotImages(x, n_x, n_y, "{}_original_epoch{}".format(args.prefix, epoch + 1), text=None)
+        print('Save generated images.')
+        vis.plotImages(x_p, n_x, n_y, "{}_sampled_epoch{}".format(args.prefix, epoch + 1), text=None)
+        print('Save reconstructed images.')
+        vis.plotImages(x_r, n_x, n_y, "{}_reconstructed_epoch{}".format(args.prefix, epoch + 1), text=None)
+
         x_generator.on_epoch_end()
 print('OK')

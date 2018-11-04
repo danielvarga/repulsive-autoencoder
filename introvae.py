@@ -100,16 +100,7 @@ class DataGenerator(keras.utils.Sequence):
 
 data_path = '/home/csadrian/download-celebA-HQ/256x256/'
 #data_path = '/home/ubuntu/celebA-HQ-256x256/'
-#images = []
-#for i in range(args.batch_size):
-#    img = np.load(data_path + 'imgHQ' + str(i).zfill(5) + '.npy')
-#    images.append(img)
-#x_train_raw = np.concatenate(images, axis=0)
-#args.original_shape = x_train_raw.shape[1:]
-#print(args.original_shape)
-#x_train = x_train_raw.astype('float32') / 255.
-#print(x_train.shape)
-#assert not np.any(np.isnan(x_train)), 'Input does not contain any nan.'
+
 if args.color:
     args.n_channels = 3
 else:
@@ -123,8 +114,6 @@ else:
     id_list_train = id_list
 print('Number of input images: ', len(id_list_train))
 x_generator = DataGenerator(data_path, id_list_train, batch_size=args.batch_size, shape=args.shape, n_channels=args.n_channels)
-#print('Dataset - iterations: ', x_generator.__len__())
-#sys.exit('Intentionally terminated')
 
 print('Build networks')
 
@@ -161,25 +150,10 @@ decoder = Model(inputs=decoder_input, outputs=decoder_output)
 
 xr = decoder(z)
 
-#zr_mean, zr_log_var = encoder(xr)
-#zr_mean_ng, zr_log_var_ng = encoder(tf.stop_gradient(xr))
-
-#reconst_input = Input(batch_shape=[args.batch_size] + list(args.original_shape), name='reconst_input')
-#zr_mean, zr_log_var = encoder(reconst_input)
-#zr_mean_ng, zr_log_var_ng = encoder(tf.stop_gradient(reconst_input))
-
-#zp = K.random_normal(shape=(args.batch_size, args.latent_dim), mean=0., stddev=1.0)
-#xp = decoder(zp)
-#zpp_mean, zpp_log_var = encoder(xp)
-#zpp_mean_ng, zpp_log_var_ng = encoder(tf.stop_gradient(xp))
-
-#sampled_input = Input(batch_shape=[args.batch_size] + list(args.original_shape), name='sampled_input')
-#zpp_mean, zpp_log_var = encoder(sampled_input)
-#zpp_mean_ng, zpp_log_var_ng = encoder(tf.stop_gradient(sampled_input))
-
 reconst_latent_input = Input(batch_shape=(args.batch_size, args.latent_dim), name='reconst_latent_input')
 zr_mean, zr_log_var = encoder(decoder(reconst_latent_input))
 zr_mean_ng, zr_log_var_ng = encoder(tf.stop_gradient(decoder(reconst_latent_input)))
+
 sampled_latent_input = Input(batch_shape=(args.batch_size, args.latent_dim), name='sampled_latent_input')
 zpp_mean, zpp_log_var = encoder(decoder(sampled_latent_input))
 zpp_mean_ng, zpp_log_var_ng = encoder(tf.stop_gradient(decoder(sampled_latent_input)))
@@ -198,18 +172,16 @@ elif args.optimizer == 'sgd':
 
 print('Define loss functions')
 
-#def reg_loss(mean, log_var):
-#    return  K.mean(- 0.5 * K.sum(1 + log_var - K.square(mean) - K.exp(log_var), axis=-1))
-
-#def reg_loss(mean, log_var):
-#    return size_loss(mean) + variance_loss(log_var)
-
 #def size_loss(mean):
 #    return K.mean(0.5 * K.sum(K.square(mean), axis=-1))
 
 #def variance_loss(log_var):
 #    return K.mean(0.5 * K.sum(-1 - log_var + K.exp(log_var), axis=-1))
 
+#def reg_loss(mean, log_var):
+#    return size_loss(mean) + variance_loss(log_var)
+
+# sse or mse?
 def mse_loss(x, x_decoded):
     original_dim = np.float32(np.prod(args.original_shape))
     return K.mean(original_dim * mean_squared_error(x, x_decoded))
@@ -220,26 +192,25 @@ def sse_loss(x, x_decoded):
 def reg_loss(mean, log_var):
     return 0.5 * K.sum(- 1 - log_var + K.square(mean) + K.exp(log_var))
 
+def reg_loss(mean, log_var):
+    return  K.mean(0.5 * K.sum(- 1 - log_var + K.square(mean) + K.exp(log_var), axis=-1))
+
 l_reg_z = reg_loss(z_mean, z_log_var)
 l_reg_zr_ng = reg_loss(zr_mean_ng, zr_log_var_ng)
 l_reg_zpp_ng = reg_loss(zpp_mean_ng, zpp_log_var_ng)
-#l_ae = mse_loss(encoder_input, xr)
-l_ae = sse_loss(encoder_input, xr)
+
+l_ae = mse_loss(encoder_input, xr)
+#l_ae = sse_loss(encoder_input, xr)
 ae_loss = args.beta * l_ae
 
 encoder_l_adv = l_reg_z + args.alpha * K.maximum(0., args.m - l_reg_zr_ng) + args.alpha * K.maximum(0., args.m - l_reg_zpp_ng)
 encoder_loss = encoder_l_adv + args.beta * l_ae
-#encoder_loss = l_reg_z + args.alpha * K.maximum(0., args.m - l_reg_zr_ng) + args.alpha * K.maximum(0., args.m - l_reg_zpp_ng) + args.beta * l_ae
-#encoder_loss = l_ae
-#encoder_loss += tf.add_n(encoder.losses)
 
 l_reg_zr = reg_loss(zr_mean, zr_log_var)
 l_reg_zpp = reg_loss(zpp_mean, zpp_log_var)
+
 decoder_l_adv = args.alpha * l_reg_zr + args.alpha * l_reg_zpp
 decoder_loss = decoder_l_adv + args.beta * l_ae
-#decoder_loss = args.alpha * l_reg_zr + args.alpha * l_reg_zpp + args.beta * l_ae
-#decoder_loss = l_ae
-#decoder_loss += tf.add_n(decoder.losses)
 
 print('Encoder')
 encoder.summary()
@@ -247,7 +218,6 @@ print('Generator')
 decoder.summary()
 print('Start training')
 
-#iterations = x_train.shape[0] // args.batch_size
 iterations = x_generator.__len__()
 
 encoder_params = encoder.trainable_weights
@@ -275,6 +245,10 @@ else:
             decoder_grads = [x + y for x, y in zip(decoder_ae_grads, decoder_adv_grads)]
             decoder_apply_grads_op = decoder_optimizer.apply_gradients(zip(decoder_grads, decoder_params))
 
+# original method
+# encoder_train_op = encoder_optimizer.minimize(encoder_loss, var_list=encoder_params)
+# decoder_train_op = decoder_optimizer.minimize(decoder_loss, var_list=decoder_params)
+
 
 for v in encoder_params:
     tf.summary.histogram(v.name, v)
@@ -294,15 +268,11 @@ with tf.Session() as session:
             global_iters += 1
 
             x = x_generator.__getitem__(iteration)
-            z_x = session.run(z, feed_dict={encoder_input: x})
-            x_r = session.run(xr, feed_dict={encoder_input: x})
             z_p = np.random.normal(loc=0.0, scale=1.0, size=(args.batch_size, args.latent_dim))
-            x_p = session.run(decoder_output, feed_dict={decoder_input: z_p})
+            z_x, x_r, x_p = session.run([z, xr, decoder_output], feed_dict={encoder_input: x, decoder_input: z_p})
 
             _ = session.run([encoder_apply_grads_op], feed_dict={encoder_input: x, reconst_latent_input: z_x, sampled_latent_input: z_p})
             _ = session.run([decoder_apply_grads_op], feed_dict={encoder_input: x, reconst_latent_input: z_x, sampled_latent_input: z_p})
-
-
 
             if global_iters % 10 == 0:
                 summary, = session.run([summary_op], feed_dict={encoder_input: x})

@@ -189,8 +189,8 @@ def mse_loss(x, x_decoded):
 def sse_loss(x, x_decoded):
     return 0.5 * K.sum(K.square(x_decoded - x))
 
-def reg_loss(mean, log_var):
-    return 0.5 * K.sum(- 1 - log_var + K.square(mean) + K.exp(log_var))
+#def reg_loss(mean, log_var):
+#    return 0.5 * K.sum(- 1 - log_var + K.square(mean) + K.exp(log_var))
 
 def reg_loss(mean, log_var):
     return  K.mean(0.5 * K.sum(- 1 - log_var + K.square(mean) + K.exp(log_var), axis=-1))

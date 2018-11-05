@@ -262,7 +262,7 @@ global_iters = 0
 with tf.Session() as session:
     init = tf.global_variables_initializer()
     session.run(init)
-    summary_writer = tf.summary.FileWriter("./tflog/", graph=tf.get_default_graph())
+    summary_writer = tf.summary.FileWriter(args.prefix+"/", graph=tf.get_default_graph())
     saver = tf.train.Saver()
     if args.modelPath is not None and tf.train.checkpoint_exists(args.modelPath):
         saver.restore(session, tf.train.latest_checkpoint(args.modelPath))
@@ -291,9 +291,10 @@ with tf.Session() as session:
                 print(' Enc_loss: {}, l_ae:{},  l_reg_z: {}, l_reg_zr_ng: {}, l_reg_zpp_ng: {}'.format(enc_loss_np, enc_l_ae_np, l_reg_z_np, l_reg_zr_ng_np, l_reg_zpp_ng_np))
                 print(' Dec_loss: {}, l_ae:{}, l_reg_zr: {}, l_reg_zpp: {}'.format(decoder_loss_np, dec_l_ae_np, l_reg_zr_np, l_reg_zpp_np))
 
-        if args.modelPath is not None:
-            saver.save(session, args.modelPath + "/model")
-            print('Saved model to ' + args.modelPath + "/model")
+        if (epoch + 1) % 10 == 0:
+            if args.modelPath is not None:
+                saver.save(session, args.modelPath + "/model", global_step=global_iters)
+                print('Saved model to ' + args.modelPath + "/model")
 
         n_x = 5
         n_y = args.batch_size // n_x

@@ -263,6 +263,11 @@ with tf.Session() as session:
     init = tf.global_variables_initializer()
     session.run(init)
     summary_writer = tf.summary.FileWriter("./tflog/", graph=tf.get_default_graph())
+    saver = tf.train.Saver()
+    if args.modelPath is not None and tf.train.checkpoint_exists(args.modelPath):
+        saver.restore(session, args.modelPath)
+        print('Model restored from ' + args.modelPath)
+
     for epoch in range(args.nb_epoch):
         for iteration in range(iterations):
             global_iters += 1
@@ -278,11 +283,15 @@ with tf.Session() as session:
                 summary, = session.run([summary_op], feed_dict={encoder_input: x})
                 summary_writer.add_summary(summary, global_iters)
 
+                if args.modelPath is not None:
+                    saver.save(session, args.modelPath, global_step=global_iters)
+                    print('Saved model to ' + args.modelPath)
+
             if (global_iters % args.frequency) == 0:
                 enc_loss_np, enc_l_ae_np, l_reg_z_np, l_reg_zr_ng_np, l_reg_zpp_ng_np, decoder_loss_np, dec_l_ae_np, l_reg_zr_np, l_reg_zpp_np = \
                  session.run([encoder_loss, l_ae, l_reg_z, l_reg_zr_ng, l_reg_zpp_ng, decoder_loss, l_ae, l_reg_zr, l_reg_zpp],
                              feed_dict={encoder_input: x, reconst_latent_input: z_x, sampled_latent_input: z_p})
-                print('Epoch: {}/{}, iteration: {}/{}'.format(epoch, args.nb_epoch, iteration+1, iterations))
+                print('Epoch: {}/{}, iteration: {}/{}'.format(epoch+1, args.nb_epoch, iteration+1, iterations))
                 print(' Enc_loss: {}, l_ae:{},  l_reg_z: {}, l_reg_zr_ng: {}, l_reg_zpp_ng: {}'.format(enc_loss_np, enc_l_ae_np, l_reg_z_np, l_reg_zr_ng_np, l_reg_zpp_ng_np))
                 print(' Dec_loss: {}, l_ae:{}, l_reg_zr: {}, l_reg_zpp: {}'.format(decoder_loss_np, dec_l_ae_np, l_reg_zr_np, l_reg_zpp_np))
 

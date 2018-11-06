@@ -267,6 +267,9 @@ with tf.Session() as session:
     if args.modelPath is not None and tf.train.checkpoint_exists(args.modelPath):
         saver.restore(session, tf.train.latest_checkpoint(args.modelPath))
         print('Model restored from ' + args.modelPath)
+        ckpt = tf.train.get_checkpoint_state(args.modelPath)
+        global_iters = int(os.path.basename(ckpt.model_checkpoint_path).split('-')[1])
+    print('Global iters: ', global_iters)
 
     for epoch in range(args.nb_epoch):
         for iteration in range(iterations):

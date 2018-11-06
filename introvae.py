@@ -299,6 +299,15 @@ with tf.Session() as session:
                 saver.save(session, args.modelPath + "/model", global_step=global_iters)
                 print('Saved model to ' + args.modelPath + "/model")
 
+        if args.save_latent:
+            latent_cloud, latent_cloud_log_var = session.run([z_mean, z_log_var], feed_dict={encoder_input: x})
+            filename = "{}_latent_mean_epoch{}_iter{}.npy".format(args.prefix, epoch+1, global_iters)
+            print("Saving latent pointcloud mean to {}".format(filename))
+            np.save(filename, latent_cloud)
+            filename = "{}_latent_log_var_epoch{}_iter{}.npy".format(args.prefix, epoch+1, global_iters)
+            print("Saving latent pointcloud log variance to {}".format(filename))
+            np.save(filename, latent_cloud_log_var)
+
         n_x = 5
         n_y = args.batch_size // n_x
         print('Save original images.')

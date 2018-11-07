@@ -98,8 +98,8 @@ class DataGenerator(keras.utils.Sequence):
 
 
 
-data_path = '/home/csadrian/download-celebA-HQ/256x256/'
-#data_path = '/home/ubuntu/celebA-HQ-256x256/'
+#data_path = '/home/csadrian/download-celebA-HQ/256x256/'
+data_path = '/home/ubuntu/celebA-HQ-256x256/'
 
 if args.color:
     args.n_channels = 3
@@ -259,6 +259,7 @@ summary_op = tf.summary.merge_all()
 
 print('Start session')
 global_iters = 0
+start_epoch = 0
 with tf.Session() as session:
     init = tf.global_variables_initializer()
     session.run(init)
@@ -269,9 +270,10 @@ with tf.Session() as session:
         print('Model restored from ' + args.modelPath)
         ckpt = tf.train.get_checkpoint_state(args.modelPath)
         global_iters = int(os.path.basename(ckpt.model_checkpoint_path).split('-')[1])
+        start_epoch = global_iters // (args.batch_size*args.trainSize)
     print('Global iters: ', global_iters)
 
-    for epoch in range(args.nb_epoch):
+    for epoch in range(start_epoch, args.nb_epoch):
         for iteration in range(iterations):
             global_iters += 1
 

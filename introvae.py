@@ -283,7 +283,7 @@ with tf.Session() as session:
         print('Model restored from ' + args.modelPath)
         ckpt = tf.train.get_checkpoint_state(args.modelPath)
         global_iters = int(os.path.basename(ckpt.model_checkpoint_path).split('-')[1])
-        start_epoch = global_iters // (args.trainSize // args.batch_size)
+        start_epoch = (global_iters * args.batch_size) // args.trainSize
     print('Global iters: ', global_iters)
 
     for epoch in range(start_epoch, args.nb_epoch):

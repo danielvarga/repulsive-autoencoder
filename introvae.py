@@ -98,8 +98,8 @@ class DataGenerator(keras.utils.Sequence):
 
 
 
-#data_path = '/home/csadrian/download-celebA-HQ/256x256/'
-data_path = '/home/ubuntu/celebA-HQ-256x256/'
+data_path = '/home/csadrian/download-celebA-HQ/256x256/'
+#data_path = '/home/ubuntu/celebA-HQ-256x256/'
 
 if args.color:
     args.n_channels = 3
@@ -112,8 +112,21 @@ if len(id_list) > args.trainSize:
     id_list_train = id_list[:args.trainSize]
 else:
     id_list_train = id_list
-print('Number of input images: ', len(id_list_train))
+print('Number of train input images: ', len(id_list_train))
 x_generator = DataGenerator(data_path, id_list_train, batch_size=args.batch_size, shape=args.shape, n_channels=args.n_channels)
+
+if len(id_list)-args.trainSize >= args.testSize:
+    id_list_test = id_list[args.trainSize:args.trainSize+args.testSize]
+elif  len(id_list) > args.testSize:
+    id_list_test = id_list[:args.testSize]
+else:
+    id_list_test = id_list
+print('Number of test input images: ', len(id_list_test))
+x_test_generator = DataGenerator(data_path, id_list_test, batch_size=args.batch_size, shape=args.shape, n_channels=args.n_channels, shuffle=False)
+
+if args.latent_cloud_size is not None and args.latent_cloud_size != args.testSize:
+    print('Number of input images for latent cloud generation: ', args.latent_cloud_size)
+    x_latentcloud_generator = DataGenerator(data_path, id_list[:args.latent_cloud_size], batch_size=args.batch_size, shape=args.shape, n_channels=args.n_channels, shuffle=False)
 
 print('Build networks')
 
@@ -296,19 +309,38 @@ with tf.Session() as session:
                 print(' Enc_loss: {}, l_ae:{},  l_reg_z: {}, l_reg_zr_ng: {}, l_reg_zpp_ng: {}'.format(enc_loss_np, enc_l_ae_np, l_reg_z_np, l_reg_zr_ng_np, l_reg_zpp_ng_np))
                 print(' Dec_loss: {}, l_ae:{}, l_reg_zr: {}, l_reg_zpp: {}'.format(decoder_loss_np, dec_l_ae_np, l_reg_zr_np, l_reg_zpp_np))
 
+        if args.save_latent:
+            test_latent_cloud, test_latent_cloud_log_var = [], []
+            for i in range(x_test_generator.__len__()):
+                x_test = x_test_generator.__getitem__(i)
+                latent_cloud, latent_cloud_log_var = session.run([z_mean, z_log_var], feed_dict={encoder_input: x_test})
+                test_latent_cloud.append(latent_cloud)
+                test_latent_cloud_log_var.append(latent_cloud_log_var)
+            filename = "{}_test_latent_mean_epoch{}_iter{}.npy".format(args.prefix, epoch+1, global_iters)
+            print("Saving test latent pointcloud mean to {}".format(filename))
+            np.save(filename, np.array(test_latent_cloud))
+            filename = "{}_test_latent_log_var_epoch{}_iter{}.npy".format(args.prefix, epoch+1, global_iters)
+            print("Saving test latent pointcloud log variance to {}".format(filename))
+            np.save(filename, np.array(test_latent_cloud_log_var))
+
+            if args.testSize != args.latent_cloud_size:
+                big_latent_cloud, big_latent_cloud_log_var = [], []
+                for i in range(x_latentcloud_generator.__len__()):
+                    x_latentcloud = x_latentcloud_generator.__getitem__(i)
+                    latent_cloud, latent_cloud_log_var = session.run([z_mean, z_log_var], feed_dict={encoder_input: x_latentcloud})
+                    big_latent_cloud.append(latent_cloud)
+                    big_latent_cloud_log_var.append(latent_cloud_log_var)
+                filename = "{}_big_latent_mean_epoch{}_iter{}.npy".format(args.prefix, epoch+1, global_iters)
+                print("Saving big latent pointcloud mean to {}".format(filename))
+                np.save(filename, np.array(big_latent_cloud))
+                filename = "{}_big_latent_log_var_epoch{}_iter{}.npy".format(args.prefix, epoch+1, global_iters)
+                print("Saving big latent pointcloud log variance to {}".format(filename))
+                np.save(filename, np.array(big_latent_cloud_log_var))
+
         if (epoch + 1) % 10 == 0:
             if args.modelPath is not None:
                 saver.save(session, args.modelPath + "/model", global_step=global_iters)
                 print('Saved model to ' + args.modelPath + "/model")
-
-        if args.save_latent:
-            latent_cloud, latent_cloud_log_var = session.run([z_mean, z_log_var], feed_dict={encoder_input: x})
-            filename = "{}_latent_mean_epoch{}_iter{}.npy".format(args.prefix, epoch+1, global_iters)
-            print("Saving latent pointcloud mean to {}".format(filename))
-            np.save(filename, latent_cloud)
-            filename = "{}_latent_log_var_epoch{}_iter{}.npy".format(args.prefix, epoch+1, global_iters)
-            print("Saving latent pointcloud log variance to {}".format(filename))
-            np.save(filename, latent_cloud_log_var)
 
         n_x = 5
         n_y = args.batch_size // n_x

@@ -107,6 +107,8 @@ parser.add_argument('--memory_share', dest="memory_share", type=float, default=0
 parser.add_argument('--frequency', dest="frequency", type=int, default=20, help="image saving frequency")
 parser.add_argument('--layers_to_monitor', dest="layers_to_monitor", default=1, help="comma separated list of layers to monitor")
 parser.add_argument('--monitor_frequency', dest="monitor_frequency", type=int, default=0, help="After how many batches should we save the activations of monitored layers (0 means no saving")
+parser.add_argument('--save_latent', dest="save_latent", type=str2bool, default=True, help="If True, then save latent pointcloud.")
+parser.add_argument('--latent_cloud_size', dest="latent_cloud_size", type=int, default=10000, help="Size of latent cloud.")
 
 # deprecated
 parser.add_argument('--xent_weight', dest="xent_weight", default=-200, type=int, help="weight of the crossentropy loss")

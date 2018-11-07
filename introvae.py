@@ -318,10 +318,10 @@ with tf.Session() as session:
                 test_latent_cloud_log_var.append(latent_cloud_log_var)
             filename = "{}_test_latent_mean_epoch{}_iter{}.npy".format(args.prefix, epoch+1, global_iters)
             print("Saving test latent pointcloud mean to {}".format(filename))
-            np.save(filename, np.array(test_latent_cloud))
+            np.save(filename, np.concatenate(test_latent_cloud, axis=0))
             filename = "{}_test_latent_log_var_epoch{}_iter{}.npy".format(args.prefix, epoch+1, global_iters)
             print("Saving test latent pointcloud log variance to {}".format(filename))
-            np.save(filename, np.array(test_latent_cloud_log_var))
+            np.save(filename, np.concatenate(test_latent_cloud_log_var, axis=0))
 
             if args.testSize != args.latent_cloud_size:
                 big_latent_cloud, big_latent_cloud_log_var = [], []
@@ -332,10 +332,10 @@ with tf.Session() as session:
                     big_latent_cloud_log_var.append(latent_cloud_log_var)
                 filename = "{}_big_latent_mean_epoch{}_iter{}.npy".format(args.prefix, epoch+1, global_iters)
                 print("Saving big latent pointcloud mean to {}".format(filename))
-                np.save(filename, np.array(big_latent_cloud))
+                np.save(filename, np.concatenate(big_latent_cloud, axis=0))
                 filename = "{}_big_latent_log_var_epoch{}_iter{}.npy".format(args.prefix, epoch+1, global_iters)
                 print("Saving big latent pointcloud log variance to {}".format(filename))
-                np.save(filename, np.array(big_latent_cloud_log_var))
+                np.save(filename, np.concatenate(big_latent_cloud_log_var, axis=0))
 
         if (epoch + 1) % 10 == 0:
             if args.modelPath is not None:

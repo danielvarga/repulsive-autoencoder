@@ -205,8 +205,25 @@ def sse_loss(x, x_decoded):
 #def reg_loss(mean, log_var):
 #    return 0.5 * K.sum(- 1 - log_var + K.square(mean) + K.exp(log_var))
 
+def augmented_variance_loss(mean, log_var):
+    variance = K.exp(z_log_var)
+    # TODO Are you really-really sure it's not axis=1?
+    mean_variance = K.var(mean, axis=0, keepdims=True)
+    total_variance = variance + mean_variance
+    loss = 0.5 * K.sum(-1 - K.log(total_variance) + total_variance, axis=-1)
+    return K.mean(loss)
+
+def size_loss(mean):
+    loss = 0.5 * K.sum(K.square(mean), axis=-1)
+    return K.mean(loss)
+
+def reg_loss_new(mean, log_var):
+    return augmented_variance_loss(mean, log_var) + size_loss(mean)
+
 def reg_loss(mean, log_var):
-    return  K.mean(0.5 * K.sum(- 1 - log_var + K.square(mean) + K.exp(log_var), axis=-1))
+    return K.mean(0.5 * K.sum(- 1 - log_var + K.square(mean) + K.exp(log_var), axis=-1))
+
+#reg_loss = reg_loss_new
 
 l_reg_z = reg_loss(z_mean, z_log_var)
 l_reg_zr_ng = reg_loss(zr_mean_ng, zr_log_var_ng)

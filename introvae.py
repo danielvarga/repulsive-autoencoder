@@ -163,13 +163,13 @@ decoder = Model(inputs=decoder_input, outputs=decoder_output)
 
 xr = decoder(z)
 
-reconst_latent_input = Input(batch_shape=(args.batch_size, args.latent_dim), name='reconst_latent_input')
-zr_mean, zr_log_var = encoder(decoder(reconst_latent_input))
-zr_mean_ng, zr_log_var_ng = encoder(tf.stop_gradient(decoder(reconst_latent_input)))
+#reconst_latent_input = Input(batch_shape=(args.batch_size, args.latent_dim), name='reconst_latent_input')
+#zr_mean, zr_log_var = encoder(decoder(reconst_latent_input))
+#zr_mean_ng, zr_log_var_ng = encoder(tf.stop_gradient(decoder(reconst_latent_input)))
 
-sampled_latent_input = Input(batch_shape=(args.batch_size, args.latent_dim), name='sampled_latent_input')
-zpp_mean, zpp_log_var = encoder(decoder(sampled_latent_input))
-zpp_mean_ng, zpp_log_var_ng = encoder(tf.stop_gradient(decoder(sampled_latent_input)))
+#sampled_latent_input = Input(batch_shape=(args.batch_size, args.latent_dim), name='sampled_latent_input')
+#zpp_mean, zpp_log_var = encoder(decoder(sampled_latent_input))
+#zpp_mean_ng, zpp_log_var_ng = encoder(tf.stop_gradient(decoder(sampled_latent_input)))
 
 print('Define optimizer')
 
@@ -208,22 +208,24 @@ def sse_loss(x, x_decoded):
 def reg_loss(mean, log_var):
     return  K.mean(0.5 * K.sum(- 1 - log_var + K.square(mean) + K.exp(log_var), axis=-1))
 
-l_reg_z = reg_loss(z_mean, z_log_var)
-l_reg_zr_ng = reg_loss(zr_mean_ng, zr_log_var_ng)
-l_reg_zpp_ng = reg_loss(zpp_mean_ng, zpp_log_var_ng)
+#l_reg_z = reg_loss(z_mean, z_log_var)
+#l_reg_zr_ng = reg_loss(zr_mean_ng, zr_log_var_ng)
+#l_reg_zpp_ng = reg_loss(zpp_mean_ng, zpp_log_var_ng)
 
 l_ae = mse_loss(encoder_input, xr)
 #l_ae = sse_loss(encoder_input, xr)
-ae_loss = args.beta * l_ae
+#ae_loss = args.beta * l_ae
 
-encoder_l_adv = l_reg_z + args.alpha * K.maximum(0., args.m - l_reg_zr_ng) + args.alpha * K.maximum(0., args.m - l_reg_zpp_ng)
-encoder_loss = encoder_l_adv + args.beta * l_ae
+#encoder_l_adv = l_reg_z + args.alpha * K.maximum(0., args.m - l_reg_zr_ng) + args.alpha * K.maximum(0., args.m - l_reg_zpp_ng)
+#encoder_loss = encoder_l_adv + args.beta * l_ae
+encoder_loss = l_ae
 
-l_reg_zr = reg_loss(zr_mean, zr_log_var)
-l_reg_zpp = reg_loss(zpp_mean, zpp_log_var)
+#l_reg_zr = reg_loss(zr_mean, zr_log_var)
+#l_reg_zpp = reg_loss(zpp_mean, zpp_log_var)
 
-decoder_l_adv = args.alpha * l_reg_zr + args.alpha * l_reg_zpp
-decoder_loss = decoder_l_adv + args.beta * l_ae
+#decoder_l_adv = args.alpha * l_reg_zr + args.alpha * l_reg_zpp
+#decoder_loss = decoder_l_adv + args.beta * l_ae
+decoder_loss = l_ae
 
 print('Encoder')
 encoder.summary()
@@ -292,22 +294,29 @@ with tf.Session() as session:
 
             x = x_generator.__getitem__(iteration)
             z_p = np.random.normal(loc=0.0, scale=1.0, size=(args.batch_size, args.latent_dim))
-            z_x, x_r, x_p = session.run([z, xr, decoder_output], feed_dict={encoder_input: x, decoder_input: z_p})
+            #z_x, x_r, x_p = session.run([z, xr, decoder_output], feed_dict={encoder_input: x, decoder_input: z_p})
+            x_r, x_p = session.run([xr, decoder_output], feed_dict={encoder_input: x, decoder_input: z_p})
 
-            _ = session.run([encoder_apply_grads_op], feed_dict={encoder_input: x, reconst_latent_input: z_x, sampled_latent_input: z_p})
-            _ = session.run([decoder_apply_grads_op], feed_dict={encoder_input: x, reconst_latent_input: z_x, sampled_latent_input: z_p})
+            #_ = session.run([encoder_apply_grads_op], feed_dict={encoder_input: x, reconst_latent_input: z_x, sampled_latent_input: z_p})
+            #_ = session.run([decoder_apply_grads_op], feed_dict={encoder_input: x, reconst_latent_input: z_x, sampled_latent_input: z_p})
+            _ = session.run([encoder_apply_grads_op], feed_dict={encoder_input: x})
+            _ = session.run([decoder_apply_grads_op], feed_dict={encoder_input: x})
 
             if global_iters % 10 == 0:
                 summary, = session.run([summary_op], feed_dict={encoder_input: x})
                 summary_writer.add_summary(summary, global_iters)
 
             if (global_iters % args.frequency) == 0:
-                enc_loss_np, enc_l_ae_np, l_reg_z_np, l_reg_zr_ng_np, l_reg_zpp_ng_np, decoder_loss_np, dec_l_ae_np, l_reg_zr_np, l_reg_zpp_np = \
-                 session.run([encoder_loss, l_ae, l_reg_z, l_reg_zr_ng, l_reg_zpp_ng, decoder_loss, l_ae, l_reg_zr, l_reg_zpp],
-                             feed_dict={encoder_input: x, reconst_latent_input: z_x, sampled_latent_input: z_p})
+                #enc_loss_np, enc_l_ae_np, l_reg_z_np, l_reg_zr_ng_np, l_reg_zpp_ng_np, decoder_loss_np, dec_l_ae_np, l_reg_zr_np, l_reg_zpp_np = \
+                # session.run([encoder_loss, l_ae, l_reg_z, l_reg_zr_ng, l_reg_zpp_ng, decoder_loss, l_ae, l_reg_zr, l_reg_zpp],
+                #             feed_dict={encoder_input: x, reconst_latent_input: z_x, sampled_latent_input: z_p})
+                enc_loss_np, enc_l_ae_np, decoder_loss_np, dec_l_ae_np = session.run([encoder_loss, l_ae, decoder_loss, l_ae], feed_dict={encoder_input: x})
+
                 print('Epoch: {}/{}, iteration: {}/{}'.format(epoch+1, args.nb_epoch, iteration+1, iterations))
-                print(' Enc_loss: {}, l_ae:{},  l_reg_z: {}, l_reg_zr_ng: {}, l_reg_zpp_ng: {}'.format(enc_loss_np, enc_l_ae_np, l_reg_z_np, l_reg_zr_ng_np, l_reg_zpp_ng_np))
-                print(' Dec_loss: {}, l_ae:{}, l_reg_zr: {}, l_reg_zpp: {}'.format(decoder_loss_np, dec_l_ae_np, l_reg_zr_np, l_reg_zpp_np))
+                #print(' Enc_loss: {}, l_ae:{},  l_reg_z: {}, l_reg_zr_ng: {}, l_reg_zpp_ng: {}'.format(enc_loss_np, enc_l_ae_np, l_reg_z_np, l_reg_zr_ng_np, l_reg_zpp_ng_np))
+                #print(' Dec_loss: {}, l_ae:{}, l_reg_zr: {}, l_reg_zpp: {}'.format(decoder_loss_np, dec_l_ae_np, l_reg_zr_np, l_reg_zpp_np))
+                print(' Enc_loss: {}, l_ae:{}'.format(enc_loss_np, enc_l_ae_np))
+                print(' Dec_loss: {}, l_ae:{}'.format(decoder_loss_np, dec_l_ae_np))
 
         if args.save_latent:
             test_latent_cloud, test_latent_cloud_log_var = [], []

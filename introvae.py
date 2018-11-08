@@ -223,7 +223,10 @@ def reg_loss_new(mean, log_var):
 def reg_loss(mean, log_var):
     return K.mean(0.5 * K.sum(- 1 - log_var + K.square(mean) + K.exp(log_var), axis=-1))
 
-#reg_loss = reg_loss_new
+if args.newkl:
+   reg_loss = reg_loss_new
+   print("using newkl")
+
 
 l_reg_z = reg_loss(z_mean, z_log_var)
 l_reg_zr_ng = reg_loss(zr_mean_ng, zr_log_var_ng)

@@ -166,23 +166,11 @@ decoder_loss = decoder_l_adv + args.beta * l_ae2
 encoder_params = encoder.trainable_weights
 decoder_params = decoder.trainable_weights
 
-if args.simple_update:
-    encoder_grads = encoder_optimizer.compute_gradients(encoder_loss, var_list=encoder_params)
-    encoder_apply_grads_op = encoder_optimizer.apply_gradients(encoder_grads)
+encoder_grads = encoder_optimizer.compute_gradients(encoder_loss, var_list=encoder_params)
+encoder_apply_grads_op = encoder_optimizer.apply_gradients(encoder_grads)
 
-    decoder_grads = decoder_optimizer.compute_gradients(decoder_loss, var_list=decoder_params)
-    decoder_apply_grads_op = decoder_optimizer.apply_gradients(decoder_grads)
-else:
-    encoder_ae_grads = tf.gradients(ae_loss, encoder_params)
-    decoder_ae_grads = tf.gradients(ae_loss, decoder_params)
-    encoder_adv_grads = tf.gradients(encoder_l_adv, encoder_params)
-    encoder_grads = [x + y for x, y in zip(encoder_ae_grads, encoder_adv_grads)]
-    with tf.control_dependencies(decoder_ae_grads):
-        encoder_apply_grads_op = encoder_optimizer.apply_gradients(zip(encoder_grads, encoder_params))
-        with tf.control_dependencies([encoder_apply_grads_op]):
-            decoder_adv_grads = tf.gradients(decoder_l_adv, decoder_params)
-            decoder_grads = [x + y for x, y in zip(decoder_ae_grads, decoder_adv_grads)]
-            decoder_apply_grads_op = decoder_optimizer.apply_gradients(zip(decoder_grads, decoder_params))
+decoder_grads = decoder_optimizer.compute_gradients(decoder_loss, var_list=decoder_params)
+decoder_apply_grads_op = decoder_optimizer.apply_gradients(decoder_grads)
 
 
 for v in encoder_params:

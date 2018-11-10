@@ -131,14 +131,11 @@ decoder = Model(inputs=decoder_input, outputs=decoder_output)
 xr = decoder(z)
 
 reconst_latent_input = Input(batch_shape=(args.batch_size, args.latent_dim), name='reconst_latent_input')
-#reconst_latent_input = tf.placeholder(tf.float32, shape=(args.batch_size, args.latent_dim), name='reconst_latent_input')
-
 zr_mean, zr_log_var = encoder(decoder(reconst_latent_input))
 zr_mean_ng, zr_log_var_ng = encoder(tf.stop_gradient(decoder(reconst_latent_input)))
+xr_lat = decoder(reconst_latent_input)
 
 sampled_latent_input = Input(batch_shape=(args.batch_size, args.latent_dim), name='sampled_latent_input')
-#sampled_latent_input = tf.placeholder(tf.float32, shape=(args.batch_size, args.latent_dim), name='sampled_latent_input')
-
 zpp_mean, zpp_log_var = encoder(decoder(sampled_latent_input))
 zpp_mean_ng, zpp_log_var_ng = encoder(tf.stop_gradient(decoder(sampled_latent_input)))
 
@@ -156,25 +153,12 @@ elif args.optimizer == 'sgd':
 
 print('Define loss functions')
 
-#def size_loss(mean):
-#    return K.mean(0.5 * K.sum(K.square(mean), axis=-1))
-
-#def variance_loss(log_var):
-#    return K.mean(0.5 * K.sum(-1 - log_var + K.exp(log_var), axis=-1))
-
-#def reg_loss(mean, log_var):
-#    return size_loss(mean) + variance_loss(log_var)
-
-# sse or mse?
 def mse_loss(x, x_decoded):
     original_dim = np.float32(np.prod(args.original_shape))
     return K.mean(original_dim * mean_squared_error(x, x_decoded))
 
-def sse_loss(x, x_decoded):
-    return 0.5 * K.sum(K.square(x_decoded - x))
-
-#def reg_loss(mean, log_var):
-#    return 0.5 * K.sum(- 1 - log_var + K.square(mean) + K.exp(log_var))
+def reg_loss(mean, log_var):
+    return K.mean(0.5 * K.sum(- 1 - log_var + K.square(mean) + K.exp(log_var), axis=-1))
 
 def augmented_variance_loss(mean, log_var):
     variance = K.exp(z_log_var)
@@ -191,9 +175,6 @@ def size_loss(mean):
 def reg_loss_new(mean, log_var):
     return augmented_variance_loss(mean, log_var) + size_loss(mean)
 
-def reg_loss(mean, log_var):
-    return K.mean(0.5 * K.sum(- 1 - log_var + K.square(mean) + K.exp(log_var), axis=-1))
-
 if args.newkl:
    reg_loss = reg_loss_new
    print("using newkl")
@@ -204,7 +185,7 @@ l_reg_zr_ng = reg_loss(zr_mean_ng, zr_log_var_ng)
 l_reg_zpp_ng = reg_loss(zpp_mean_ng, zpp_log_var_ng)
 
 l_ae = mse_loss(encoder_input, xr)
-#l_ae = sse_loss(encoder_input, xr)
+l_ae2 = mse_loss(encoder_input, xr_lat)
 ae_loss = args.beta * l_ae
 
 encoder_l_adv = l_reg_z + args.alpha * K.maximum(0., args.m - l_reg_zr_ng) + args.alpha * K.maximum(0., args.m - l_reg_zpp_ng)
@@ -214,7 +195,7 @@ l_reg_zr = reg_loss(zr_mean, zr_log_var)
 l_reg_zpp = reg_loss(zpp_mean, zpp_log_var)
 
 decoder_l_adv = args.alpha * l_reg_zr + args.alpha * l_reg_zpp
-decoder_loss = decoder_l_adv + args.beta * l_ae
+decoder_loss = decoder_l_adv + args.beta * l_ae2
 
 print('Encoder')
 encoder.summary()

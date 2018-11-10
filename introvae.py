@@ -54,44 +54,32 @@ def read_npy_file(item):
     data = np.transpose(np.load(item.decode()), (0,3,1,2))[0,:,:,:]
     return data.astype(np.float32)
 
-#data_path = '/home/csadrian/download-celebA-HQ/128x128/'
 data_path = '/mnt/g2big/datasets/celeba/celebA-HQ-256x256/'
 #data_path = '/home/ubuntu/celebA-HQ-256x256/'
 
 iterations_per_epoch = args.trainSize // args.batch_size
 
-train_dataset = tf.data.Dataset.list_files(data_path + "train/*.npy", shuffle=True) \
-    .take((args.trainSize // args.batch_size) * args.batch_size) \
-    .map(lambda x: tf.py_func(read_npy_file, [x], [tf.float32])) \
-    .map(lambda x: x / 255.) \
-    .batch(args.batch_size) \
-    .repeat() \
-    .prefetch(2)
-train_iterator  = train_dataset.make_initializable_iterator()
-train_iterator_init_op = train_iterator.initializer
-train_next = train_iterator.get_next()
+def create_dataset(path, batch_size, limit):
+    dataset = tf.data.Dataset.list_files(path, shuffle=True) \
+        .take((limit // batch_size) * batch_size) \
+        .map(lambda x: tf.py_func(read_npy_file, [x], [tf.float32])) \
+        .map(lambda x: x / 255.) \
+        .batch(args.batch_size) \
+        .repeat() \
+        .prefetch(2)
+    iterator = dataset.make_initializable_iterator()
+    iterator_init_op = iterator.initializer
+    get_next = iterator.get_next()
+    return (dataset, iterator, iterator_init_op, get_next)
 
-test_dataset = tf.data.Dataset.list_files(data_path + "test/*.npy", shuffle=True) \
-    .take((args.testSize // args.batch_size) * args.batch_size) \
-    .map(lambda x: tf.py_func(read_npy_file, [x], [tf.float32])) \
-    .map(lambda x: x / 255.) \
-    .batch(args.batch_size) \
-    .repeat() \
-    .prefetch(args.batch_size)
-test_iterator = test_dataset.make_initializable_iterator()
-test_iterator_init_op = test_iterator.initializer
-test_next = test_iterator.get_next()
+train_dataset, train_iterator, train_iterator_init_op, train_next \
+     = create_dataset(data_path + "train/*.npy", args.batch_size, args.trainSize)
 
-fixed_dataset = tf.data.Dataset.list_files(data_path + "train/*.npy", shuffle=False) \
-    .take((args.latent_cloud_size // args.batch_size) * args.batch_size) \
-    .map(lambda x: tf.py_func(read_npy_file, [x], [tf.float32])) \
-    .map(lambda x: x / 255.) \
-    .batch(args.batch_size) \
-    .repeat() \
-    .prefetch(2)
-fixed_iterator = fixed_dataset.make_initializable_iterator()
-fixed_iterator_init_op = fixed_iterator.initializer
-fixed_next = fixed_iterator.get_next()
+test_dataset, test_iterator, test_iterator_init_op, test_next \
+     = create_dataset(data_path + "test/*.npy", args.batch_size, args.testSize)
+
+fixed_dataset, fixed_iterator, fixed_iterator_init_op, fixed_next \
+     = create_dataset(data_path + "test/*.npy", args.batch_size, args.testSize)
 
 ###
 

@@ -132,7 +132,6 @@ xr = decoder(z)
 
 reconst_latent_input = Input(batch_shape=(args.batch_size, args.latent_dim), name='reconst_latent_input')
 #reconst_latent_input = tf.placeholder(tf.float32, shape=(args.batch_size, args.latent_dim), name='reconst_latent_input')
-x = decoder(reconst_latent_input)
 
 zr_mean, zr_log_var = encoder(decoder(reconst_latent_input))
 zr_mean_ng, zr_log_var_ng = encoder(tf.stop_gradient(decoder(reconst_latent_input)))

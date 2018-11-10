@@ -7,8 +7,6 @@ from keras.optimizers import Adam
 import keras.backend as K
 
 import params
-import load_models
-
 import callbacks
 import samplers
 
@@ -24,19 +22,17 @@ print(args)
 # set random seed
 np.random.seed(10)
 
-# limit memory usage
-import keras
-
 print('Keras version: ', keras.__version__)
-if keras.backend._BACKEND == 'tensorflow':
+if K._BACKEND == 'tensorflow':
     import tensorflow as tf
 
     config = tf.ConfigProto()
     config.gpu_options.per_process_gpu_memory_fraction = args.memory_share
     set_session(tf.Session(config=config))
 
-
-###
+#
+# Datasets
+#
 
 print('Load data')
 
@@ -74,10 +70,14 @@ test_dataset, test_iterator, test_iterator_init_op, test_next \
 fixed_dataset, fixed_iterator, fixed_iterator_init_op, fixed_next \
      = create_dataset(data_path + "train/*.npy", args.batch_size, args.latent_cloud_size)
 
-###
-
 args.n_channels = 3 if args.color else 1
 args.original_shape = (args.n_channels, ) + args.shape
+
+
+
+#
+# Build networks
+#
 
 print('Build networks')
 
@@ -101,7 +101,6 @@ encoder = Model(inputs=encoder_input, outputs=[z_mean, z_log_var])
 decoder = Model(inputs=decoder_input, outputs=decoder_output)
 
 xr = decoder(z)
-
 reconst_latent_input = Input(batch_shape=(args.batch_size, args.latent_dim), name='reconst_latent_input')
 zr_mean, zr_log_var = encoder(decoder(reconst_latent_input))
 zr_mean_ng, zr_log_var_ng = encoder(tf.stop_gradient(decoder(reconst_latent_input)))
@@ -111,10 +110,19 @@ sampled_latent_input = Input(batch_shape=(args.batch_size, args.latent_dim), nam
 zpp_mean, zpp_log_var = encoder(decoder(sampled_latent_input))
 zpp_mean_ng, zpp_log_var_ng = encoder(tf.stop_gradient(decoder(sampled_latent_input)))
 
-print('Define optimizer')
-
 encoder_optimizer = tf.train.AdamOptimizer(learning_rate=args.lr)
 decoder_optimizer = tf.train.AdamOptimizer(learning_rate=args.lr)
+
+print('Encoder')
+encoder.summary()
+print('Generator')
+decoder.summary()
+
+
+
+#
+# Define losses
+#
 
 print('Define loss functions')
 
@@ -162,10 +170,6 @@ l_reg_zpp = reg_loss(zpp_mean, zpp_log_var)
 decoder_l_adv = args.alpha * l_reg_zr + args.alpha * l_reg_zpp
 decoder_loss = decoder_l_adv + args.beta * l_ae2
 
-print('Encoder')
-encoder.summary()
-print('Generator')
-decoder.summary()
 print('Start training')
 
 encoder_params = encoder.trainable_weights

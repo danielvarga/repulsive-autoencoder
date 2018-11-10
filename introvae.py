@@ -2,12 +2,11 @@ import numpy as np
 from keras.objectives import mean_squared_error
 from keras.layers import Input
 from keras.models import Model
-from keras.optimizers import Adam, RMSprop, SGD
+from keras.optimizers import Adam
 
 import keras.backend as K
 
 import params
-import data
 import load_models
 
 import callbacks
@@ -16,8 +15,7 @@ import samplers
 import model_resnet
 from model import add_sampling
 import tensorflow as tf
-import sys
-import os
+import os, sys, time
 import vis
 
 args = params.getArgs()
@@ -33,20 +31,14 @@ print('Keras version: ', keras.__version__)
 if keras.backend._BACKEND == 'tensorflow':
     import tensorflow as tf
 
-    print('Tensorflow version: ', tf.__version__)
-    from keras.backend.tensorflow_backend import set_session
-
     config = tf.ConfigProto()
     config.gpu_options.per_process_gpu_memory_fraction = args.memory_share
     set_session(tf.Session(config=config))
 
-epsilon = 0.00001
-
-print('Load data')
-
-iterations = args.nb_epoch * args.trainSize // args.batch_size
 
 ###
+
+print('Load data')
 
 K.set_image_data_format('channels_first')
 
@@ -57,6 +49,7 @@ def read_npy_file(item):
 data_path = '/mnt/g2big/datasets/celeba/celebA-HQ-256x256/'
 #data_path = '/home/ubuntu/celebA-HQ-256x256/'
 
+iterations = args.nb_epoch * args.trainSize // args.batch_size
 iterations_per_epoch = args.trainSize // args.batch_size
 
 def create_dataset(path, batch_size, limit):
@@ -83,26 +76,16 @@ fixed_dataset, fixed_iterator, fixed_iterator_init_op, fixed_next \
 
 ###
 
-if args.color:
-    args.n_channels = 3
-else:
-    args.n_channels = 1
-#args.original_shape = args.shape + (args.n_channels, )
+args.n_channels = 3 if args.color else 1
 args.original_shape = (args.n_channels, ) + args.shape
-print(args.original_shape)
 
 print('Build networks')
 
 encoder_layers = model_resnet.encoder_layers_introvae(args.shape, args.base_filter_num, args.encoder_use_bn)
 decoder_layers = model_resnet.decoder_layers_introvae(args.shape, args.base_filter_num, args.decoder_use_bn)
 
-assert(args.shape in [(128,128), (256, 256), (512, 512), (1024, 1024)], "Model not available for input shape.")
-
 encoder_input = Input(batch_shape=[args.batch_size] + list(args.original_shape), name='encoder_input')
 decoder_input = Input(batch_shape=(args.batch_size, args.latent_dim), name='decoder_input')
-
-#encoder_input = tf.placeholder(tf.float32, shape=[args.batch_size] + list(args.original_shape), name='encoder_input')
-#decoder_input = tf.placeholder(tf.float32, shape=(args.batch_size, args.latent_dim), name='encoder_input')
 
 encoder_output = encoder_input
 for layer in encoder_layers:
@@ -130,15 +113,8 @@ zpp_mean_ng, zpp_log_var_ng = encoder(tf.stop_gradient(decoder(sampled_latent_in
 
 print('Define optimizer')
 
-if args.optimizer == 'adam':
-    encoder_optimizer = tf.train.AdamOptimizer(learning_rate=args.lr)
-    decoder_optimizer = tf.train.AdamOptimizer(learning_rate=args.lr)
-elif args.optimizer == 'rmsprop':
-    encoder_optimizer = tf.train.RMSpropOptimizer(learning_rate=args.lr)
-    decoder_optimizer = tf.train.RMSpropOptimizer(learning_rate=args.lr)
-elif args.optimizer == 'sgd':
-    encoder_optimizer = tf.train.GradientDescentOptimizer(learning_rate=args.lr)
-    decoder_optimizer = tf.train.GradientDescentOptimizer(learning_rate=args.lr)
+encoder_optimizer = tf.train.AdamOptimizer(learning_rate=args.lr)
+decoder_optimizer = tf.train.AdamOptimizer(learning_rate=args.lr)
 
 print('Define loss functions')
 
@@ -195,9 +171,6 @@ print('Start training')
 encoder_params = encoder.trainable_weights
 decoder_params = decoder.trainable_weights
 
-print('# encoder params: ', len(encoder_params))
-print('# decoder params: ', len(decoder_params))
-
 print('Define train step operations')
 
 if args.simple_update:
@@ -229,7 +202,6 @@ run_opts = tf.RunOptions(report_tensor_allocations_upon_oom = True)
 print('Start session')
 global_iters = 0
 start_epoch = 0
-import time
 
 with tf.Session() as session:
     init = tf.global_variables_initializer()
@@ -314,7 +286,3 @@ with tf.Session() as session:
             if args.modelPath is not None:
                 saver.save(session, args.modelPath + "/model", global_step=global_iters)
                 print('Saved model to ' + args.modelPath + "/model")
-
-
-
-print('OK')

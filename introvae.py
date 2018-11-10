@@ -209,9 +209,8 @@ with tf.Session() as session:
         z_p = np.random.normal(loc=0.0, scale=1.0, size=(args.batch_size, args.latent_dim))
         z_x, x_r, x_p = session.run([z, xr, decoder_output], feed_dict={encoder_input: x, decoder_input: z_p})
 
-        #_ = session.run([encoder_apply_grads_op], feed_dict={encoder_input: x, reconst_latent_input: z_x, sampled_latent_input: z_p}, options=run_opts)
-        #_ = session.run([decoder_apply_grads_op], feed_dict={encoder_input: x, reconst_latent_input: z_x, sampled_latent_input: z_p}, options=run_opts)
-        _ = session.run([encoder_apply_grads_op, decoder_apply_grads_op], feed_dict={encoder_input: x, reconst_latent_input: z_x, sampled_latent_input: z_p}, options=run_opts)
+        _ = session.run([encoder_apply_grads_op], feed_dict={encoder_input: x, reconst_latent_input: z_x, sampled_latent_input: z_p}, options=run_opts)
+        _ = session.run([decoder_apply_grads_op], feed_dict={encoder_input: x, reconst_latent_input: z_x, sampled_latent_input: z_p}, options=run_opts)
 
         print("Secs: ", time.time()-start_time)
 

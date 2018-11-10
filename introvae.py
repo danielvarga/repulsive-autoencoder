@@ -87,6 +87,7 @@ fixed_dataset = tf.data.Dataset.list_files(data_path + "train/*.npy", shuffle=Fa
     .map(lambda x: tf.py_func(read_npy_file, [x], [tf.float32])) \
     .map(lambda x: x / 255.) \
     .batch(args.batch_size) \
+    .repeat() \
     .prefetch(2)
 fixed_iterator = fixed_dataset.make_initializable_iterator()
 fixed_iterator_init_op = fixed_iterator.initializer

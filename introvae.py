@@ -316,11 +316,11 @@ with tf.Session() as session:
             n_x = 5
             n_y = args.batch_size // n_x
             print('Save original images.')
-            vis.plotImages(x, n_x, n_y, "{}_original_epoch{}_iter{}".format(args.prefix, epoch + 1, global_iters), text=None)
+            vis.plotImages(np.transpose(x, (0, 2, 3, 1))), n_x, n_y, "{}_original_epoch{}_iter{}".format(args.prefix, epoch + 1, global_iters), text=None)
             print('Save generated images.')
-            vis.plotImages(x_p, n_x, n_y, "{}_sampled_epoch{}_iter{}".format(args.prefix, epoch + 1, global_iters), text=None)
+            vis.plotImages(np.transpose(x_p, (0, 2, 3, 1)), n_x, n_y, "{}_sampled_epoch{}_iter{}".format(args.prefix, epoch + 1, global_iters), text=None)
             print('Save reconstructed images.')
-            vis.plotImages(x_r, n_x, n_y, "{}_reconstructed_epoch{}_iter{}".format(args.prefix, epoch + 1, global_iters), text=None)
+            vis.plotImages(np.transpose(x_r, (0, 2, 3, 1)), n_x, n_y, "{}_reconstructed_epoch{}_iter{}".format(args.prefix, epoch + 1, global_iters), text=None)
 
         if (epoch + 1) % 10 == 0:
             if args.modelPath is not None:

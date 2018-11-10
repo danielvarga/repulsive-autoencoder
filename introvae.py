@@ -44,7 +44,7 @@ epsilon = 0.00001
 
 print('Load data')
 
-iterations = args.nb_epoch * self.trainSize // self.batch_size
+iterations = args.nb_epoch * args.trainSize // self.batch_size
 
 ###
 

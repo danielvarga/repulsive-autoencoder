@@ -19,8 +19,8 @@ np.random.seed(10)
 
 print('Keras version: ', keras.__version__)
 if K._BACKEND == 'tensorflow':
-    import tensorflow as tf
-
+    print('Tensorflow version: ', tf.__version__)	
+    from keras.backend.tensorflow_backend import set_session
     config = tf.ConfigProto()
     config.gpu_options.per_process_gpu_memory_fraction = args.memory_share
     set_session(tf.Session(config=config))

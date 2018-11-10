@@ -264,7 +264,7 @@ with tf.Session() as session:
             print('Save reconstructed images.')
             vis.plotImages(np.transpose(x_r, (0, 2, 3, 1)), n_x, n_y, "{}_reconstructed_epoch{}_iter{}".format(args.prefix, epoch + 1, global_iters), text=None)
 
-        if (epoch + 1) % 10 == 0:
+        if ((global_iters % iterations_per_epoch == 0) and ((epoch + 1) % 10 == 0)):
             if args.modelPath is not None:
                 saver.save(session, args.modelPath + "/model", global_step=global_iters)
                 print('Saved model to ' + args.modelPath + "/model")

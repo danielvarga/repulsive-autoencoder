@@ -44,7 +44,7 @@ epsilon = 0.00001
 
 print('Load data')
 
-iterations = self.epochs * self.trainSize // self.batch_size
+iterations = args.nb_epoch * self.trainSize // self.batch_size
 
 ###
 
@@ -249,10 +249,6 @@ else:
             decoder_grads = [x + y for x, y in zip(decoder_ae_grads, decoder_adv_grads)]
             decoder_apply_grads_op = decoder_optimizer.apply_gradients(zip(decoder_grads, decoder_params))
 
-# original method
-# encoder_train_op = encoder_optimizer.minimize(encoder_loss, var_list=encoder_params)
-# decoder_train_op = decoder_optimizer.minimize(decoder_loss, var_list=decoder_params)
-
 
 for v in encoder_params:
     tf.summary.histogram(v.name, v)
@@ -283,13 +279,12 @@ with tf.Session() as session:
     for iteration in range(iterations):
 
         epoch = global_iters * args.batch_size // args.trainSize
-
         global_iters += 1
+
         start_time = time.time()
 
-        x = session.run(train_next)
         z_p = np.random.normal(loc=0.0, scale=1.0, size=(args.batch_size, args.latent_dim))
-        z_x, x_r, x_p = session.run([z, xr, decoder_output], feed_dict={encoder_input: x, decoder_input: z_p})
+        z_x, x_r, x_p, x = session.run([z, xr, decoder_output, encoder_input], feed_dict={encoder_input: train_next, decoder_input: z_p})
 
         _ = session.run([encoder_apply_grads_op], feed_dict={encoder_input: x, reconst_latent_input: z_x, sampled_latent_input: z_p}, options=run_opts)
         _ = session.run([decoder_apply_grads_op], feed_dict={encoder_input: x, reconst_latent_input: z_x, sampled_latent_input: z_p}, options=run_opts)

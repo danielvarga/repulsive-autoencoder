@@ -29,8 +29,6 @@ if K._BACKEND == 'tensorflow':
 # Datasets
 #
 
-print('Load data')
-
 K.set_image_data_format('channels_first')
 
 def read_npy_file(item):
@@ -73,8 +71,6 @@ args.original_shape = (args.n_channels, ) + args.shape
 #
 # Build networks
 #
-
-print('Build networks')
 
 encoder_layers = model_resnet.encoder_layers_introvae(args.shape, args.base_filter_num, args.encoder_use_bn)
 decoder_layers = model_resnet.decoder_layers_introvae(args.shape, args.base_filter_num, args.decoder_use_bn)
@@ -119,8 +115,6 @@ decoder.summary()
 # Define losses
 #
 
-print('Define loss functions')
-
 def mse_loss(x, x_decoded):
     original_dim = np.float32(np.prod(args.original_shape))
     return K.mean(original_dim * mean_squared_error(x, x_decoded))
@@ -164,12 +158,13 @@ l_reg_zpp = reg_loss(zpp_mean, zpp_log_var)
 decoder_l_adv = args.alpha * l_reg_zr + args.alpha * l_reg_zpp
 decoder_loss = decoder_l_adv + args.beta * l_ae2
 
-print('Start training')
+
+#
+# Define training step operations
+#
 
 encoder_params = encoder.trainable_weights
 decoder_params = decoder.trainable_weights
-
-print('Define train step operations')
 
 if args.simple_update:
     encoder_grads = encoder_optimizer.compute_gradients(encoder_loss, var_list=encoder_params)

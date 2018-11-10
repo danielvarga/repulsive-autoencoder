@@ -283,8 +283,9 @@ with tf.Session() as session:
 
         start_time = time.time()
 
+        x = session.run(train_next)
         z_p = np.random.normal(loc=0.0, scale=1.0, size=(args.batch_size, args.latent_dim))
-        z_x, x_r, x_p, x = session.run([z, xr, decoder_output, encoder_input], feed_dict={encoder_input: train_next, decoder_input: z_p})
+        z_x, x_r, x_p = session.run([z, xr, decoder_output], feed_dict={encoder_input: x, decoder_input: z_p})
 
         _ = session.run([encoder_apply_grads_op], feed_dict={encoder_input: x, reconst_latent_input: z_x, sampled_latent_input: z_p}, options=run_opts)
         _ = session.run([decoder_apply_grads_op], feed_dict={encoder_input: x, reconst_latent_input: z_x, sampled_latent_input: z_p}, options=run_opts)

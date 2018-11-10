@@ -1,20 +1,15 @@
 import numpy as np
+import tensorflow as tf
+import keras.backend as K
+
 from keras.objectives import mean_squared_error
 from keras.layers import Input
 from keras.models import Model
 from keras.optimizers import Adam
 
-import keras.backend as K
-
-import params
-import callbacks
-import samplers
-
-import model_resnet
-from model import add_sampling
-import tensorflow as tf
 import os, sys, time
-import vis
+import model_resnet, params, vis
+from model import add_sampling
 
 args = params.getArgs()
 print(args)
@@ -151,7 +146,6 @@ def reg_loss_new(mean, log_var):
 if args.newkl:
    reg_loss = reg_loss_new
    print("using newkl")
-
 
 l_reg_z = reg_loss(z_mean, z_log_var)
 l_reg_zr_ng = reg_loss(zr_mean_ng, zr_log_var_ng)

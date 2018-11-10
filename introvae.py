@@ -79,7 +79,7 @@ test_dataset, test_iterator, test_iterator_init_op, test_next \
      = create_dataset(data_path + "test/*.npy", args.batch_size, args.testSize)
 
 fixed_dataset, fixed_iterator, fixed_iterator_init_op, fixed_next \
-     = create_dataset(data_path + "test/*.npy", args.batch_size, args.testSize)
+     = create_dataset(data_path + "train/*.npy", args.batch_size, args.latent_cloud_size)
 
 ###
 

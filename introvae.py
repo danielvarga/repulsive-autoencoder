@@ -117,13 +117,10 @@ decoder_input = Input(batch_shape=(args.batch_size, args.latent_dim), name='deco
 
 encoder_output = encoder_input
 for layer in encoder_layers:
-    print(encoder_output)
     encoder_output = layer(encoder_output)
 
 decoder_output = decoder_input
 for layer in decoder_layers:
-    print(decoder_output)
-
     decoder_output = layer(decoder_output)
 
 z, z_mean, z_log_var = add_sampling(encoder_output, args.sampling, args.sampling_std, args.batch_size, args.latent_dim, args.encoder_wd)
@@ -271,9 +268,8 @@ import time
 
 with tf.Session() as session:
     init = tf.global_variables_initializer()
-    session.run([train_iterator_init_op, test_iterator_init_op, fixed_iterator_init_op])
+    session.run([init, train_iterator_init_op, test_iterator_init_op, fixed_iterator_init_op], options=run_opts)
 
-    session.run(init, options=run_opts)
     summary_writer = tf.summary.FileWriter(args.prefix+"/", graph=tf.get_default_graph())
     saver = tf.train.Saver()
     if args.modelPath is not None and tf.train.checkpoint_exists(args.modelPath):

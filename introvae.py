@@ -1,6 +1,6 @@
 import numpy as np
 import tensorflow as tf
-import keras.backend as K
+import keras, keras.backend as K
 
 from keras.objectives import mean_squared_error
 from keras.layers import Input
@@ -19,7 +19,7 @@ np.random.seed(10)
 
 print('Keras version: ', keras.__version__)
 if K._BACKEND == 'tensorflow':
-    print('Tensorflow version: ', tf.__version__)	
+    print('Tensorflow version: ', tf.__version__)
     from keras.backend.tensorflow_backend import set_session
     config = tf.ConfigProto()
     config.gpu_options.per_process_gpu_memory_fraction = args.memory_share
@@ -215,12 +215,17 @@ with tf.Session() as session:
         epoch = global_iters * args.batch_size // args.trainSize
         global_iters += 1
 
+        start_time = time.time()
+
         x = session.run(train_next)
         z_p = np.random.normal(loc=0.0, scale=1.0, size=(args.batch_size, args.latent_dim))
         z_x, x_r, x_p = session.run([z, xr, decoder_output], feed_dict={encoder_input: x, decoder_input: z_p})
 
-        _ = session.run([encoder_apply_grads_op], feed_dict={encoder_input: x, reconst_latent_input: z_x, sampled_latent_input: z_p}, options=run_opts)
-        _ = session.run([decoder_apply_grads_op], feed_dict={encoder_input: x, reconst_latent_input: z_x, sampled_latent_input: z_p}, options=run_opts)
+        #_ = session.run([encoder_apply_grads_op], feed_dict={encoder_input: x, reconst_latent_input: z_x, sampled_latent_input: z_p}, options=run_opts)
+        #_ = session.run([decoder_apply_grads_op], feed_dict={encoder_input: x, reconst_latent_input: z_x, sampled_latent_input: z_p}, options=run_opts)
+        _ = session.run([encoder_apply_grads_op, decoder_apply_grads_op], feed_dict={encoder_input: x, reconst_latent_input: z_x, sampled_latent_input: z_p}, options=run_opts)
+
+        print("Secs: ", time.time()-start_time)
 
         if global_iters % 10 == 0:
             summary, = session.run([summary_op], feed_dict={encoder_input: x})
@@ -265,7 +270,7 @@ with tf.Session() as session:
             n_x = 5
             n_y = args.batch_size // n_x
             print('Save original images.')
-            vis.plotImages(np.transpose(x, (0, 2, 3, 1))), n_x, n_y, "{}_original_epoch{}_iter{}".format(args.prefix, epoch + 1, global_iters), text=None)
+            vis.plotImages(np.transpose(x, (0, 2, 3, 1)), n_x, n_y, "{}_original_epoch{}_iter{}".format(args.prefix, epoch + 1, global_iters), text=None)
             print('Save generated images.')
             vis.plotImages(np.transpose(x_p, (0, 2, 3, 1)), n_x, n_y, "{}_sampled_epoch{}_iter{}".format(args.prefix, epoch + 1, global_iters), text=None)
             print('Save reconstructed images.')

@@ -148,7 +148,6 @@ l_reg_zpp_ng = reg_loss(zpp_mean_ng, zpp_log_var_ng)
 
 l_ae = mse_loss(encoder_input, xr)
 l_ae2 = mse_loss(encoder_input, xr_lat)
-ae_loss = args.beta * l_ae
 
 encoder_l_adv = l_reg_z + args.alpha * K.maximum(0., args.m - l_reg_zr_ng) + args.alpha * K.maximum(0., args.m - l_reg_zpp_ng)
 encoder_loss = encoder_l_adv + args.beta * l_ae
@@ -216,7 +215,7 @@ with tf.Session() as session:
 
         if (global_iters % args.frequency) == 0:
             enc_loss_np, enc_l_ae_np, l_reg_z_np, l_reg_zr_ng_np, l_reg_zpp_ng_np, decoder_loss_np, dec_l_ae_np, l_reg_zr_np, l_reg_zpp_np = \
-             session.run([encoder_loss, l_ae, l_reg_z, l_reg_zr_ng, l_reg_zpp_ng, decoder_loss, l_ae, l_reg_zr, l_reg_zpp],
+             session.run([encoder_loss, l_ae, l_reg_z, l_reg_zr_ng, l_reg_zpp_ng, decoder_loss, l_ae2, l_reg_zr, l_reg_zpp],
                          feed_dict={encoder_input: x, reconst_latent_input: z_x, sampled_latent_input: z_p})
             print('Epoch: {}/{}, iteration: {}/{}'.format(epoch+1, args.nb_epoch, iteration+1, iterations))
             print(' Enc_loss: {}, l_ae:{},  l_reg_z: {}, l_reg_zr_ng: {}, l_reg_zpp_ng: {}'.format(enc_loss_np, enc_l_ae_np, l_reg_z_np, l_reg_zr_ng_np, l_reg_zpp_ng_np))
@@ -228,7 +227,8 @@ with tf.Session() as session:
                 result_dict = {}
 
                 for i in range(limit // args.batch_size):
-                    res = session.run(output.values(), feed_dict=input)
+                    inp = session.run(list(input.values()))
+                    res = session.run(list(output.values()), feed_dict=dict(zip(input.keys(), inp)))
                     for k, r in enumerate(res):
                         result_dict[input.keys()[k]].append(r)
 

@@ -23,12 +23,11 @@ print(args)
 np.random.seed(10)
 
 print('Keras version: ', keras.__version__)
-if K._BACKEND == 'tensorflow':
-    print('Tensorflow version: ', tf.__version__)
-    from keras.backend.tensorflow_backend import set_session
-    config = tf.ConfigProto()
-    config.gpu_options.per_process_gpu_memory_fraction = args.memory_share
-    set_session(tf.Session(config=config))
+print('Tensorflow version: ', tf.__version__)
+from keras.backend.tensorflow_backend import set_session
+config = tf.ConfigProto()
+config.gpu_options.per_process_gpu_memory_fraction = args.memory_share
+set_session(tf.Session(config=config))
 
 #
 # Datasets
@@ -181,14 +180,13 @@ for v in decoder_params:
     tf.summary.histogram(v.name, v)
 
 summary_op = tf.summary.merge_all()
-run_opts = tf.RunOptions(report_tensor_allocations_upon_oom = True)
 print('Start session')
 global_iters = 0
 start_epoch = 0
 
 with tf.Session() as session:
     init = tf.global_variables_initializer()
-    session.run([init, train_iterator_init_op, test_iterator_init_op, fixed_iterator_init_op], options=run_opts)
+    session.run([init, train_iterator_init_op, test_iterator_init_op, fixed_iterator_init_op])
 
     summary_writer = tf.summary.FileWriter(args.prefix+"/", graph=tf.get_default_graph())
     saver = tf.train.Saver()
@@ -209,8 +207,8 @@ with tf.Session() as session:
         z_p = np.random.normal(loc=0.0, scale=1.0, size=(args.batch_size, args.latent_dim))
         z_x, x_r, x_p = session.run([z, xr, decoder_output], feed_dict={encoder_input: x, decoder_input: z_p})
 
-        _ = session.run([encoder_apply_grads_op], feed_dict={encoder_input: x, reconst_latent_input: z_x, sampled_latent_input: z_p}, options=run_opts)
-        _ = session.run([decoder_apply_grads_op], feed_dict={encoder_input: x, reconst_latent_input: z_x, sampled_latent_input: z_p}, options=run_opts)
+        _ = session.run([encoder_apply_grads_op], feed_dict={encoder_input: x, reconst_latent_input: z_x, sampled_latent_input: z_p})
+        _ = session.run([decoder_apply_grads_op], feed_dict={encoder_input: x, reconst_latent_input: z_x, sampled_latent_input: z_p})
 
         if global_iters % 10 == 0:
             summary, = session.run([summary_op], feed_dict={encoder_input: x})
@@ -239,8 +237,8 @@ with tf.Session() as session:
                     print("Saving {} pointcloud mean to {}".format(k, filename))
                     np.save(filename, np.concatenate(result_dict[k], axis=0))
 
-            save_output(OrderedDict({encoder_input: test_next}), OrderedDict({"test_mean": z_mean, "test_log_var": z_log_var}), test_next)
-            save_output(OrderedDict({encoder_input: test_next}), OrderedDict({"test_mean": z_mean, "test_log_var": z_log_var}), fixed_next)
+            save_output(OrderedDict({encoder_input: test_next}), OrderedDict({"test_mean": z_mean, "test_log_var": z_log_var}), args.testSize)
+            save_output(OrderedDict({encoder_input: fixed_next}), OrderedDict({"train_mean": z_mean, "train_log_var": z_log_var}), args.latent_cloud_size)
 
             n_x = 5
             n_y = args.batch_size // n_x

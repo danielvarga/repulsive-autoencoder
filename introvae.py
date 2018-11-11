@@ -225,12 +225,14 @@ with tf.Session() as session:
 
             def save_output(input, output, limit):
                 result_dict = {}
+                for key in output.keys():
+                    result_dict[key] = []
 
                 for i in range(limit // args.batch_size):
                     inp = session.run(list(input.values()))
                     res = session.run(list(output.values()), feed_dict=dict(zip(input.keys(), inp)))
                     for k, r in enumerate(res):
-                        result_dict[input.keys()[k]].append(r)
+                        result_dict[list(output.keys())[k]].append(r)
 
                 for k in output.keys():
                     filename = "{}_{}_epoch{}_iter{}.npy".format(args.prefix, k, epoch+1, global_iters)

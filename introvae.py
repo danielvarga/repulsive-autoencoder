@@ -10,6 +10,11 @@ from keras.optimizers import Adam
 import os, sys, time
 import model_resnet, params, vis
 from model import add_sampling
+from collections import OrderedDict
+
+#
+# Config
+#
 
 args = params.getArgs()
 print(args)
@@ -35,8 +40,8 @@ def read_npy_file(item):
     data = np.transpose(np.load(item.decode()), (0,3,1,2))[0,:,:,:]
     return data.astype(np.float32)
 
-data_path = '/mnt/g2big/datasets/celeba/celebA-HQ-256x256/'
-#data_path = '/home/ubuntu/celebA-HQ-256x256/'
+data_path = '/mnt/g2big/datasets/celeba/celebA-HQ-{}x{}/'.format(args.shape[0], args.shape[1])
+#data_path = '/home/ubuntu/celebA-HQ-{}x{}/'.format(args.shape[0], args.shape[1])
 
 iterations = args.nb_epoch * args.trainSize // args.batch_size
 iterations_per_epoch = args.trainSize // args.batch_size
@@ -56,16 +61,13 @@ def create_dataset(path, batch_size, limit):
 
 train_dataset, train_iterator, train_iterator_init_op, train_next \
      = create_dataset(data_path + "train/*.npy", args.batch_size, args.trainSize)
-
 test_dataset, test_iterator, test_iterator_init_op, test_next \
      = create_dataset(data_path + "test/*.npy", args.batch_size, args.testSize)
-
 fixed_dataset, fixed_iterator, fixed_iterator_init_op, fixed_next \
      = create_dataset(data_path + "train/*.npy", args.batch_size, args.latent_cloud_size)
 
 args.n_channels = 3 if args.color else 1
 args.original_shape = (args.n_channels, ) + args.shape
-
 
 
 #
@@ -203,16 +205,12 @@ with tf.Session() as session:
         epoch = global_iters * args.batch_size // args.trainSize
         global_iters += 1
 
-        start_time = time.time()
-
         x = session.run(train_next)
         z_p = np.random.normal(loc=0.0, scale=1.0, size=(args.batch_size, args.latent_dim))
         z_x, x_r, x_p = session.run([z, xr, decoder_output], feed_dict={encoder_input: x, decoder_input: z_p})
 
         _ = session.run([encoder_apply_grads_op], feed_dict={encoder_input: x, reconst_latent_input: z_x, sampled_latent_input: z_p}, options=run_opts)
         _ = session.run([decoder_apply_grads_op], feed_dict={encoder_input: x, reconst_latent_input: z_x, sampled_latent_input: z_p}, options=run_opts)
-
-        print("Secs: ", time.time()-start_time)
 
         if global_iters % 10 == 0:
             summary, = session.run([summary_op], feed_dict={encoder_input: x})
@@ -227,32 +225,22 @@ with tf.Session() as session:
             print(' Dec_loss: {}, l_ae:{}, l_reg_zr: {}, l_reg_zpp: {}'.format(decoder_loss_np, dec_l_ae_np, l_reg_zr_np, l_reg_zpp_np))
 
         if ((global_iters % iterations_per_epoch == 0) and args.save_latent):
-            test_latent_cloud, test_latent_cloud_log_var = [], []
-            for i in range(10000 // args.batch_size):
-                x_test = session.run(test_next)
-                latent_cloud, latent_cloud_log_var = session.run([z_mean, z_log_var], feed_dict={encoder_input: x_test})
-                test_latent_cloud.append(latent_cloud)
-                test_latent_cloud_log_var.append(latent_cloud_log_var)
-            filename = "{}_test_latent_mean_epoch{}_iter{}.npy".format(args.prefix, epoch+1, global_iters)
-            print("Saving test latent pointcloud mean to {}".format(filename))
-            np.save(filename, np.concatenate(test_latent_cloud, axis=0))
-            filename = "{}_test_latent_log_var_epoch{}_iter{}.npy".format(args.prefix, epoch+1, global_iters)
-            print("Saving test latent pointcloud log variance to {}".format(filename))
-            np.save(filename, np.concatenate(test_latent_cloud_log_var, axis=0))
 
+            def save_output(input, output, limit):
+                result_dict = {}
 
-            big_latent_cloud, big_latent_cloud_log_var = [], []
-            for i in range(args.latent_cloud_size // args.batch_size):
-                x_latentcloud = session.run(fixed_next)
-                latent_cloud, latent_cloud_log_var = session.run([z_mean, z_log_var], feed_dict={encoder_input: x_latentcloud})
-                big_latent_cloud.append(latent_cloud)
-                big_latent_cloud_log_var.append(latent_cloud_log_var)
-            filename = "{}_big_latent_mean_epoch{}_iter{}.npy".format(args.prefix, epoch+1, global_iters)
-            print("Saving big latent pointcloud mean to {}".format(filename))
-            np.save(filename, np.concatenate(big_latent_cloud, axis=0))
-            filename = "{}_big_latent_log_var_epoch{}_iter{}.npy".format(args.prefix, epoch+1, global_iters)
-            print("Saving big latent pointcloud log variance to {}".format(filename))
-            np.save(filename, np.concatenate(big_latent_cloud_log_var, axis=0))
+                for i in range(limit // args.batch_size):
+                    res = session.run(output.values(), feed_dict=input)
+                    for k, r in enumerate(res):
+                        result_dict[input.keys()[k]].append(r)
+
+                for k in output.keys():
+                    filename = "{}_{}_epoch{}_iter{}.npy".format(args.prefix, k, epoch+1, global_iters)
+                    print("Saving {} pointcloud mean to {}".format(k, filename))
+                    np.save(filename, np.concatenate(result_dict[k], axis=0))
+
+            save_output(OrderedDict({encoder_input: test_next}), OrderedDict({"test_mean": z_mean, "test_log_var": z_log_var}), test_next)
+            save_output(OrderedDict({encoder_input: test_next}), OrderedDict({"test_mean": z_mean, "test_log_var": z_log_var}), fixed_next)
 
             n_x = 5
             n_y = args.batch_size // n_x

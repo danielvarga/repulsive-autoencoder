@@ -183,6 +183,20 @@ for v in decoder_params:
     tf.summary.histogram(v.name, v)
 summary_op = tf.summary.merge_all()
 
+def save_output(input, output, limit):
+    result_dict = {}
+    for key in output.keys():
+        result_dict[key] = []
+    for i in range(limit // args.batch_size):
+        inp = session.run(list(input.values()))
+        res = session.run(list(output.values()), feed_dict=dict(zip(input.keys(), inp)))
+        for k, r in enumerate(res):
+            result_dict[list(output.keys())[k]].append(r)
+    for k in output.keys():
+        filename = "{}_{}_epoch{}_iter{}.npy".format(args.prefix, k, epoch+1, global_iters)
+        print("Saving {} pointcloud mean to {}".format(k, filename))
+        np.save(filename, np.concatenate(result_dict[k], axis=0))
+
 
 #
 # Main loop
@@ -196,53 +210,28 @@ with tf.Session() as session:
     init = tf.global_variables_initializer()
     session.run([init, train_iterator_init_op, test_iterator_init_op, fixed_iterator_init_op])
 
-    summary_writer = tf.summary.FileWriter(args.prefix+"/", graph=tf.get_default_graph())
-    saver = tf.train.Saver()
-    if args.modelPath is not None and tf.train.checkpoint_exists(args.modelPath):
+    for ep in range(10, 210, 10):
+        iter = args.trainSize // args.batch_size * ep
+        if args.modelPath is not None and tf.train.checkpoint_exists(args.modelPath):
+            saver = tf.train.import_meta_graph(args.modelPath+'/model-' + str(iter) + '.meta')
+            saver.restore(session, args.modelPath+'/model-' + str(iter))
 
-        saver = tf.train.import_meta_graph(args.modelPath+'/model-72480.meta')
-        saver.restore(session, tf.train.latest_checkpoint(args.modelPath))
+            print('Model restored from ' + args.modelPath)
+            ckpt = tf.train.get_checkpoint_state(args.modelPath)
+            #global_iters = int(os.path.basename(ckpt.model_checkpoint_path).split('-')[1])
+            global_iters = iter
+            start_epoch = (global_iters * args.batch_size) // args.trainSize
+        print('Global iters: ', global_iters)
 
-        print('Model restored from ' + args.modelPath)
-        ckpt = tf.train.get_checkpoint_state(args.modelPath)
-        global_iters = int(os.path.basename(ckpt.model_checkpoint_path).split('-')[1])
-        start_epoch = (global_iters * args.batch_size) // args.trainSize
-    print('Global iters: ', global_iters)
+        zr_mean_2, zr_log_var_2 = encoder(decoder(z))
 
+        epoch = global_iters * args.batch_size // args.trainSize
 
-    zr_mean_2, zr_log_var_2 = encoder(decoder(z))
+        z_p_tf = tf.random_normal(shape=(args.batch_size, args.latent_dim))
 
-    epoch = global_iters * args.batch_size // args.trainSize
+        save_output(OrderedDict({encoder_input: test_next}), OrderedDict({"test_mean": z_mean, "test_log_var": z_log_var}), args.testSize)
+        save_output(OrderedDict({encoder_input: train_next}), OrderedDict({"train_mean": z_mean, "train_log_var": z_log_var}), args.latent_cloud_size)
 
-    def save_output(input, output, limit):
-        result_dict = {}
-        for key in output.keys():
-            result_dict[key] = []
-        for i in range(limit // args.batch_size):
-            inp = session.run(list(input.values()))
-            res = session.run(list(output.values()), feed_dict=dict(zip(input.keys(), inp)))
-            for k, r in enumerate(res):
-                result_dict[list(output.keys())[k]].append(r)
-        for k in output.keys():
-            filename = "{}_{}_epoch{}_iter{}.npy".format(args.prefix, k, epoch+1, global_iters)
-            print("Saving {} pointcloud mean to {}".format(k, filename))
-            np.save(filename, np.concatenate(result_dict[k], axis=0))
+        save_output(OrderedDict({encoder_input: train_next}), OrderedDict({"rec_mean": zr_mean_2, "rec_log_var": zr_log_var_2}), args.latent_cloud_size)
+        save_output(OrderedDict({sampled_latent_input: z_p_tf}), OrderedDict({"gen_z": sampled_latent_input, "gen_mean": zpp_mean, "gen_log_var": zpp_log_var}), args.latent_cloud_size)
 
-    z_p_tf = tf.random_normal(shape=(args.batch_size, args.latent_dim))
-
-    save_output(OrderedDict({encoder_input: test_next}), OrderedDict({"test_mean": z_mean, "test_log_var": z_log_var}), args.testSize)
-    save_output(OrderedDict({encoder_input: train_next}), OrderedDict({"train_mean": z_mean, "train_log_var": z_log_var}), args.latent_cloud_size)
-
-    save_output(OrderedDict({encoder_input: train_next}), OrderedDict({"rec_mean": zr_mean_2, "rec_log_var": zr_log_var_2}), args.latent_cloud_size)
-    save_output(OrderedDict({sampled_latent_input: z_p_tf}), OrderedDict({"gen_mean": zpp_mean, "gen_log_var": zpp_log_var}), args.latent_cloud_size)
-
-    """
-    n_x = 5
-    n_y = args.batch_size // n_x
-    print('Save original images.')
-    vis.plotImages(np.transpose(x, (0, 2, 3, 1)), n_x, n_y, "{}_original_epoch{}_iter{}".format(args.prefix, epoch + 1, global_iters), text=None)
-    print('Save generated images.')
-    vis.plotImages(np.transpose(x_p, (0, 2, 3, 1)), n_x, n_y, "{}_sampled_epoch{}_iter{}".format(args.prefix, epoch + 1, global_iters), text=None)
-    print('Save reconstructed images.')
-    vis.plotImages(np.transpose(x_r, (0, 2, 3, 1)), n_x, n_y, "{}_reconstructed_epoch{}_iter{}".format(args.prefix, epoch + 1, global_iters), text=None)
-    """

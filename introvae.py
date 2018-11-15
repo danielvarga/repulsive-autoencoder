@@ -177,8 +177,13 @@ for v in encoder_params:
     tf.summary.histogram(v.name, v)
 for v in decoder_params:
     tf.summary.histogram(v.name, v)
-
 summary_op = tf.summary.merge_all()
+
+
+#
+# Main loop
+#
+
 print('Start session')
 global_iters = 0
 start_epoch = 0
@@ -188,7 +193,7 @@ with tf.Session() as session:
     session.run([init, train_iterator_init_op, test_iterator_init_op, fixed_iterator_init_op])
 
     summary_writer = tf.summary.FileWriter(args.prefix+"/", graph=tf.get_default_graph())
-    saver = tf.train.Saver()
+    saver = tf.train.Saver(max_to_keep=None)
     if args.modelPath is not None and tf.train.checkpoint_exists(args.modelPath):
         saver.restore(session, tf.train.latest_checkpoint(args.modelPath))
         print('Model restored from ' + args.modelPath)
@@ -253,5 +258,5 @@ with tf.Session() as session:
 
         if ((global_iters % iterations_per_epoch == 0) and ((epoch + 1) % 10 == 0)):
             if args.modelPath is not None:
-                saver.save(session, args.modelPath + "/model", global_step=global_iters)
-                print('Saved model to ' + args.modelPath + "/model")
+                saved = saver.save(session, args.modelPath + "/model", global_step=global_iters)
+                print('Saved model to ' + saved)

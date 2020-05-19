@@ -92,17 +92,17 @@ mkdir pictures
 
 # check GPU availability:
 nvidia-smi
-# -> Bijection between CUDA_DEVICE numbering and nvidia-smi numbering is ad hoc.
+# -> Bijection between CUDA_DEVICES numbering and nvidia-smi numbering is ad hoc.
 #    Currently on geforce: 0->2 1->1 2->0, on geforce2: 0->1 1->0
 
-# Let's say CUDA_DEVICE 0 is free:
-CUDA_VISIBLE_DEVICE=0 python autoencoder.py ini/dcgan_vae.ini
+# Let's say CUDA_DEVICES 0 is free:
+CUDA_VISIBLE_DEVICES=0 python autoencoder.py ini/dcgan_vae.ini
 # -> this currently assumes that data files are present at scattered places like
 #    /home/zombori/datasets/celeba_72_64_color.npy
 # -> output is in pictures/dcgan_vae/
 
 # To prevent termination of process after logging out from geforce:
-CUDA_VISIBLE_DEVICE=0 nohup python autoencoder.py ini/dcgan_vae.ini > dcgan_vae.cout 2> dcgan_vae.cerr &
+CUDA_VISIBLE_DEVICES=0 nohup python autoencoder.py ini/dcgan_vae.ini > dcgan_vae.cout 2> dcgan_vae.cerr &
 # -> output now in dcgan_vae.cout
 
 scp -P 2820 pictures/dcgan_vae_lsun/dcgan_vae-interp.png renyi.hu:./www/tmp/
@@ -110,7 +110,7 @@ scp -P 2820 pictures/dcgan_vae_lsun/dcgan_vae-interp.png renyi.hu:./www/tmp/
 open https://old.renyi.hu/~accountname/tmp/
 
 # When training is finished, trained network is saved, and we can use it for post-hoc analysis:
-CUDA_VISIBLE_DEVICE=0 nohup python project_latent.py ini/dcgan_vae.ini
+CUDA_VISIBLE_DEVICES=0 nohup python project_latent.py ini/dcgan_vae.ini
 # -> Output shows that lots of charts and images are created. Let's check them.
 
 # TODO Tensorboard
